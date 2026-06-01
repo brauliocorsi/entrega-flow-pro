@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { formatEUR, formatDatePT, zipPrefix } from "@/lib/format";
 import { DELIVERY_TYPE_LABEL, ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT } from "@/lib/constants";
-import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText } from "lucide-react";
 
 const searchSchema = z.object({ routeId: z.string().optional() });
 

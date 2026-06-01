@@ -213,6 +213,64 @@ async function gcFetch(url: string, headers: Record<string, string>): Promise<{ 
   }
 }
 
+export async function updateGestaoClickVendaSchedule(args: {
+  vendaId: string;
+  routeDate: string; // YYYY-MM-DD
+  statusLabel?: string; // default: "Agendado Entrega"
+}): Promise<{ ok: boolean; situacaoId?: string; error?: string }> {
+  const baseUrl = process.env.GESTAOCLICK_BASE_URL;
+  const apiKey = process.env.GESTAOCLICK_API_KEY;
+  const email = process.env.GESTAOCLICK_EMAIL;
+  if (!baseUrl || !apiKey || !email) return { ok: false, error: "Credenciais GestãoClick em falta" };
+
+  const base = normalizeBaseUrl(baseUrl);
+  const headers = {
+    "access-token": apiKey,
+    "secret-access-token": email,
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
+  const wantedLabel = (args.statusLabel ?? "Agendado Entrega").toLowerCase().trim();
+
+  try {
+    // 1) procurar situação por nome
+    let situacaoId: string | undefined;
+    try {
+      const sit = await gcFetch(`${base}/api/situacoes_vendas`, headers);
+      const arr: any[] = Array.isArray(sit.json?.data) ? sit.json.data : Array.isArray(sit.json) ? sit.json : [];
+      for (const w of arr) {
+        const s = w?.situacao ?? w;
+        const name = String(s?.nome ?? s?.descricao ?? "").toLowerCase().trim();
+        if (name === wantedLabel || name.includes(wantedLabel)) {
+          situacaoId = String(s?.id ?? "");
+          break;
+        }
+      }
+    } catch {
+      // ignore — segue sem alterar situação
+    }
+
+    // 2) atualizar venda (PUT)
+    const body: Record<string, unknown> = {
+      data_previsao: args.routeDate,
+    };
+    if (situacaoId) body.situacao_id = situacaoId;
+
+    const res = await fetch(`${base}/api/vendas/${encodeURIComponent(args.vendaId)}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: `GestãoClick PUT ${res.status}: ${text.slice(0, 200)}` };
+    }
+    return { ok: true, situacaoId };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Falha ao atualizar GestãoClick" };
+  }
+}
+
 export const fetchOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ orderNumber: z.string().min(1).max(40) }).parse(d))

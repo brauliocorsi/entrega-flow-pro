@@ -1,10 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { updateGestaoClickVendaSchedule } from "./gestaoclick.functions";
 
 const ScheduleInput = z.object({
   route_id: z.string().uuid(),
   order_number: z.string().min(1).max(40),
+  gestaoclick_id: z.string().max(40).nullable().optional(),
   customer_name: z.string().min(1).max(200),
   address: z.string().min(1).max(500),
   zip_code: z.string().max(20).nullable().optional(),
@@ -77,7 +79,27 @@ export const scheduleDelivery = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
-    return { id: inserted.id };
+
+    // Best-effort: atualizar GestãoClick com data prevista + status "Agendado Entrega"
+    let gcUpdate: { ok: boolean; error?: string } = { ok: false };
+    if (data.gestaoclick_id) {
+      const { data: routeRow } = await context.supabase
+        .from("routes")
+        .select("route_date")
+        .eq("id", data.route_id)
+        .maybeSingle();
+      if (routeRow?.route_date) {
+        gcUpdate = await updateGestaoClickVendaSchedule({
+          vendaId: data.gestaoclick_id,
+          routeDate: routeRow.route_date,
+          statusLabel: "Agendado Entrega",
+        });
+        if (!gcUpdate.ok) {
+          console.warn("[scheduleDelivery] GestãoClick update falhou:", gcUpdate.error);
+        }
+      }
+    }
+    return { id: inserted.id, gestaoclick_synced: gcUpdate.ok, gestaoclick_error: gcUpdate.error ?? null };
   });
 
 export const cancelDelivery = createServerFn({ method: "POST" })

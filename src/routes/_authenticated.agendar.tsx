@@ -86,10 +86,11 @@ function AgendarPage() {
     setLoading(true);
     try {
       const o = orderData.order;
-      await scheduleFn({
+      const res = await scheduleFn({
         data: {
           route_id: selectedRouteId,
           order_number: o.order_number,
+          gestaoclick_id: o.internal_id ?? null,
           customer_name: o.customer_name,
           address: o.address,
           zip_code: o.zip_code,
@@ -104,7 +105,14 @@ function AgendarPage() {
           rescheduled_from_id: orderData.previousUnfinished?.id ?? null,
         },
       });
-      toast.success("Entrega agendada");
+      if (res?.gestaoclick_synced) {
+        toast.success("Entrega agendada e sincronizada com GestãoClick");
+      } else if (res?.gestaoclick_error) {
+        toast.success("Entrega agendada");
+        toast.warning(`GestãoClick: ${res.gestaoclick_error}`);
+      } else {
+        toast.success("Entrega agendada");
+      }
       navigate({ to: "/rotas/$id", params: { id: selectedRouteId } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro");

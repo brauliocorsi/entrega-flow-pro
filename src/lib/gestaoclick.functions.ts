@@ -264,7 +264,7 @@ export async function updateGestaoClickVendaSchedule(args: {
     // Merge: preserva todos os campos da venda e altera apenas data_entrega + situacao_id
     const body: Record<string, unknown> = {
       ...venda,
-      data_entrega: args.routeDate,
+      data_entrega: args.routeDate ?? "",
     };
     if (situacaoId) body.situacao_id = situacaoId;
     // Segurança extra: garantir que o cliente_id continua presente

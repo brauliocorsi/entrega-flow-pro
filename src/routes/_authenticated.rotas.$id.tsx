@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
-import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/rotas/$id")({
   component: RouteDetail,

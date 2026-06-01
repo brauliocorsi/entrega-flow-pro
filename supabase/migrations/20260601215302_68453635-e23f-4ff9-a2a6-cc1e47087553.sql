@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.sync_routes_color_on_template_update() FROM PUBLIC, anon, authenticated;

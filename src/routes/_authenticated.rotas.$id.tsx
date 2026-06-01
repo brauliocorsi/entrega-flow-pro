@@ -206,8 +206,16 @@ function RouteDetail() {
             const extraCount = Math.max(0, productItems.length - preview.length);
             const locality = [d.city, d.zip_code].filter(Boolean).join(" · ");
 
+            const isSelected = d.id === selectedId;
             return (
-              <Card key={d.id} className={`p-4 border-l-4 ${accent}`}>
+              <Card
+                key={d.id}
+                id={`delivery-${d.id}`}
+                onClick={() => setSelectedId(isSelected ? null : d.id)}
+                className={`p-4 border-l-4 ${accent} cursor-pointer transition-all ${
+                  isSelected ? "ring-2 ring-primary shadow-lg scale-[1.01]" : "hover:shadow-md"
+                }`}
+              >
                 <div className="flex items-start justify-between flex-wrap gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

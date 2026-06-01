@@ -272,7 +272,26 @@ function AdminTemplatesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Tempo de rota (min)</Label>
-                <Input type="number" min={1} max={1440} value={form.max_minutes} onChange={(e) => setForm({ ...form, max_minutes: Number(e.target.value) })} />
+                <Input
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={form.max_minutes}
+                  onChange={(e) => {
+                    setForm({ ...form, max_minutes: Number(e.target.value) });
+                    if (fieldErrors.max_minutes) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.max_minutes;
+                        return next;
+                      });
+                    }
+                  }}
+                  className={fieldErrors.max_minutes ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
+                {fieldErrors.max_minutes && (
+                  <p className="text-xs text-red-600">{fieldErrors.max_minutes}</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Motorista (opcional)</Label>

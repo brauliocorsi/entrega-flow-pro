@@ -215,7 +215,7 @@ async function gcFetch(url: string, headers: Record<string, string>): Promise<{ 
 
 export async function updateGestaoClickVendaSchedule(args: {
   vendaId: string;
-  routeDate: string; // YYYY-MM-DD
+  routeDate: string | null; // YYYY-MM-DD, ou null para limpar
   statusLabel?: string; // default: "Agendado Entrega"
 }): Promise<{ ok: boolean; situacaoId?: string; error?: string }> {
   const baseUrl = process.env.GESTAOCLICK_BASE_URL;

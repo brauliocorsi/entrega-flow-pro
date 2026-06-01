@@ -201,7 +201,7 @@ export const refreshDeliveryPayload = createServerFn({ method: "POST" })
     };
     const { error: uErr } = await context.supabase
       .from("scheduled_deliveries")
-      .update({ order_payload: payload })
+      .update({ order_payload: payload as any })
       .eq("id", data.id);
     if (uErr) throw new Error(uErr.message);
     return { ok: true, items: payload.items.length };

@@ -159,6 +159,9 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
       distanceMeters: Number(route.distanceMeters ?? 0),
       duration: String(route.duration ?? "0s"),
       polyline: String(route.polyline.encodedPolyline),
+      optimizedOrder: Array.isArray(route.optimizedIntermediateWaypointIndex)
+        ? route.optimizedIntermediateWaypointIndex.map((i: any) => Number(i))
+        : [],
       legs: Array.isArray(route.legs)
         ? route.legs.map((leg: any) => ({
             distanceMeters: Number(leg.distanceMeters ?? 0),

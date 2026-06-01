@@ -135,7 +135,7 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
         destination: { address: data.destination },
         intermediates: data.intermediates.map((address) => ({ address })),
         travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_AWARE_OPTIMAL",
+        routingPreference: "TRAFFIC_AWARE",
         polylineQuality: "HIGH_QUALITY",
         optimizeWaypointOrder: true,
         languageCode: "pt-PT",

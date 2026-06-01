@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { updateGestaoClickVendaSchedule } from "./gestaoclick.functions";
+import { updateGestaoClickVendaSchedule, fetchOrder } from "./gestaoclick.functions";
 
 const ScheduleInput = z.object({
   route_id: z.string().uuid(),

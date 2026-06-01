@@ -130,6 +130,9 @@ function RouteSimulationMap({
       const googleMaps = (globalThis as any).google?.maps;
       if (!googleMaps) return;
 
+      const bounds = new googleMaps.LatLngBounds();
+      fullDecoded.forEach((point: { lat: number; lng: number }) => bounds.extend(point));
+
       // Trajeto completo (sempre visível, incluindo regresso ao armazém)
       const fullPath = new googleMaps.Polyline({
         path: fullDecoded,
@@ -140,19 +143,66 @@ function RouteSimulationMap({
       fullPath.setMap(map);
       overlaysRef.current.push(fullPath);
 
+      const returnPathPoints = legPaths[legPaths.length - 1];
+      if (returnPathPoints?.length) {
+        const returnPath = new googleMaps.Polyline({
+          path: returnPathPoints,
+          strokeColor: "#059669",
+          strokeOpacity: 0,
+          strokeWeight: 6,
+          icons: [
+            {
+              icon: {
+                path: "M 0,-1 0,1",
+                strokeOpacity: 1,
+                strokeColor: "#059669",
+                scale: 4,
+              },
+              offset: "0",
+              repeat: "14px",
+            },
+            {
+              icon: {
+                path: googleMaps.SymbolPath.FORWARD_CLOSED_ARROW,
+                scale: 3,
+                strokeColor: "#059669",
+                fillColor: "#059669",
+                fillOpacity: 1,
+              },
+              offset: "100%",
+            },
+          ],
+          zIndex: 3,
+        });
+        returnPath.setMap(map);
+        overlaysRef.current.push(returnPath);
+      }
+
       // Marcadores: A (armazém) → 1..N (paragens) → B (regresso ao armazém)
       const points = data.legs.flatMap((leg, index) => {
         const start = index === 0 ? [leg.startLocation] : [];
         return [...start, leg.endLocation];
       });
 
+      const firstPoint = points[0];
+      const lastPoint = points[points.length - 1];
+      const warehouseOverlap =
+        !!firstPoint &&
+        !!lastPoint &&
+        Math.abs(firstPoint.lat - lastPoint.lat) < 0.00001 &&
+        Math.abs(firstPoint.lng - lastPoint.lng) < 0.00001;
+
       points.forEach((point: { lat: number; lng: number }, index: number) => {
         const isWarehouseStart = index === 0;
         const isWarehouseEnd = index === points.length - 1;
         const label = isWarehouseStart ? "A" : isWarehouseEnd ? "B" : String(index);
         const isSelectedMarker = !!selectedStop && index === selectedIdx + 1;
+        const adjustedPoint =
+          warehouseOverlap && isWarehouseEnd
+            ? { lat: point.lat + 0.00035, lng: point.lng + 0.00035 }
+            : point;
         const marker = new googleMaps.Marker({
-          position: point,
+          position: adjustedPoint,
           map,
           label,
           animation: isSelectedMarker ? googleMaps.Animation.BOUNCE : undefined,
@@ -170,14 +220,14 @@ function RouteSimulationMap({
         });
         highlight.setMap(map);
         overlaysRef.current.push(highlight);
+      }
 
-        const bounds = new googleMaps.LatLngBounds();
-        legPaths[selectedIdx].forEach((p: { lat: number; lng: number }) => bounds.extend(p));
-        map.fitBounds(bounds, 96);
-      } else {
-        const bounds = new googleMaps.LatLngBounds();
-        fullDecoded.forEach((point: { lat: number; lng: number }) => bounds.extend(point));
-        if (!bounds.isEmpty()) map.fitBounds(bounds, 48);
+      if (!bounds.isEmpty()) {
+        if (selectedStop) {
+          map.fitBounds(bounds, 64);
+        } else {
+          map.fitBounds(bounds, 48);
+        }
       }
     })();
 

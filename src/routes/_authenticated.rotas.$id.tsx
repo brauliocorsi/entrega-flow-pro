@@ -222,7 +222,13 @@ function RouteSimulationMap({
         overlaysRef.current.push(highlight);
       }
 
-      if (!bounds.isEmpty()) map.fitBounds(bounds, 48);
+      if (!bounds.isEmpty()) {
+        if (selectedStop) {
+          map.fitBounds(bounds, 64);
+        } else {
+          map.fitBounds(bounds, 48);
+        }
+      }
     })();
 
     return () => {

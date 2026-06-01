@@ -88,13 +88,14 @@ function RouteSimulationMap({
     if (!mapsKey || !mapRef.current) return;
 
     let cancelled = false;
-    setOptions({
-      key: mapsKey,
-      v: "weekly",
-      ...(trackingId ? { channel: trackingId } : {}),
-    });
-
-    Promise.all([importLibrary("maps"), importLibrary("marker")]).then(([mapsLib]) => {
+    (async () => {
+      const { setOptions, importLibrary } = await import("@googlemaps/js-api-loader");
+      setOptions({
+        key: mapsKey,
+        v: "weekly",
+        ...(trackingId ? { channel: trackingId } : {}),
+      });
+      const [mapsLib] = await Promise.all([importLibrary("maps"), importLibrary("marker")]);
       if (cancelled || !mapRef.current || mapInstanceRef.current) return;
       const { Map } = mapsLib as any;
       mapInstanceRef.current = new Map(mapRef.current, {
@@ -104,7 +105,7 @@ function RouteSimulationMap({
         mapTypeControl: false,
         fullscreenControl: false,
       });
-    });
+    })();
 
     return () => {
       cancelled = true;

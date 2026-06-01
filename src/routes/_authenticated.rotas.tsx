@@ -372,7 +372,7 @@ function CalendarView({ rows, codes }: { rows: any[]; codes: Map<string, string>
               )}
             </div>
             <div className="space-y-1">
-              {routes.map((r) => <CalendarRouteCard key={r.id} r={r} />)}
+              {routes.map((r) => <CalendarRouteCard key={r.id} r={r} code={codes.get(r.id)} />)}
             </div>
           </div>
         );

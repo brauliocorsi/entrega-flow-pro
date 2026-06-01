@@ -267,11 +267,11 @@ function RouteCard({ r, code }: { r: any; code?: string }) {
   const cap = Number(r.max_capacity_m3);
   const pct = Math.min(100, (vol / cap) * 100);
   const hasAssembly = (r.assembly_count ?? 0) > 0;
-  const accent = hasAssembly ? "border-l-violet-500" : "border-l-sky-500";
+  const color = r.color ?? "#3b82f6";
 
   return (
     <Link to="/rotas/$id" params={{ id: r.id }} className="block h-full">
-      <Card className={`p-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full border-l-4 ${accent}`}>
+      <Card className="p-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full border-l-4" style={{ borderLeftColor: color }}>
         <div className="flex items-start justify-between mb-2 gap-2">
           <div className="min-w-0">
             <div className="font-semibold flex items-center gap-1.5 truncate">

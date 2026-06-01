@@ -253,7 +253,7 @@ function RouteDetail() {
       </Card>
 
       {deliveries.length > 0 && (() => {
-        const stops = deliveries.map((d: any) => ({
+        const stops: Stop[] = deliveries.map((d: any) => ({
           id: d.id,
           label: `#${d.order_number} · ${d.customer_name}`,
           full: `${d.address}${d.zip_code ? `, ${d.zip_code}` : ""}${d.city ? ` ${d.city}` : ""}`.trim(),
@@ -267,43 +267,15 @@ function RouteDetail() {
           `&waypoints=${stops.map((s) => encodeURIComponent(s.full)).join("|")}`;
         const selectedIdx = stops.findIndex((s) => s.id === selectedId);
         const selectedStop = selectedIdx >= 0 ? stops[selectedIdx] : null;
-        const mapsKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
-
-        // Build a directions embed that draws the real driving path destino-a-destino.
-        // When a stop is selected, simulate just the leg "anterior → selecionado".
-        let embedSrc = "";
-        if (mapsKey) {
-          if (selectedStop) {
-            const prev = selectedIdx === 0 ? WAREHOUSE_ADDRESS : stops[selectedIdx - 1].full;
-            embedSrc =
-              `https://www.google.com/maps/embed/v1/directions?key=${mapsKey}` +
-              `&origin=${encodeURIComponent(prev)}` +
-              `&destination=${encodeURIComponent(selectedStop.full)}` +
-              `&mode=driving`;
-          } else {
-            const waypoints = stops.map((s) => s.full).join("|");
-            embedSrc =
-              `https://www.google.com/maps/embed/v1/directions?key=${mapsKey}` +
-              `&origin=${encodeURIComponent(WAREHOUSE_ADDRESS)}` +
-              `&destination=${encodeURIComponent(WAREHOUSE_ADDRESS)}` +
-              `&waypoints=${encodeURIComponent(waypoints)}` +
-              `&mode=driving`;
-          }
-        } else {
-          // Fallback (sem chave): apenas pinos
-          embedSrc = selectedStop
-            ? `https://maps.google.com/maps?output=embed&q=${encodeURIComponent(selectedStop.full)}&z=16`
-            : `https://maps.google.com/maps?output=embed&q=${encodeURIComponent(stops.map((s) => s.full).join(" to "))}&z=11`;
-        }
 
         return (
           <Card className="p-0 overflow-hidden">
             <div className="px-4 py-3 border-b flex items-center justify-between flex-wrap gap-2 bg-muted/30">
               <div>
-              <div className="text-sm font-medium">Simulação do trajeto</div>
+                <div className="text-sm font-medium">Simulação do trajeto</div>
                 <div className="text-xs text-muted-foreground">
                   {selectedStop
-                    ? <>Leg {selectedIdx === 0 ? "Armazém" : `paragem ${selectedIdx}`} → <span className="font-medium text-foreground">{selectedStop.label}</span></>
+                    ? <>Troço {selectedIdx === 0 ? "Armazém" : `paragem ${selectedIdx}`} → <span className="font-medium text-foreground">{selectedStop.label}</span></>
                     : <>{stops.length} paragens · Armazém → entregas → Armazém</>}
                 </div>
               </div>
@@ -321,14 +293,7 @@ function RouteDetail() {
               </div>
             </div>
 
-            <iframe
-              key={selectedId ?? "all"}
-              title="Mapa da rota"
-              className="w-full h-[420px] border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              src={embedSrc}
-            />
+            <RouteSimulationMap stops={stops} selectedId={selectedId} />
 
             <ol className="divide-y">
               <li className="flex items-center gap-3 px-4 py-2 text-sm bg-emerald-50/50">

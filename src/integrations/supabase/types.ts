@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      delivery_fee_ranges: {
+        Row: {
+          active: boolean
+          created_at: string
+          fee: number
+          id: string
+          label: string | null
+          notes: string | null
+          priority: number
+          updated_at: string
+          zip_end: string
+          zip_start: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          fee?: number
+          id?: string
+          label?: string | null
+          notes?: string | null
+          priority?: number
+          updated_at?: string
+          zip_end: string
+          zip_start: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          fee?: number
+          id?: string
+          label?: string | null
+          notes?: string | null
+          priority?: number
+          updated_at?: string
+          zip_end?: string
+          zip_start?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

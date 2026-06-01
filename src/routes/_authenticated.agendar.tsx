@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { formatEUR, formatDatePT, zipPrefix } from "@/lib/format";
 import { DELIVERY_TYPE_LABEL, ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT } from "@/lib/constants";
 import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText, ChevronDown, ChevronUp } from "lucide-react";

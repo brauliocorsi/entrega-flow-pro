@@ -65,6 +65,7 @@ export const upsertTemplate = createServerFn({ method: "POST" })
         zone: data.zone,
         zip_prefixes: data.zip_prefixes,
         max_capacity_m3: data.max_capacity_m3,
+        max_minutes: data.max_minutes,
         default_driver: data.default_driver ?? null,
         active: data.active,
         notes: data.notes ?? null,

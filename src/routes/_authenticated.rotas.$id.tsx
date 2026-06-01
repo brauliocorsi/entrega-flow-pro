@@ -526,8 +526,9 @@ function RouteDetail() {
               const rawStops: Stop[] = activeDeliveries.map((d: any) => ({
                 id: d.id,
                 label: `#${d.order_number} · ${d.customer_name}`,
-                full: `${d.address}${d.zip_code ? `, ${d.zip_code}` : ""}${d.city ? ` ${d.city}` : ""}`.trim(),
+                full: buildStopAddress(d.address, d.zip_code, d.city),
               }));
+
               return (
                 <RouteSimulationSection
                   rawStops={rawStops}

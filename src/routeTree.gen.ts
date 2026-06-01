@@ -9,38 +9,127 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRotasRouteImport } from './routes/_authenticated.rotas'
+import { Route as AuthenticatedAgendarRouteImport } from './routes/_authenticated.agendar'
+import { Route as AuthenticatedRotasIdRouteImport } from './routes/_authenticated.rotas.$id'
+import { Route as ApiPublicCronGenerateRoutesRouteImport } from './routes/api/public/cron/generate-routes'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRotasRoute = AuthenticatedRotasRouteImport.update({
+  id: '/rotas',
+  path: '/rotas',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAgendarRoute = AuthenticatedAgendarRouteImport.update({
+  id: '/agendar',
+  path: '/agendar',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedRotasIdRoute = AuthenticatedRotasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedRotasRoute,
+} as any)
+const ApiPublicCronGenerateRoutesRoute =
+  ApiPublicCronGenerateRoutesRouteImport.update({
+    id: '/api/public/cron/generate-routes',
+    path: '/api/public/cron/generate-routes',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/agendar': typeof AuthenticatedAgendarRoute
+  '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/rotas/$id': typeof AuthenticatedRotasIdRoute
+  '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/agendar': typeof AuthenticatedAgendarRoute
+  '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/rotas/$id': typeof AuthenticatedRotasIdRoute
+  '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_authenticated/agendar': typeof AuthenticatedAgendarRoute
+  '/_authenticated/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/_authenticated/rotas/$id': typeof AuthenticatedRotasIdRoute
+  '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/agendar'
+    | '/rotas'
+    | '/rotas/$id'
+    | '/api/public/cron/generate-routes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/agendar'
+    | '/rotas'
+    | '/rotas/$id'
+    | '/api/public/cron/generate-routes'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/login'
+    | '/_authenticated/agendar'
+    | '/_authenticated/rotas'
+    | '/_authenticated/rotas/$id'
+    | '/api/public/cron/generate-routes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  ApiPublicCronGenerateRoutesRoute: typeof ApiPublicCronGenerateRoutesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +137,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/rotas': {
+      id: '/_authenticated/rotas'
+      path: '/rotas'
+      fullPath: '/rotas'
+      preLoaderRoute: typeof AuthenticatedRotasRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/agendar': {
+      id: '/_authenticated/agendar'
+      path: '/agendar'
+      fullPath: '/agendar'
+      preLoaderRoute: typeof AuthenticatedAgendarRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/rotas/$id': {
+      id: '/_authenticated/rotas/$id'
+      path: '/$id'
+      fullPath: '/rotas/$id'
+      preLoaderRoute: typeof AuthenticatedRotasIdRouteImport
+      parentRoute: typeof AuthenticatedRotasRoute
+    }
+    '/api/public/cron/generate-routes': {
+      id: '/api/public/cron/generate-routes'
+      path: '/api/public/cron/generate-routes'
+      fullPath: '/api/public/cron/generate-routes'
+      preLoaderRoute: typeof ApiPublicCronGenerateRoutesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AuthenticatedRotasRouteChildren {
+  AuthenticatedRotasIdRoute: typeof AuthenticatedRotasIdRoute
+}
+
+const AuthenticatedRotasRouteChildren: AuthenticatedRotasRouteChildren = {
+  AuthenticatedRotasIdRoute: AuthenticatedRotasIdRoute,
+}
+
+const AuthenticatedRotasRouteWithChildren =
+  AuthenticatedRotasRoute._addFileChildren(AuthenticatedRotasRouteChildren)
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedAgendarRoute: typeof AuthenticatedAgendarRoute
+  AuthenticatedRotasRoute: typeof AuthenticatedRotasRouteWithChildren
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAgendarRoute: AuthenticatedAgendarRoute,
+  AuthenticatedRotasRoute: AuthenticatedRotasRouteWithChildren,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  LoginRoute: LoginRoute,
+  ApiPublicCronGenerateRoutesRoute: ApiPublicCronGenerateRoutesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

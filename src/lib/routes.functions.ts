@@ -22,7 +22,30 @@ export const listRoutes = createServerFn({ method: "GET" })
     if (data.to) q = q.lte("route_date", data.to);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    const routes = rows ?? [];
+    if (routes.length === 0) return [];
+
+    const ids = routes.map((r) => r.id);
+    const { data: deliveries } = await context.supabase
+      .from("scheduled_deliveries")
+      .select("route_id, estimated_minutes, volume_m3, notes, delivery_type, status")
+      .in("route_id", ids)
+      .in("status", ["agendado", "confirmado", "entregue"]);
+
+    const stats = new Map<string, { minutes: number; assembly: number; deliveries: number }>();
+    for (const d of deliveries ?? []) {
+      const s = stats.get(d.route_id) ?? { minutes: 0, assembly: 0, deliveries: 0 };
+      s.minutes += Number(d.estimated_minutes ?? 0);
+      s.deliveries += 1;
+      if (d.notes && /montagem|montar|instala/i.test(d.notes)) s.assembly += 1;
+      stats.set(d.route_id, s);
+    }
+
+    return routes.map((r) => ({
+      ...r,
+      total_minutes: stats.get(r.id)?.minutes ?? 0,
+      assembly_count: stats.get(r.id)?.assembly ?? 0,
+    }));
   });
 
 export const getRouteWithDeliveries = createServerFn({ method: "GET" })

@@ -547,6 +547,7 @@ function RouteDetail() {
         <div className="mt-3 text-xs text-muted-foreground">
           Ponto de partida: <span className="font-medium text-foreground">{WAREHOUSE_ADDRESS}</span>
         </div>
+        <FleetEditor route={r} />
       </Card>
 
       {(() => {

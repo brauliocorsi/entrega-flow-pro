@@ -386,11 +386,11 @@ function CalendarRouteCard({ r, code }: { r: any; code?: string }) {
   const cap = Number(r.max_capacity_m3);
   const pct = Math.min(100, (vol / cap) * 100);
   const hasAssembly = (r.assembly_count ?? 0) > 0;
-  const accent = hasAssembly ? "border-l-violet-500" : "border-l-sky-500";
+  const color = r.color ?? "#3b82f6";
 
   return (
     <Link to="/rotas/$id" params={{ id: r.id }} className="block h-full">
-      <div className={`text-[10px] rounded border border-l-4 ${accent} bg-card p-1.5 hover:shadow-sm transition-shadow`} title={`${code ? code + " · " : ""}${r.zone} — ${ROUTE_STATUS_LABEL[r.status]}`}>
+      <div className="text-[10px] rounded border border-l-4 bg-card p-1.5 hover:shadow-sm transition-shadow" style={{ borderLeftColor: color }} title={`${code ? code + " · " : ""}${r.zone} — ${ROUTE_STATUS_LABEL[r.status]}`}>
         <div className="flex items-center justify-between gap-1 mb-1">
           <div className="font-semibold truncate">
             {code && <span className="font-mono text-primary mr-1">{code}</span>}

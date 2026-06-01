@@ -85,7 +85,10 @@ function RoutesIndex() {
   const listFn = useServerFn(listRoutes);
   const pendingFn = useServerFn(listPendingReschedules);
   const [view, setView] = useState<"lista" | "calendario">("lista");
-
+  const [search, setSearch] = useState("");
+  const [zoneFilter, setZoneFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const { data: rows = [], isLoading } = useQuery(
     queryOptions({
@@ -99,6 +102,38 @@ function RoutesIndex() {
       queryFn: () => pendingFn({ data: {} as any }),
     }),
   );
+
+  // Codes are computed from ALL rows so they stay stable when filters change.
+  const codes = useMemo(() => buildRouteCodes(rows), [rows]);
+
+  const zones = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) if (r.zone) set.add(r.zone);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r: any) => {
+      if (zoneFilter !== "all" && r.zone !== zoneFilter) return false;
+      if (dateFrom && String(r.route_date) < dateFrom) return false;
+      if (dateTo && String(r.route_date) > dateTo) return false;
+      if (q) {
+        const code = (codes.get(r.id) ?? "").toLowerCase();
+        const hay = `${r.zone ?? ""} ${r.driver ?? ""} ${code}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [rows, search, zoneFilter, dateFrom, dateTo, codes]);
+
+  const hasFilters = search || zoneFilter !== "all" || dateFrom || dateTo;
+  const clearFilters = () => {
+    setSearch("");
+    setZoneFilter("all");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   return (
     <div className="space-y-4">
@@ -121,7 +156,9 @@ function RoutesIndex() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Rotas de entrega</h1>
-          <p className="text-sm text-muted-foreground">{rows.length} rotas planeadas</p>
+          <p className="text-sm text-muted-foreground">
+            {hasFilters ? `${filtered.length} de ${rows.length}` : `${rows.length}`} rotas planeadas
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant={view === "lista" ? "default" : "outline"} size="sm" onClick={() => setView("lista")}>
@@ -133,24 +170,65 @@ function RoutesIndex() {
         </div>
       </div>
 
+      {/* Filtros avançados */}
+      <Card className="p-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="relative lg:col-span-2">
+            <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Pesquisar por código, zona ou motorista…"
+              className="pl-8"
+            />
+          </div>
+          <Select value={zoneFilter} onValueChange={setZoneFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Localidade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as localidades</SelectItem>
+              {zones.map((z) => (
+                <SelectItem key={z} value={z}>{z}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-1">
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="Data inicial" />
+          </div>
+          <div className="flex items-center gap-1">
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="Data final" />
+          </div>
+        </div>
+        {hasFilters && (
+          <div className="mt-2 flex justify-end">
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
+            </Button>
+          </div>
+        )}
+      </Card>
+
       {isLoading ? (
         <div className="text-center text-muted-foreground py-12">A carregar…</div>
-      ) : rows.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <Card className="p-12 text-center">
           <Truck className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <p className="font-medium">Sem rotas planeadas</p>
-          <p className="text-sm text-muted-foreground mt-1">Um admin precisa de criar templates e gerar rotas.</p>
+          <p className="font-medium">{hasFilters ? "Nenhuma rota corresponde aos filtros" : "Sem rotas planeadas"}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {hasFilters ? "Ajusta a pesquisa ou limpa os filtros." : "Um admin precisa de criar templates e gerar rotas."}
+          </p>
         </Card>
       ) : view === "lista" ? (
-        <ListView rows={rows} />
+        <ListView rows={filtered} codes={codes} />
       ) : (
-        <CalendarView rows={rows} />
+        <CalendarView rows={filtered} codes={codes} />
       )}
     </div>
   );
 }
 
-function ListView({ rows }: { rows: any[] }) {
+function ListView({ rows, codes }: { rows: any[]; codes: Map<string, string> }) {
   const grouped = useMemo(() => {
     const map = new Map<string, any[]>();
     for (const r of rows) {
@@ -175,7 +253,7 @@ function ListView({ rows }: { rows: any[] }) {
               <span className="text-[10px] text-muted-foreground">{routes.length} rota{routes.length > 1 ? "s" : ""}</span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {routes.map((r) => <RouteCard key={r.id} r={r} />)}
+              {routes.map((r) => <RouteCard key={r.id} r={r} code={codes.get(r.id)} />)}
             </div>
           </div>
         );
@@ -184,7 +262,7 @@ function ListView({ rows }: { rows: any[] }) {
   );
 }
 
-function RouteCard({ r }: { r: any }) {
+function RouteCard({ r, code }: { r: any; code?: string }) {
   const vol = Number(r.current_volume_m3);
   const cap = Number(r.max_capacity_m3);
   const pct = Math.min(100, (vol / cap) * 100);

@@ -28,6 +28,7 @@ type Template = {
   zone: string;
   zip_prefixes: string[];
   max_capacity_m3: number;
+  max_minutes: number;
   default_driver: string | null;
   active: boolean;
   notes: string | null;
@@ -39,6 +40,7 @@ const empty = {
   zone: "",
   zip_prefixes: "",
   max_capacity_m3: 20,
+  max_minutes: 480,
   default_driver: "",
   active: true,
   notes: "",

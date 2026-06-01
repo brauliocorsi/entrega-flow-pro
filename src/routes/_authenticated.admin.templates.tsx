@@ -98,7 +98,7 @@ function AdminTemplatesPage() {
     setDialogOpen(true);
   }
 
-  function openEdit(t: Template) {
+  function openEdit(t: Template & { color?: string }) {
     setEditingId(t.id);
     setForm({
       name: t.name,
@@ -110,6 +110,7 @@ function AdminTemplatesPage() {
       default_driver: t.default_driver ?? "",
       active: t.active,
       notes: t.notes ?? "",
+      color: t.color ?? "#3b82f6",
     });
     setFieldErrors({});
     setDialogOpen(true);

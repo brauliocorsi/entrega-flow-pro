@@ -83,6 +83,7 @@ export type Database = {
       route_templates: {
         Row: {
           active: boolean
+          color: string
           created_at: string
           default_driver: string | null
           id: string
@@ -97,6 +98,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          color?: string
           created_at?: string
           default_driver?: string | null
           id?: string
@@ -111,6 +113,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          color?: string
           created_at?: string
           default_driver?: string | null
           id?: string
@@ -127,6 +130,8 @@ export type Database = {
       }
       routes: {
         Row: {
+          assistant: string | null
+          color: string
           created_at: string
           current_volume_m3: number
           deliveries_count: number
@@ -139,10 +144,13 @@ export type Database = {
           status: Database["public"]["Enums"]["route_status"]
           template_id: string | null
           updated_at: string
+          vehicle: string | null
           zip_prefixes: string[]
           zone: string
         }
         Insert: {
+          assistant?: string | null
+          color?: string
           created_at?: string
           current_volume_m3?: number
           deliveries_count?: number
@@ -155,10 +163,13 @@ export type Database = {
           status?: Database["public"]["Enums"]["route_status"]
           template_id?: string | null
           updated_at?: string
+          vehicle?: string | null
           zip_prefixes?: string[]
           zone: string
         }
         Update: {
+          assistant?: string | null
+          color?: string
           created_at?: string
           current_volume_m3?: number
           deliveries_count?: number
@@ -171,6 +182,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["route_status"]
           template_id?: string | null
           updated_at?: string
+          vehicle?: string | null
           zip_prefixes?: string[]
           zone?: string
         }

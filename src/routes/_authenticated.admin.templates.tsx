@@ -60,6 +60,7 @@ function AdminTemplatesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...empty });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   async function refresh() {
     setBusy(true);

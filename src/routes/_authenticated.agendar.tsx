@@ -75,10 +75,17 @@ function AgendarPage() {
     if (["fechada", "concluida", "cheia"].includes(r.status)) return false;
     if (Number(r.current_volume_m3) + volume > Number(r.max_capacity_m3) + 0.001) return false;
     const zip = zipPrefix(orderData?.order?.zip_code);
-    if ((r.zip_prefixes ?? []).length > 0 && zip) {
-      return (r.zip_prefixes as string[]).some((p) => zip.startsWith(p));
+    const prefs: string[] = (r.zip_prefixes ?? []).filter(Boolean);
+    if (prefs.length === 0 || !zip) return true;
+    if (prefs.some((p) => zip.startsWith(p))) return true;
+    const nums = prefs.filter((p) => /^\d{4}$/.test(p)).map(Number);
+    if (nums.length >= 2) {
+      const min = Math.min(...nums);
+      const max = Math.max(...nums);
+      const cpNum = Number(zip);
+      if (cpNum >= min && cpNum <= max) return true;
     }
-    return true;
+    return false;
   });
 
   async function handleConfirm() {

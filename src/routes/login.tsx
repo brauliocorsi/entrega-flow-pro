@@ -17,7 +17,6 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");

@@ -16,8 +16,10 @@ import { Route as AuthenticatedRotasRouteImport } from './routes/_authenticated.
 import { Route as AuthenticatedConferenciaRouteImport } from './routes/_authenticated.conferencia'
 import { Route as AuthenticatedAgendarRouteImport } from './routes/_authenticated.agendar'
 import { Route as AuthenticatedRotasIdRouteImport } from './routes/_authenticated.rotas.$id'
+import { Route as AuthenticatedAdminUtilizadoresRouteImport } from './routes/_authenticated.admin.utilizadores'
 import { Route as AuthenticatedAdminTemplatesRouteImport } from './routes/_authenticated.admin.templates'
 import { Route as AuthenticatedAdminTaxasRouteImport } from './routes/_authenticated.admin.taxas'
+import { Route as AuthenticatedAdminOtimizacaoRouteImport } from './routes/_authenticated.admin.otimizacao'
 import { Route as ApiPublicCronGenerateRoutesRouteImport } from './routes/api/public/cron/generate-routes'
 import { Route as AuthenticatedRotasIdFecharRouteImport } from './routes/_authenticated.rotas.$id.fechar'
 
@@ -56,6 +58,12 @@ const AuthenticatedRotasIdRoute = AuthenticatedRotasIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedRotasRoute,
 } as any)
+const AuthenticatedAdminUtilizadoresRoute =
+  AuthenticatedAdminUtilizadoresRouteImport.update({
+    id: '/admin/utilizadores',
+    path: '/admin/utilizadores',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminTemplatesRoute =
   AuthenticatedAdminTemplatesRouteImport.update({
     id: '/admin/templates',
@@ -67,6 +75,12 @@ const AuthenticatedAdminTaxasRoute = AuthenticatedAdminTaxasRouteImport.update({
   path: '/admin/taxas',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminOtimizacaoRoute =
+  AuthenticatedAdminOtimizacaoRouteImport.update({
+    id: '/admin/otimizacao',
+    path: '/admin/otimizacao',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const ApiPublicCronGenerateRoutesRoute =
   ApiPublicCronGenerateRoutesRouteImport.update({
     id: '/api/public/cron/generate-routes',
@@ -86,8 +100,10 @@ export interface FileRoutesByFullPath {
   '/agendar': typeof AuthenticatedAgendarRoute
   '/conferencia': typeof AuthenticatedConferenciaRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
   '/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
+  '/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
   '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
@@ -98,8 +114,10 @@ export interface FileRoutesByTo {
   '/agendar': typeof AuthenticatedAgendarRoute
   '/conferencia': typeof AuthenticatedConferenciaRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
   '/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
+  '/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
   '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
@@ -112,8 +130,10 @@ export interface FileRoutesById {
   '/_authenticated/agendar': typeof AuthenticatedAgendarRoute
   '/_authenticated/conferencia': typeof AuthenticatedConferenciaRoute
   '/_authenticated/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/_authenticated/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
   '/_authenticated/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/_authenticated/admin/templates': typeof AuthenticatedAdminTemplatesRoute
+  '/_authenticated/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
   '/_authenticated/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/_authenticated/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
@@ -126,8 +146,10 @@ export interface FileRouteTypes {
     | '/agendar'
     | '/conferencia'
     | '/rotas'
+    | '/admin/otimizacao'
     | '/admin/taxas'
     | '/admin/templates'
+    | '/admin/utilizadores'
     | '/rotas/$id'
     | '/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
@@ -138,8 +160,10 @@ export interface FileRouteTypes {
     | '/agendar'
     | '/conferencia'
     | '/rotas'
+    | '/admin/otimizacao'
     | '/admin/taxas'
     | '/admin/templates'
+    | '/admin/utilizadores'
     | '/rotas/$id'
     | '/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
@@ -151,8 +175,10 @@ export interface FileRouteTypes {
     | '/_authenticated/agendar'
     | '/_authenticated/conferencia'
     | '/_authenticated/rotas'
+    | '/_authenticated/admin/otimizacao'
     | '/_authenticated/admin/taxas'
     | '/_authenticated/admin/templates'
+    | '/_authenticated/admin/utilizadores'
     | '/_authenticated/rotas/$id'
     | '/_authenticated/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
@@ -216,6 +242,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRotasIdRouteImport
       parentRoute: typeof AuthenticatedRotasRoute
     }
+    '/_authenticated/admin/utilizadores': {
+      id: '/_authenticated/admin/utilizadores'
+      path: '/admin/utilizadores'
+      fullPath: '/admin/utilizadores'
+      preLoaderRoute: typeof AuthenticatedAdminUtilizadoresRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/templates': {
       id: '/_authenticated/admin/templates'
       path: '/admin/templates'
@@ -228,6 +261,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/taxas'
       fullPath: '/admin/taxas'
       preLoaderRoute: typeof AuthenticatedAdminTaxasRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/otimizacao': {
+      id: '/_authenticated/admin/otimizacao'
+      path: '/admin/otimizacao'
+      fullPath: '/admin/otimizacao'
+      preLoaderRoute: typeof AuthenticatedAdminOtimizacaoRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/api/public/cron/generate-routes': {
@@ -273,16 +313,20 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAgendarRoute: typeof AuthenticatedAgendarRoute
   AuthenticatedConferenciaRoute: typeof AuthenticatedConferenciaRoute
   AuthenticatedRotasRoute: typeof AuthenticatedRotasRouteWithChildren
+  AuthenticatedAdminOtimizacaoRoute: typeof AuthenticatedAdminOtimizacaoRoute
   AuthenticatedAdminTaxasRoute: typeof AuthenticatedAdminTaxasRoute
   AuthenticatedAdminTemplatesRoute: typeof AuthenticatedAdminTemplatesRoute
+  AuthenticatedAdminUtilizadoresRoute: typeof AuthenticatedAdminUtilizadoresRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAgendarRoute: AuthenticatedAgendarRoute,
   AuthenticatedConferenciaRoute: AuthenticatedConferenciaRoute,
   AuthenticatedRotasRoute: AuthenticatedRotasRouteWithChildren,
+  AuthenticatedAdminOtimizacaoRoute: AuthenticatedAdminOtimizacaoRoute,
   AuthenticatedAdminTaxasRoute: AuthenticatedAdminTaxasRoute,
   AuthenticatedAdminTemplatesRoute: AuthenticatedAdminTemplatesRoute,
+  AuthenticatedAdminUtilizadoresRoute: AuthenticatedAdminUtilizadoresRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -298,3 +342,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

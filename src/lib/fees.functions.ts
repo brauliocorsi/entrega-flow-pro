@@ -90,9 +90,19 @@ export const suggestDeliveryFee = createServerFn({ method: "POST" })
 
     const compatible = (routes ?? []).filter((r: any) => {
       if (["fechada", "concluida", "cheia"].includes(r.status)) return false;
-      const prefs: string[] = r.zip_prefixes ?? [];
+      const prefs: string[] = (r.zip_prefixes ?? []).filter(Boolean);
       if (prefs.length === 0) return true;
-      return prefs.some((p) => cp.startsWith(p));
+      // Match by prefix (e.g. "35" matches 3500-3599)
+      if (prefs.some((p) => cp.startsWith(p))) return true;
+      // Match by numeric range when 2+ entries are full 4-digit CPs (treated as min..max)
+      const nums = prefs.filter((p) => /^\d{4}$/.test(p)).map(Number);
+      if (nums.length >= 2) {
+        const min = Math.min(...nums);
+        const max = Math.max(...nums);
+        const cpNum = Number(cp);
+        if (cpNum >= min && cpNum <= max) return true;
+      }
+      return false;
     });
 
     return { fee: best, allMatches: matches, routes: compatible };

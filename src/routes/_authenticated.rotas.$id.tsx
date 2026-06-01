@@ -179,6 +179,7 @@ function RouteSimulationSection({
         </li>
         {stops.map((s, i) => {
           const isSelected = s.id === selectedId;
+          const leg = legs[i];
           return (
             <li
               key={s.id}
@@ -201,6 +202,12 @@ function RouteSimulationSection({
               <div className="flex-1 min-w-0">
                 <div className={`truncate ${isSelected ? "font-semibold" : "font-medium"}`}>{s.label}</div>
                 <div className="text-xs text-muted-foreground truncate">{s.full}</div>
+                {leg && (
+                  <div className="text-[11px] text-muted-foreground mt-0.5">
+                    {i === 0 ? "Armazém" : `Paragem ${i}`} → aqui:{" "}
+                    <span className="font-medium text-foreground">{formatDistance(leg.distanceMeters)}</span>
+                  </div>
+                )}
               </div>
               <a
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.full)}`}
@@ -219,6 +226,12 @@ function RouteSimulationSection({
           <div className="flex-1 min-w-0">
             <div className="font-medium">Regresso — Armazém</div>
             <div className="text-xs text-muted-foreground truncate">{WAREHOUSE_ADDRESS}</div>
+            {legs[stops.length] && (
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                Última paragem → Armazém:{" "}
+                <span className="font-medium text-foreground">{formatDistance(legs[stops.length].distanceMeters)}</span>
+              </div>
+            )}
           </div>
         </li>
       </ol>

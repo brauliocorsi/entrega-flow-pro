@@ -64,7 +64,7 @@ async function gcFetch(url: string, headers: Record<string, string>): Promise<{ 
   } catch {
     const snippet = text.slice(0, 200).replace(/\s+/g, " ");
     throw new Error(
-      `GestãoClick devolveu resposta inválida (não-JSON). Verifica GESTAOCLICK_BASE_URL (deve ser https://api.gestaoclick.com.br). Início: ${snippet}`,
+      `GestãoClick devolveu resposta inválida (não-JSON). Verifica GESTAOCLICK_BASE_URL (deve ser https://api.gestaoclick.com). Início: ${snippet}`,
     );
   }
 }

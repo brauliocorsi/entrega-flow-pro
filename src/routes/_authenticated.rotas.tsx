@@ -43,9 +43,14 @@ function RoutesPage() {
     return <Outlet />;
   }
 
+  return <RoutesIndex />;
+}
+
+function RoutesIndex() {
   const listFn = useServerFn(listRoutes);
   const pendingFn = useServerFn(listPendingReschedules);
   const [view, setView] = useState<"lista" | "calendario">("lista");
+
 
   const { data: rows = [], isLoading } = useQuery(
     queryOptions({

@@ -212,9 +212,14 @@ function AdminTemplatesPage() {
             </CardContent>
           </Card>
         ) : (
-          items.map((t) => (
-            <Card key={t.id} className={t.active ? "" : "opacity-60"}>
+          items.map((t: any) => (
+            <Card key={t.id} className={`border-l-4 ${t.active ? "" : "opacity-60"}`} style={{ borderLeftColor: t.color ?? "#3b82f6" }}>
               <CardContent className="p-4 flex flex-wrap items-center gap-4">
+                <div
+                  className="h-10 w-10 rounded-md border shrink-0"
+                  style={{ backgroundColor: t.color ?? "#3b82f6" }}
+                  title={t.color ?? "#3b82f6"}
+                />
                 <div className="flex-1 min-w-[200px]">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold">{t.name}</h3>

@@ -73,6 +73,7 @@ export const scheduleDelivery = createServerFn({ method: "POST" })
         estimated_minutes: data.estimated_minutes,
         notes: data.notes ?? null,
         rescheduled_from_id: data.rescheduled_from_id ?? null,
+        order_payload: data.order_payload ?? null,
         seller_id: context.userId,
         seller_name: profile?.display_name ?? profile?.email ?? null,
         status: "agendado",

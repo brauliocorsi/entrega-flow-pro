@@ -1,0 +1,1 @@
+UPDATE auth.users SET email_confirmed_at = now() WHERE LOWER(email) = LOWER('brauliocorsi@upmoveis.pt') AND email_confirmed_at IS NULL;

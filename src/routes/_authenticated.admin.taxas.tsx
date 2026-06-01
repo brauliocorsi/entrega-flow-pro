@@ -234,7 +234,7 @@ function AdminFeesPage() {
                 />
               </div>
               <div>
-                <Label>Prioridade</Label>
+                <Label>Prioridade (0 = topo)</Label>
                 <Input
                   type="number"
                   min="0"

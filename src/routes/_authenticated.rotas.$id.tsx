@@ -97,10 +97,36 @@ function RouteDetail() {
           `&destination=${origin}` +
           `&travelmode=driving` +
           `&waypoints=${stops.map((s) => encodeURIComponent(s.full)).join("|")}`;
-        const selectedStop = stops.find((s) => s.id === selectedId) ?? null;
-        const embedSrc = selectedStop
-          ? `https://maps.google.com/maps?output=embed&q=${encodeURIComponent(selectedStop.full)}&z=16`
-          : `https://maps.google.com/maps?output=embed&q=${encodeURIComponent(stops.map((s) => s.full).join(" to "))}&z=11`;
+        const selectedIdx = stops.findIndex((s) => s.id === selectedId);
+        const selectedStop = selectedIdx >= 0 ? stops[selectedIdx] : null;
+        const mapsKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
+
+        // Build a directions embed that draws the real driving path destino-a-destino.
+        // When a stop is selected, simulate just the leg "anterior → selecionado".
+        let embedSrc = "";
+        if (mapsKey) {
+          if (selectedStop) {
+            const prev = selectedIdx === 0 ? WAREHOUSE_ADDRESS : stops[selectedIdx - 1].full;
+            embedSrc =
+              `https://www.google.com/maps/embed/v1/directions?key=${mapsKey}` +
+              `&origin=${encodeURIComponent(prev)}` +
+              `&destination=${encodeURIComponent(selectedStop.full)}` +
+              `&mode=driving`;
+          } else {
+            const waypoints = stops.map((s) => s.full).join("|");
+            embedSrc =
+              `https://www.google.com/maps/embed/v1/directions?key=${mapsKey}` +
+              `&origin=${encodeURIComponent(WAREHOUSE_ADDRESS)}` +
+              `&destination=${encodeURIComponent(WAREHOUSE_ADDRESS)}` +
+              `&waypoints=${encodeURIComponent(waypoints)}` +
+              `&mode=driving`;
+          }
+        } else {
+          // Fallback (sem chave): apenas pinos
+          embedSrc = selectedStop
+            ? `https://maps.google.com/maps?output=embed&q=${encodeURIComponent(selectedStop.full)}&z=16`
+            : `https://maps.google.com/maps?output=embed&q=${encodeURIComponent(stops.map((s) => s.full).join(" to "))}&z=11`;
+        }
 
         return (
           <Card className="p-0 overflow-hidden">

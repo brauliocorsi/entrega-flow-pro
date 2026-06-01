@@ -511,42 +511,94 @@ function RouteDetail() {
         </div>
       </Card>
 
-      {deliveries.length > 0 && (() => {
-        const rawStops: Stop[] = deliveries.map((d: any) => ({
-          id: d.id,
-          label: `#${d.order_number} · ${d.customer_name}`,
-          full: `${d.address}${d.zip_code ? `, ${d.zip_code}` : ""}${d.city ? ` ${d.city}` : ""}`.trim(),
-        }));
+      {(() => {
+        const activeDeliveries = deliveries.filter(
+          (dd: any) => !["cancelado", "reagendado"].includes(dd.status),
+        );
+        const historyDeliveries = deliveries.filter((dd: any) =>
+          ["cancelado", "reagendado"].includes(dd.status),
+        );
+
         return (
-          <RouteSimulationSection
-            rawStops={rawStops}
-            selectedId={selectedId}
-            setSelectedId={setSelectedId}
-            selectStop={selectStop}
-          />
+          <>
+            {activeDeliveries.length > 0 && (() => {
+              const rawStops: Stop[] = activeDeliveries.map((d: any) => ({
+                id: d.id,
+                label: `#${d.order_number} · ${d.customer_name}`,
+                full: `${d.address}${d.zip_code ? `, ${d.zip_code}` : ""}${d.city ? ` ${d.city}` : ""}`.trim(),
+              }));
+              return (
+                <RouteSimulationSection
+                  rawStops={rawStops}
+                  selectedId={selectedId}
+                  setSelectedId={setSelectedId}
+                  selectStop={selectStop}
+                />
+              );
+            })()}
+
+            <Tabs defaultValue="ativas" className="mt-6">
+              <TabsList>
+                <TabsTrigger value="ativas">Ativas ({activeDeliveries.length})</TabsTrigger>
+                <TabsTrigger value="historico">Histórico ({historyDeliveries.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value="ativas" className="space-y-2 mt-3">
+                {activeDeliveries.length === 0 ? (
+                  <Card className="p-8 text-center text-muted-foreground">Sem entregas ativas.</Card>
+                ) : (
+                  activeDeliveries.map((d: any) => (
+                    <DeliveryCard
+                      key={d.id}
+                      d={d}
+                      routeId={id}
+                      isSelected={d.id === selectedId}
+                      onSelect={() => setSelectedId(d.id === selectedId ? null : d.id)}
+                      isClosed={isClosed}
+                    />
+                  ))
+                )}
+              </TabsContent>
+              <TabsContent value="historico" className="space-y-2 mt-3">
+                {historyDeliveries.length === 0 ? (
+                  <Card className="p-8 text-center text-muted-foreground">Sem marcações no histórico.</Card>
+                ) : (
+                  historyDeliveries.map((d: any) => (
+                    <Card key={d.id} className="p-4 border-l-4 border-l-muted-foreground/30 bg-muted/20 opacity-80">
+                      <div className="flex items-start justify-between flex-wrap gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold">#{d.order_number}</span>
+                            <span className="text-sm">{d.customer_name}</span>
+                            <Badge variant="outline">{DELIVERY_TYPE_LABEL[d.delivery_type]}</Badge>
+                            <Badge variant="secondary">
+                              {d.status === "cancelado" ? "Removida" : "Reagendada"}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{d.address}</span>
+                          </div>
+                          {d.outcome_notes && (
+                            <div className="text-xs text-muted-foreground mt-1">Notas: {d.outcome_notes}</div>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0 text-xs text-muted-foreground">
+                          {d.seller_name && <div>{d.seller_name}</div>}
+                          <div>{Number(d.volume_m3).toFixed(1)} m³ · {d.estimated_minutes} min</div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </TabsContent>
+            </Tabs>
+          </>
         );
       })()}
-
-      <h2 className="font-semibold mt-6">Entregas ({deliveries.length})</h2>
-      {deliveries.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground">Sem entregas agendadas.</Card>
-      ) : (
-        <div className="space-y-2">
-          {deliveries.map((d: any) => (
-            <DeliveryCard
-              key={d.id}
-              d={d}
-              routeId={id}
-              isSelected={d.id === selectedId}
-              onSelect={() => setSelectedId(d.id === selectedId ? null : d.id)}
-              isClosed={isClosed}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
+
 
 function DeliveryCard({
   d,

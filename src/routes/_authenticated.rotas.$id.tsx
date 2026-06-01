@@ -61,25 +61,15 @@ function RouteSimulationMap({
 
   const simulationInput = useMemo(() => {
     if (stops.length === 0) return null;
-
-    if (selectedStop) {
-      const previous = selectedIdx === 0 ? WAREHOUSE_ADDRESS : stops[selectedIdx - 1].full;
-      return {
-        origin: previous,
-        destination: selectedStop.full,
-        intermediates: [],
-      };
-    }
-
     return {
       origin: WAREHOUSE_ADDRESS,
       destination: WAREHOUSE_ADDRESS,
       intermediates: stops.map((stop) => stop.full),
     };
-  }, [selectedIdx, selectedStop, stops]);
+  }, [stops]);
 
   const { data, isLoading, error } = useQuery<RouteSimulation>({
-    queryKey: ["route-simulation", selectedId ?? "all", stops.map((s) => s.id).join(",")],
+    queryKey: ["route-simulation", stops.map((s) => s.id).join(",")],
     enabled: Boolean(simulationInput),
     queryFn: () => simulationFn({ data: simulationInput! }),
   });
@@ -130,15 +120,17 @@ function RouteSimulationMap({
       const googleMaps = (globalThis as any).google?.maps;
       if (!googleMaps) return;
 
-      const path = new googleMaps.Polyline({
+      // Trajeto completo (sempre visível, incluindo regresso ao armazém)
+      const fullPath = new googleMaps.Polyline({
         path: decoded,
-        strokeColor: "#2563eb",
-        strokeOpacity: 0.9,
-        strokeWeight: 5,
+        strokeColor: selectedStop ? "#94a3b8" : "#2563eb",
+        strokeOpacity: selectedStop ? 0.55 : 0.9,
+        strokeWeight: selectedStop ? 4 : 5,
       });
-      path.setMap(map);
-      overlaysRef.current.push(path);
+      fullPath.setMap(map);
+      overlaysRef.current.push(fullPath);
 
+      // Marcadores: A (armazém) → 1..N (paragens) → B (regresso ao armazém)
       const points = data.legs.flatMap((leg, index) => {
         const start = index === 0 ? [leg.startLocation] : [];
         return [...start, leg.endLocation];
@@ -146,26 +138,46 @@ function RouteSimulationMap({
 
       points.forEach((point: { lat: number; lng: number }, index: number) => {
         const isWarehouseStart = index === 0;
-        const isWarehouseEnd = index === points.length - 1 && !selectedStop;
+        const isWarehouseEnd = index === points.length - 1;
         const label = isWarehouseStart ? "A" : isWarehouseEnd ? "B" : String(index);
+        const isSelectedMarker = !!selectedStop && index === selectedIdx + 1;
         const marker = new googleMaps.Marker({
           position: point,
           map,
           label,
-          animation: selectedStop && index === points.length - 1 ? googleMaps.Animation.DROP : undefined,
+          animation: isSelectedMarker ? googleMaps.Animation.BOUNCE : undefined,
         });
         overlaysRef.current.push(marker);
       });
 
-      const bounds = new googleMaps.LatLngBounds();
-      decoded.forEach((point: { lat: number; lng: number }) => bounds.extend(point));
-      if (!bounds.isEmpty()) map.fitBounds(bounds, 48);
+      // Quando uma paragem está selecionada, destaca o troço correspondente
+      if (selectedStop && data.legs[selectedIdx]) {
+        const leg = data.legs[selectedIdx];
+        const highlight = new googleMaps.Polyline({
+          path: [leg.startLocation, leg.endLocation],
+          strokeColor: "#2563eb",
+          strokeOpacity: 1,
+          strokeWeight: 6,
+          geodesic: true,
+        });
+        highlight.setMap(map);
+        overlaysRef.current.push(highlight);
+
+        const bounds = new googleMaps.LatLngBounds();
+        bounds.extend(leg.startLocation);
+        bounds.extend(leg.endLocation);
+        map.fitBounds(bounds, 96);
+      } else {
+        const bounds = new googleMaps.LatLngBounds();
+        decoded.forEach((point: { lat: number; lng: number }) => bounds.extend(point));
+        if (!bounds.isEmpty()) map.fitBounds(bounds, 48);
+      }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [data, selectedStop]);
+  }, [data, selectedStop, selectedIdx]);
 
   if (!mapsKey) {
     return <div className="h-[420px] grid place-items-center text-sm text-muted-foreground bg-muted/20">A chave do mapa não está disponível.</div>;

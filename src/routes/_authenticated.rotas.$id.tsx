@@ -2,8 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
-import polyline from "@mapbox/polyline";
 import { getRouteSimulation, getRouteWithDeliveries } from "@/lib/routes.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

@@ -3,7 +3,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getRouteSimulation, getRouteWithDeliveries } from "@/lib/routes.functions";
-import { updateDeliveryMeta } from "@/lib/deliveries.functions";
+import { updateDeliveryMeta, refreshDeliveryPayload } from "@/lib/deliveries.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw } from "lucide-react";
 
 type Stop = {
   id: string;
@@ -540,6 +540,15 @@ function DeliveryCard({
 }) {
   const qc = useQueryClient();
   const updateFn = useServerFn(updateDeliveryMeta);
+  const refreshFn = useServerFn(refreshDeliveryPayload);
+  const refresh = useMutation({
+    mutationFn: () => refreshFn({ data: { id: d.id } }),
+    onSuccess: (r: any) => {
+      toast.success(`Produtos atualizados (${r?.items ?? 0} itens)`);
+      qc.invalidateQueries({ queryKey: ["route", routeId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao atualizar"),
+  });
   const [productsOpen, setProductsOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [volume, setVolume] = useState(String(d.volume_m3 ?? 0));
@@ -673,7 +682,35 @@ function DeliveryCard({
                   </div>
                 )}
                 {productItems.length === 0 && assemblyItems.length === 0 && (
-                  <div className="text-xs text-muted-foreground">Sem itens.</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs text-muted-foreground">
+                      Sem itens guardados. Esta entrega foi agendada antes de guardarmos os produtos.
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 text-xs shrink-0"
+                      disabled={refresh.isPending}
+                      onClick={() => refresh.mutate()}
+                    >
+                      <RefreshCw className={`h-3 w-3 ${refresh.isPending ? "animate-spin" : ""}`} />
+                      Buscar do GestãoClick
+                    </Button>
+                  </div>
+                )}
+                {(productItems.length > 0 || assemblyItems.length > 0) && (
+                  <div className="mt-2 pt-2 border-t flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 gap-1 text-[11px] text-muted-foreground"
+                      disabled={refresh.isPending}
+                      onClick={() => refresh.mutate()}
+                    >
+                      <RefreshCw className={`h-3 w-3 ${refresh.isPending ? "animate-spin" : ""}`} />
+                      Atualizar do GestãoClick
+                    </Button>
+                  </div>
                 )}
               </CollapsibleContent>
             </Collapsible>

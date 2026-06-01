@@ -47,6 +47,28 @@ function normalizeOrder(payload: any, orderNumber: string): OrderDTO {
   };
 }
 
+async function gcFetch(url: string, headers: Record<string, string>): Promise<{ status: number; json: any }> {
+  const res = await fetch(url, { headers });
+  const text = await res.text();
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("Credenciais GestãoClick inválidas (access-token/secret-access-token)");
+  }
+  if (res.status === 429) {
+    throw new Error("Limite de pedidos GestãoClick atingido. Tenta novamente em alguns segundos.");
+  }
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`GestãoClick respondeu ${res.status}: ${text.slice(0, 200)}`);
+  }
+  try {
+    return { status: res.status, json: text ? JSON.parse(text) : null };
+  } catch {
+    const snippet = text.slice(0, 200).replace(/\s+/g, " ");
+    throw new Error(
+      `GestãoClick devolveu resposta inválida (não-JSON). Verifica GESTAOCLICK_BASE_URL (deve ser https://api.gestaoclick.com.br). Início: ${snippet}`,
+    );
+  }
+}
+
 export const fetchOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ orderNumber: z.string().min(1).max(40) }).parse(d))
@@ -57,32 +79,40 @@ export const fetchOrder = createServerFn({ method: "POST" })
     if (!baseUrl || !apiKey || !email) {
       throw new Error("Credenciais GestãoClick em falta");
     }
+    const base = baseUrl.replace(/\/$/, "");
+    const headers = {
+      "access-token": apiKey,
+      "secret-access-token": email,
+      Accept: "application/json",
+    };
 
-    const url = `${baseUrl.replace(/\/$/, "")}/vendas/${encodeURIComponent(data.orderNumber)}`;
-    const res = await fetch(url, {
-      headers: {
-        "access-token": apiKey,
-        "secret-access-token": email,
-        Accept: "application/json",
-      },
-    });
+    // 1) Listar vendas filtrando pelo código (número visível ao utilizador)
+    const list = await gcFetch(
+      `${base}/api/vendas?codigo=${encodeURIComponent(data.orderNumber)}`,
+      headers,
+    );
+    const arr: any[] = Array.isArray(list.json?.data)
+      ? list.json.data
+      : Array.isArray(list.json)
+        ? list.json
+        : [];
+    if (list.status === 404 || arr.length === 0) {
+      throw new Error(`Encomenda ${data.orderNumber} não encontrada no GestãoClick`);
+    }
+    const vendaId = arr[0]?.id ?? arr[0]?.venda?.id;
+    if (!vendaId) {
+      throw new Error(`Encomenda ${data.orderNumber} sem id interno no GestãoClick`);
+    }
 
-    if (res.status === 404) throw new Error(`Encomenda ${data.orderNumber} não encontrada no GestãoClick`);
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`GestãoClick respondeu ${res.status}: ${body.slice(0, 200)}`);
+    // 2) Visualizar venda completa por id interno
+    const detail = await gcFetch(
+      `${base}/api/vendas/${encodeURIComponent(String(vendaId))}`,
+      headers,
+    );
+    if (detail.status === 404 || !detail.json) {
+      throw new Error(`Encomenda ${data.orderNumber} não encontrada no GestãoClick`);
     }
-    const text = await res.text();
-    let json: any;
-    try {
-      json = JSON.parse(text);
-    } catch {
-      const snippet = text.slice(0, 200).replace(/\s+/g, " ");
-      throw new Error(
-        `GestãoClick devolveu resposta inválida (não-JSON). Verifica GESTAOCLICK_BASE_URL e credenciais. Início: ${snippet}`,
-      );
-    }
-    const dto = normalizeOrder(json, data.orderNumber);
+    const dto = normalizeOrder(detail.json, data.orderNumber);
 
     // check existing active scheduling
     const { data: existing } = await context.supabase

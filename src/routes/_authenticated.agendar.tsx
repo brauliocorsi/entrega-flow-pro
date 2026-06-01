@@ -293,31 +293,89 @@ function AgendarPage() {
 
       {step === 3 && (
         <Card className="p-5 space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {compatibleRoutes.length} rota(s) compatível(eis) {zipPrefix(orderData?.order?.zip_code) && `com CP ${zipPrefix(orderData?.order?.zip_code)}`}
-          </p>
-          {compatibleRoutes.length === 0 && <p className="text-sm text-rose-600">Sem rotas compatíveis. Tenta reduzir o volume ou contacta o admin.</p>}
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {compatibleRoutes.map((r: any) => {
-              const d = new Date(r.route_date + "T00:00:00");
-              const restante = Number(r.max_capacity_m3) - Number(r.current_volume_m3);
-              return (
-                <div
-                  key={r.id}
-                  onClick={() => setSelectedRouteId(r.id)}
-                  className={`border rounded-md p-3 cursor-pointer transition-colors ${selectedRouteId === r.id ? "border-primary bg-primary/5" : "hover:bg-accent"}`}
-                >
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <div className="font-medium">{r.zone} <span className="text-muted-foreground font-normal">— {WEEKDAYS_PT[d.getDay()]}, {formatDatePT(r.route_date)}</span></div>
-                      <div className="text-xs text-muted-foreground">{r.driver ?? "Sem motorista"} · {restante.toFixed(1)} m³ disponíveis</div>
-                    </div>
-                    <Badge className={ROUTE_STATUS_TONE[r.status]}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
+          {(() => {
+            const sorted = [...compatibleRoutes].sort((a: any, b: any) =>
+              a.route_date.localeCompare(b.route_date),
+            );
+            const bestId = sorted[0]?.id ?? null;
+            const dates = Array.from(new Set(sorted.map((r: any) => r.route_date)));
+            const grouped = dates.map((date) => ({
+              date,
+              routes: sorted.filter((r: any) => r.route_date === date),
+            }));
+            const zip = zipPrefix(orderData?.order?.zip_code);
+            return (
+              <>
+                <div className="flex items-start justify-between flex-wrap gap-2">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {dates.length} data(s) disponível(is) · {compatibleRoutes.length} rota(s)
+                    </p>
+                    {zip && (
+                      <p className="text-xs text-muted-foreground">Filtrado por CP {zip}</p>
+                    )}
                   </div>
+                  {bestId && (
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                      <Sparkles className="h-3 w-3 mr-1" /> Melhor data: {formatDatePT(sorted[0].route_date)}
+                    </Badge>
+                  )}
                 </div>
-              );
-            })}
-          </div>
+                {compatibleRoutes.length === 0 && (
+                  <p className="text-sm text-rose-600">
+                    Sem rotas compatíveis. Reduz o volume ou pede ao admin para abrir uma nova rota.
+                  </p>
+                )}
+                <div className="space-y-3 max-h-[28rem] overflow-y-auto">
+                  {grouped.map(({ date, routes: dayRoutes }) => {
+                    const d = new Date(date + "T00:00:00");
+                    return (
+                      <div key={date} className="space-y-1">
+                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-1">
+                          {WEEKDAYS_PT[d.getDay()]}, {formatDatePT(date)}
+                        </div>
+                        {dayRoutes.map((r: any) => {
+                          const restante = Number(r.max_capacity_m3) - Number(r.current_volume_m3);
+                          const pct = (Number(r.current_volume_m3) / Number(r.max_capacity_m3)) * 100;
+                          const isBest = r.id === bestId;
+                          return (
+                            <div
+                              key={r.id}
+                              onClick={() => setSelectedRouteId(r.id)}
+                              className={`border rounded-md p-3 cursor-pointer transition-colors ${selectedRouteId === r.id ? "border-primary bg-primary/5" : "hover:bg-accent"}`}
+                            >
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div className="min-w-0">
+                                  <div className="font-medium flex items-center gap-2">
+                                    {r.zone}
+                                    {isBest && (
+                                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
+                                        Recomendado
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {r.driver ?? "Sem motorista"} · {restante.toFixed(1)} m³ livres ({pct.toFixed(0)}% ocupado)
+                                  </div>
+                                </div>
+                                <Badge className={ROUTE_STATUS_TONE[r.status]}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
+                              </div>
+                              <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full ${pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`}
+                                  style={{ width: `${Math.min(pct, 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4 mr-1" /> Voltar</Button>
             <Button disabled={!selectedRouteId} onClick={() => setStep(4)}>Continuar <ArrowRight className="h-4 w-4 ml-1" /></Button>

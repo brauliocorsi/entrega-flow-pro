@@ -339,14 +339,20 @@ function RouteDetail() {
           label: `#${d.order_number} · ${d.customer_name}`,
           full: `${d.address}${d.zip_code ? `, ${d.zip_code}` : ""}${d.city ? ` ${d.city}` : ""}`.trim(),
         }));
-        return <RouteSimulationSection rawStops={rawStops} selectedId={selectedId} setSelectedId={setSelectedId} selectStop={selectStop} />;
+        return (
+          <RouteSimulationSection
+            rawStops={rawStops}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+            selectStop={selectStop}
+          />
+        );
       })()}
       {false && (() => {
         const stops: Stop[] = [];
-        const origin = encodeURIComponent(WAREHOUSE_ADDRESS);
         const fullUrl = "";
         const selectedIdx = stops.findIndex((s) => s.id === selectedId);
-        const selectedStop = selectedIdx >= 0 ? stops[selectedIdx] : null;
+        const selectedStop: Stop | null = selectedIdx >= 0 ? stops[selectedIdx] : null;
 
         return (
           <Card className="p-0 overflow-hidden">

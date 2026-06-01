@@ -333,7 +333,7 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   );
 }
 
-function CalendarView({ rows }: { rows: any[] }) {
+function CalendarView({ rows, codes }: { rows: any[]; codes: Map<string, string> }) {
   // Show next 28 days as a weekly grid
   const today = new Date();
   today.setHours(0, 0, 0, 0);

@@ -93,6 +93,7 @@ function AdminTemplatesPage() {
   function openNew() {
     setEditingId(null);
     setForm({ ...empty });
+    setFieldErrors({});
     setDialogOpen(true);
   }
 
@@ -109,7 +110,19 @@ function AdminTemplatesPage() {
       active: t.active,
       notes: t.notes ?? "",
     });
+    setFieldErrors({});
     setDialogOpen(true);
+  }
+
+  function validateForm(): Record<string, string> {
+    const errors: Record<string, string> = {};
+    const val = Number(form.max_minutes);
+    if (!Number.isFinite(val) || !Number.isInteger(val) || val < 1) {
+      errors.max_minutes = "O tempo de rota deve ser um número inteiro positivo (mínimo 1 minuto).";
+    } else if (val > 1440) {
+      errors.max_minutes = "O tempo de rota não pode exceder 1440 minutos (24 horas).";
+    }
+    return errors;
   }
 
   async function handleSave() {

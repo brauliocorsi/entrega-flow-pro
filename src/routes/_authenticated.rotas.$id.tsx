@@ -74,28 +74,86 @@ function RouteDetail() {
         </div>
       </Card>
 
-      {deliveries.length > 0 && (
-        <Card className="p-0 overflow-hidden">
-          <div className="px-4 py-2 border-b flex items-center justify-between flex-wrap gap-2 bg-muted/30">
-            <div className="text-sm font-medium">Trajeto sugerido (Google Maps)</div>
-            <a
-              href={`https://www.google.com/maps/dir/${encodeURIComponent(WAREHOUSE_ADDRESS)}/${deliveries.map((d: any) => encodeURIComponent(`${d.address} ${d.zip_code ?? ""} ${d.city ?? ""}`.trim())).join("/")}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-primary hover:underline"
-            >
-              Abrir no Google Maps ↗
-            </a>
-          </div>
-          <iframe
-            title="Mapa da rota"
-            className="w-full h-[360px] border-0"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            src={`https://www.google.com/maps?output=embed&saddr=${encodeURIComponent(WAREHOUSE_ADDRESS)}&daddr=${deliveries.map((d: any) => encodeURIComponent(`${d.address} ${d.zip_code ?? ""} ${d.city ?? ""}`.trim())).join("+to:")}`}
-          />
-        </Card>
-      )}
+      {deliveries.length > 0 && (() => {
+        const stops = deliveries.map((d: any) => ({
+          id: d.id,
+          label: `#${d.order_number} · ${d.customer_name}`,
+          full: `${d.address}${d.zip_code ? `, ${d.zip_code}` : ""}${d.city ? ` ${d.city}` : ""}`.trim(),
+        }));
+        const origin = encodeURIComponent(WAREHOUSE_ADDRESS);
+        const fullUrl =
+          `https://www.google.com/maps/dir/?api=1` +
+          `&origin=${origin}` +
+          `&destination=${origin}` +
+          `&travelmode=driving` +
+          `&waypoints=${stops.map((s) => encodeURIComponent(s.full)).join("|")}`;
+        const embedSrc =
+          `https://maps.google.com/maps?output=embed&q=` +
+          encodeURIComponent(stops.map((s) => s.full).join(" to ")) +
+          `&z=11`;
+
+        return (
+          <Card className="p-0 overflow-hidden">
+            <div className="px-4 py-3 border-b flex items-center justify-between flex-wrap gap-2 bg-muted/30">
+              <div>
+                <div className="text-sm font-medium">Trajeto no Google Maps</div>
+                <div className="text-xs text-muted-foreground">
+                  {stops.length} paragens · saída e regresso a {WAREHOUSE_ADDRESS}
+                </div>
+              </div>
+              <a href={fullUrl} target="_blank" rel="noreferrer">
+                <Button size="sm">
+                  <MapPin className="h-4 w-4 mr-1" /> Abrir trajeto completo ↗
+                </Button>
+              </a>
+            </div>
+
+            <iframe
+              title="Mapa da rota"
+              className="w-full h-[320px] border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              src={embedSrc}
+            />
+
+            <ol className="divide-y">
+              <li className="flex items-center gap-3 px-4 py-2 text-sm bg-emerald-50/50">
+                <span className="h-6 w-6 rounded-full bg-emerald-600 text-white text-xs font-bold inline-flex items-center justify-center shrink-0">A</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium">Partida — Armazém</div>
+                  <div className="text-xs text-muted-foreground truncate">{WAREHOUSE_ADDRESS}</div>
+                </div>
+              </li>
+              {stops.map((s, i) => (
+                <li key={s.id} className="flex items-center gap-3 px-4 py-2 text-sm">
+                  <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center shrink-0">
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{s.label}</div>
+                    <div className="text-xs text-muted-foreground truncate">{s.full}</div>
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.full)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-primary hover:underline shrink-0"
+                  >
+                    Ver ↗
+                  </a>
+                </li>
+              ))}
+              <li className="flex items-center gap-3 px-4 py-2 text-sm bg-emerald-50/50">
+                <span className="h-6 w-6 rounded-full bg-emerald-600 text-white text-xs font-bold inline-flex items-center justify-center shrink-0">B</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium">Regresso — Armazém</div>
+                  <div className="text-xs text-muted-foreground truncate">{WAREHOUSE_ADDRESS}</div>
+                </div>
+              </li>
+            </ol>
+          </Card>
+        );
+      })()}
 
       <h2 className="font-semibold mt-6">Entregas ({deliveries.length})</h2>
       {deliveries.length === 0 ? (

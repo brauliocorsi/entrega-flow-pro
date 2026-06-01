@@ -102,36 +102,51 @@ function RouteDetail() {
         <Card className="p-8 text-center text-muted-foreground">Sem entregas agendadas.</Card>
       ) : (
         <div className="space-y-2">
-          {deliveries.map((d: any) => (
-            <Card key={d.id} className="p-4">
-              <div className="flex items-start justify-between flex-wrap gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">#{d.order_number}</span>
-                    <span className="text-sm">{d.customer_name}</span>
-                    <Badge variant="outline">{DELIVERY_TYPE_LABEL[d.delivery_type]}</Badge>
-                    {d.outcome && <Badge variant="secondary">{d.outcome}</Badge>}
-                  </div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                    <MapPin className="h-3 w-3" /> {d.address} {d.zip_code ? `(${d.zip_code})` : ""}
-                  </div>
-                  {d.phone && (
-                    <div className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Phone className="h-3 w-3" /> {d.phone}
+          {deliveries.map((d: any) => {
+            const hasAssembly = d.notes && /montagem|montar|instala/i.test(d.notes);
+            const accent = hasAssembly
+              ? "border-l-violet-500 bg-violet-50/40"
+              : "border-l-sky-500 bg-sky-50/30";
+            return (
+              <Card key={d.id} className={`p-4 border-l-4 ${accent}`}>
+                <div className="flex items-start justify-between flex-wrap gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold">#{d.order_number}</span>
+                      <span className="text-sm">{d.customer_name}</span>
+                      <Badge variant="outline">{DELIVERY_TYPE_LABEL[d.delivery_type]}</Badge>
+                      {hasAssembly ? (
+                        <Badge className="bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-100">
+                          <Wrench className="h-3 w-3 mr-1" /> Montagem
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-sky-100 text-sky-800 border-sky-200 hover:bg-sky-100">
+                          <Truck className="h-3 w-3 mr-1" /> Só entrega
+                        </Badge>
+                      )}
+                      {d.outcome && <Badge variant="secondary">{d.outcome}</Badge>}
                     </div>
-                  )}
+                    <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                      <MapPin className="h-3 w-3" /> {d.address} {d.zip_code ? `(${d.zip_code})` : ""}
+                    </div>
+                    {d.phone && (
+                      <div className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Phone className="h-3 w-3" /> {d.phone}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-semibold">{formatEUR(d.total_value)}</div>
+                    {Number(d.remaining_value) > 0 && (
+                      <div className="text-xs text-rose-600">Falta {formatEUR(d.remaining_value)}</div>
+                    )}
+                    <div className="text-xs text-muted-foreground">{Number(d.volume_m3).toFixed(1)} m³ · {d.estimated_minutes} min</div>
+                    {d.seller_name && <div className="text-xs text-muted-foreground">{d.seller_name}</div>}
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <div className="text-sm font-semibold">{formatEUR(d.total_value)}</div>
-                  {Number(d.remaining_value) > 0 && (
-                    <div className="text-xs text-rose-600">Falta {formatEUR(d.remaining_value)}</div>
-                  )}
-                  <div className="text-xs text-muted-foreground">{Number(d.volume_m3).toFixed(1)} m³ · {d.estimated_minutes} min</div>
-                  {d.seller_name && <div className="text-xs text-muted-foreground">{d.seller_name}</div>}
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

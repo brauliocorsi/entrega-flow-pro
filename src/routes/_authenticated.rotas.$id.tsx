@@ -91,8 +91,8 @@ function RouteSimulationMap({
 
     let cancelled = false;
     setOptions({
-      apiKey: mapsKey,
-      version: "weekly",
+      key: mapsKey,
+      v: "weekly",
       ...(trackingId ? { channel: trackingId } : {}),
     });
 

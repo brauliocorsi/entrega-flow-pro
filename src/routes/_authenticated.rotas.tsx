@@ -381,7 +381,7 @@ function CalendarView({ rows, codes }: { rows: any[]; codes: Map<string, string>
   );
 }
 
-function CalendarRouteCard({ r }: { r: any }) {
+function CalendarRouteCard({ r, code }: { r: any; code?: string }) {
   const vol = Number(r.current_volume_m3);
   const cap = Number(r.max_capacity_m3);
   const pct = Math.min(100, (vol / cap) * 100);
@@ -390,9 +390,12 @@ function CalendarRouteCard({ r }: { r: any }) {
 
   return (
     <Link to="/rotas/$id" params={{ id: r.id }} className="block h-full">
-      <div className={`text-[10px] rounded border border-l-4 ${accent} bg-card p-1.5 hover:shadow-sm transition-shadow`} title={`${r.zone} — ${ROUTE_STATUS_LABEL[r.status]}`}>
+      <div className={`text-[10px] rounded border border-l-4 ${accent} bg-card p-1.5 hover:shadow-sm transition-shadow`} title={`${code ? code + " · " : ""}${r.zone} — ${ROUTE_STATUS_LABEL[r.status]}`}>
         <div className="flex items-center justify-between gap-1 mb-1">
-          <div className="font-semibold truncate">{r.zone}</div>
+          <div className="font-semibold truncate">
+            {code && <span className="font-mono text-primary mr-1">{code}</span>}
+            {r.zone}
+          </div>
           <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${pct >= 100 ? "bg-rose-500" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} />
         </div>
         <div className="rounded bg-muted/50 px-1 py-0.5 grid grid-cols-3 gap-0.5 tabular-nums">

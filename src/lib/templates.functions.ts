@@ -13,6 +13,7 @@ const TemplateInput = z.object({
   default_driver: z.string().max(100).nullable().optional(),
   active: z.boolean().default(true),
   notes: z.string().max(500).nullable().optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#3b82f6"),
 });
 
 export const listTemplates = createServerFn({ method: "GET" })

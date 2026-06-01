@@ -169,6 +169,16 @@ function AgendarPage() {
                   </div>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  {orderData.order.date && (
+                    <div className="flex items-center gap-1">
+                      <FileText className="h-3 w-3" /> Venda: {formatDatePT(orderData.order.date)}
+                    </div>
+                  )}
+                  {orderData.order.status && (
+                    <div className="flex items-center gap-1">
+                      <Badge variant="outline" className="text-[10px] px-1 py-0">{orderData.order.status}</Badge>
+                    </div>
+                  )}
                   {orderData.order.customer_document && (
                     <div className="flex items-center gap-1"><FileText className="h-3 w-3" /> {orderData.order.customer_document}</div>
                   )}

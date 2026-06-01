@@ -3,12 +3,13 @@ import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listRoutes } from "@/lib/routes.functions";
+import { listPendingReschedules } from "@/lib/deliveries.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT } from "@/lib/constants";
 import { formatDatePT } from "@/lib/format";
-import { Calendar as CalendarIcon, List, Truck, MapPin } from "lucide-react";
+import { Calendar as CalendarIcon, List, Truck, MapPin, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/rotas")({
   head: () => ({ meta: [{ title: "Rotas — UP Agenda" }] }),
@@ -17,12 +18,19 @@ export const Route = createFileRoute("/_authenticated/rotas")({
 
 function RoutesPage() {
   const listFn = useServerFn(listRoutes);
+  const pendingFn = useServerFn(listPendingReschedules);
   const [view, setView] = useState<"lista" | "calendario">("lista");
 
   const { data: rows = [], isLoading } = useQuery(
     queryOptions({
       queryKey: ["routes", "list"],
       queryFn: () => listFn({ data: {} }),
+    }),
+  );
+  const { data: pending = [] } = useQuery(
+    queryOptions({
+      queryKey: ["reschedules", "pending"],
+      queryFn: () => pendingFn({ data: {} as any }),
     }),
   );
 

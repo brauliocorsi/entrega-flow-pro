@@ -1046,13 +1046,30 @@ function FleetEditor({ route }: { route: any }) {
   const { role } = useAuth();
   const qc = useQueryClient();
   const fnUpdate = useServerFn(updateRouteFleet);
+  const fnVehicles = useServerFn(listVehicles);
+  const fnStaff = useServerFn(listStaff);
   const [editing, setEditing] = useState(false);
-  const [driver, setDriver] = useState(route.driver ?? "");
-  const [vehicle, setVehicle] = useState(route.vehicle ?? "");
-  const [assistant, setAssistant] = useState(route.assistant ?? "");
+  const [driver, setDriver] = useState<string>(route.driver ?? "");
+  const [vehicle, setVehicle] = useState<string>(route.vehicle ?? "");
+  const [assistant, setAssistant] = useState<string>(route.assistant ?? "");
   const [saving, setSaving] = useState(false);
 
   const canEdit = role === "admin" || role === "logistico";
+
+  const { data: vehicles = [] } = useQuery({
+    queryKey: ["fleet", "vehicles"],
+    queryFn: () => fnVehicles(),
+    enabled: editing,
+  });
+  const { data: staff = [] } = useQuery({
+    queryKey: ["fleet", "staff"],
+    queryFn: () => fnStaff(),
+    enabled: editing,
+  });
+
+  const drivers = (staff as any[]).filter((s) => s.kind === "motorista" && s.active);
+  const assistants = (staff as any[]).filter((s) => s.kind === "auxiliar" && s.active);
+  const activeVehicles = (vehicles as any[]).filter((v) => v.active);
 
   useEffect(() => {
     setDriver(route.driver ?? "");
@@ -1074,6 +1091,8 @@ function FleetEditor({ route }: { route: any }) {
     }
   }
 
+  const NONE = "__none__";
+
   return (
     <div className="mt-4 rounded-lg border bg-muted/30 p-3">
       <div className="flex items-center justify-between mb-2">
@@ -1090,15 +1109,51 @@ function FleetEditor({ route }: { route: any }) {
         <div className="grid sm:grid-cols-3 gap-2">
           <div>
             <label className="text-[11px] text-muted-foreground">Motorista</label>
-            <Input value={driver} onChange={(e) => setDriver(e.target.value)} placeholder="Nome" />
+            <Select value={driver || NONE} onValueChange={(v) => setDriver(v === NONE ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>— Nenhum —</SelectItem>
+                {driver && !drivers.some((d) => d.name === driver) && (
+                  <SelectItem value={driver}>{driver} (atual)</SelectItem>
+                )}
+                {drivers.map((d) => (
+                  <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <label className="text-[11px] text-muted-foreground">Veículo</label>
-            <Input value={vehicle} onChange={(e) => setVehicle(e.target.value)} placeholder="Matrícula / Carro" />
+            <Select value={vehicle || NONE} onValueChange={(v) => setVehicle(v === NONE ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>— Nenhum —</SelectItem>
+                {vehicle && !activeVehicles.some((x) => labelVehicle(x) === vehicle) && (
+                  <SelectItem value={vehicle}>{vehicle} (atual)</SelectItem>
+                )}
+                {activeVehicles.map((x) => (
+                  <SelectItem key={x.id} value={labelVehicle(x)}>{labelVehicle(x)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <label className="text-[11px] text-muted-foreground">Auxiliar</label>
-            <Input value={assistant} onChange={(e) => setAssistant(e.target.value)} placeholder="Nome" />
+            <Select value={assistant || NONE} onValueChange={(v) => setAssistant(v === NONE ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>— Nenhum —</SelectItem>
+                {assistant && !assistants.some((d) => d.name === assistant) && (
+                  <SelectItem value={assistant}>{assistant} (atual)</SelectItem>
+                )}
+                {assistants.map((d) => (
+                  <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="sm:col-span-3 text-[11px] text-muted-foreground">
+            Sem opções? Regista em <Link to="/admin/veiculos" className="underline">Veículos</Link> e <Link to="/admin/equipa" className="underline">Equipa</Link>.
           </div>
           <div className="sm:col-span-3 flex justify-end gap-2 mt-1">
             <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={saving}>
@@ -1127,4 +1182,8 @@ function FleetEditor({ route }: { route: any }) {
       )}
     </div>
   );
+}
+
+function labelVehicle(v: { name: string; plate: string | null }) {
+  return v.plate ? `${v.name} (${v.plate})` : v.name;
 }

@@ -149,7 +149,7 @@ function RouteDetail() {
                 return (
                   <li
                     key={s.id}
-                    onClick={() => setSelectedId(isSelected ? null : s.id)}
+                    onClick={() => selectStop(isSelected ? null : s.id)}
                     className={`flex items-center gap-3 px-4 py-2 text-sm cursor-pointer transition-colors ${
                       isSelected
                         ? "bg-primary/10 border-l-4 border-l-primary pl-3"

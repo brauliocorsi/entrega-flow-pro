@@ -87,6 +87,7 @@ export type Database = {
           default_driver: string | null
           id: string
           max_capacity_m3: number
+          max_minutes: number
           name: string
           notes: string | null
           updated_at: string
@@ -100,6 +101,7 @@ export type Database = {
           default_driver?: string | null
           id?: string
           max_capacity_m3?: number
+          max_minutes?: number
           name: string
           notes?: string | null
           updated_at?: string
@@ -113,6 +115,7 @@ export type Database = {
           default_driver?: string | null
           id?: string
           max_capacity_m3?: number
+          max_minutes?: number
           name?: string
           notes?: string | null
           updated_at?: string
@@ -130,6 +133,7 @@ export type Database = {
           driver: string | null
           id: string
           max_capacity_m3: number
+          max_minutes: number
           notes: string | null
           route_date: string
           status: Database["public"]["Enums"]["route_status"]
@@ -145,6 +149,7 @@ export type Database = {
           driver?: string | null
           id?: string
           max_capacity_m3?: number
+          max_minutes?: number
           notes?: string | null
           route_date: string
           status?: Database["public"]["Enums"]["route_status"]
@@ -160,6 +165,7 @@ export type Database = {
           driver?: string | null
           id?: string
           max_capacity_m3?: number
+          max_minutes?: number
           notes?: string | null
           route_date?: string
           status?: Database["public"]["Enums"]["route_status"]

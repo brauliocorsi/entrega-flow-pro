@@ -23,6 +23,7 @@ type RouteSimulation = {
   legs: Array<{
     distanceMeters: number;
     duration: string;
+    polyline: string;
     startLocation: { lat: number; lng: number };
     endLocation: { lat: number; lng: number };
   }>;

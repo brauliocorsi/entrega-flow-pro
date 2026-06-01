@@ -1041,3 +1041,90 @@ function DeliveryCard({
     </Card>
   );
 }
+
+function FleetEditor({ route }: { route: any }) {
+  const { role } = useAuth();
+  const qc = useQueryClient();
+  const fnUpdate = useServerFn(updateRouteFleet);
+  const [editing, setEditing] = useState(false);
+  const [driver, setDriver] = useState(route.driver ?? "");
+  const [vehicle, setVehicle] = useState(route.vehicle ?? "");
+  const [assistant, setAssistant] = useState(route.assistant ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const canEdit = role === "admin" || role === "logistico";
+
+  useEffect(() => {
+    setDriver(route.driver ?? "");
+    setVehicle(route.vehicle ?? "");
+    setAssistant(route.assistant ?? "");
+  }, [route.id, route.driver, route.vehicle, route.assistant]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      await fnUpdate({ data: { id: route.id, driver: driver || null, vehicle: vehicle || null, assistant: assistant || null } });
+      toast.success("Frota atualizada");
+      setEditing(false);
+      await qc.invalidateQueries();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-lg border bg-muted/30 p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+          <Truck className="h-3.5 w-3.5" /> Frota
+        </div>
+        {canEdit && !editing && (
+          <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+            <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
+          </Button>
+        )}
+      </div>
+      {editing ? (
+        <div className="grid sm:grid-cols-3 gap-2">
+          <div>
+            <label className="text-[11px] text-muted-foreground">Motorista</label>
+            <Input value={driver} onChange={(e) => setDriver(e.target.value)} placeholder="Nome" />
+          </div>
+          <div>
+            <label className="text-[11px] text-muted-foreground">Veículo</label>
+            <Input value={vehicle} onChange={(e) => setVehicle(e.target.value)} placeholder="Matrícula / Carro" />
+          </div>
+          <div>
+            <label className="text-[11px] text-muted-foreground">Auxiliar</label>
+            <Input value={assistant} onChange={(e) => setAssistant(e.target.value)} placeholder="Nome" />
+          </div>
+          <div className="sm:col-span-3 flex justify-end gap-2 mt-1">
+            <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={saving}>
+              <X className="h-3.5 w-3.5 mr-1" /> Cancelar
+            </Button>
+            <Button size="sm" onClick={save} disabled={saving}>
+              <Save className="h-3.5 w-3.5 mr-1" /> Guardar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-3 gap-3 text-sm">
+          <div>
+            <div className="text-[11px] text-muted-foreground">Motorista</div>
+            <div className="font-medium">{route.driver ?? "—"}</div>
+          </div>
+          <div>
+            <div className="text-[11px] text-muted-foreground">Veículo</div>
+            <div className="font-medium">{route.vehicle ?? "—"}</div>
+          </div>
+          <div>
+            <div className="text-[11px] text-muted-foreground">Auxiliar</div>
+            <div className="font-medium">{route.assistant ?? "—"}</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

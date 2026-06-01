@@ -126,6 +126,10 @@ function AdminTemplatesPage() {
   }
 
   async function handleSave() {
+    const errors = validateForm();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     try {
       const prefixes = form.zip_prefixes
         .split(/[,;\s]+/)

@@ -161,6 +161,7 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
         ? route.legs.map((leg: any) => ({
             distanceMeters: Number(leg.distanceMeters ?? 0),
             duration: String(leg.duration ?? "0s"),
+            polyline: String(leg.polyline?.encodedPolyline ?? ""),
             startLocation: {
               lat: Number(leg.startLocation?.latLng?.latitude ?? 0),
               lng: Number(leg.startLocation?.latLng?.longitude ?? 0),

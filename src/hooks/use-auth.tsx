@@ -31,8 +31,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("role")
       .eq("user_id", uid);
     if (data && data.length > 0) {
-      const isAdmin = data.some((r) => r.role === "admin");
-      setRole(isAdmin ? "admin" : "vendedor");
+      if (data.some((r) => r.role === "admin")) setRole("admin");
+      else if (data.some((r) => r.role === "logistico")) setRole("logistico");
+      else setRole("vendedor");
     } else {
       setRole("vendedor");
     }

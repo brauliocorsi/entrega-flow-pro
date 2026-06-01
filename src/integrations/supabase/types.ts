@@ -14,16 +14,284 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      route_templates: {
+        Row: {
+          active: boolean
+          created_at: string
+          default_driver: string | null
+          id: string
+          max_capacity_m3: number
+          name: string
+          notes: string | null
+          updated_at: string
+          weekday: number
+          zip_prefixes: string[]
+          zone: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          default_driver?: string | null
+          id?: string
+          max_capacity_m3?: number
+          name: string
+          notes?: string | null
+          updated_at?: string
+          weekday: number
+          zip_prefixes?: string[]
+          zone: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          default_driver?: string | null
+          id?: string
+          max_capacity_m3?: number
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          weekday?: number
+          zip_prefixes?: string[]
+          zone?: string
+        }
+        Relationships: []
+      }
+      routes: {
+        Row: {
+          created_at: string
+          current_volume_m3: number
+          deliveries_count: number
+          driver: string | null
+          id: string
+          max_capacity_m3: number
+          notes: string | null
+          route_date: string
+          status: Database["public"]["Enums"]["route_status"]
+          template_id: string | null
+          updated_at: string
+          zip_prefixes: string[]
+          zone: string
+        }
+        Insert: {
+          created_at?: string
+          current_volume_m3?: number
+          deliveries_count?: number
+          driver?: string | null
+          id?: string
+          max_capacity_m3?: number
+          notes?: string | null
+          route_date: string
+          status?: Database["public"]["Enums"]["route_status"]
+          template_id?: string | null
+          updated_at?: string
+          zip_prefixes?: string[]
+          zone: string
+        }
+        Update: {
+          created_at?: string
+          current_volume_m3?: number
+          deliveries_count?: number
+          driver?: string | null
+          id?: string
+          max_capacity_m3?: number
+          notes?: string | null
+          route_date?: string
+          status?: Database["public"]["Enums"]["route_status"]
+          template_id?: string | null
+          updated_at?: string
+          zip_prefixes?: string[]
+          zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routes_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "route_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_deliveries: {
+        Row: {
+          address: string
+          city: string | null
+          created_at: string
+          customer_name: string
+          delivery_type: Database["public"]["Enums"]["delivery_type"]
+          estimated_minutes: number
+          id: string
+          notes: string | null
+          order_number: string
+          order_payload: Json | null
+          outcome: Database["public"]["Enums"]["delivery_outcome"] | null
+          outcome_at: string | null
+          outcome_notes: string | null
+          paid_value: number
+          phone: string | null
+          remaining_value: number
+          rescheduled_from_id: string | null
+          route_id: string
+          seller_id: string | null
+          seller_name: string | null
+          status: Database["public"]["Enums"]["delivery_status"]
+          total_value: number
+          updated_at: string
+          volume_m3: number
+          zip_code: string | null
+        }
+        Insert: {
+          address: string
+          city?: string | null
+          created_at?: string
+          customer_name: string
+          delivery_type?: Database["public"]["Enums"]["delivery_type"]
+          estimated_minutes?: number
+          id?: string
+          notes?: string | null
+          order_number: string
+          order_payload?: Json | null
+          outcome?: Database["public"]["Enums"]["delivery_outcome"] | null
+          outcome_at?: string | null
+          outcome_notes?: string | null
+          paid_value?: number
+          phone?: string | null
+          remaining_value?: number
+          rescheduled_from_id?: string | null
+          route_id: string
+          seller_id?: string | null
+          seller_name?: string | null
+          status?: Database["public"]["Enums"]["delivery_status"]
+          total_value?: number
+          updated_at?: string
+          volume_m3?: number
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string
+          city?: string | null
+          created_at?: string
+          customer_name?: string
+          delivery_type?: Database["public"]["Enums"]["delivery_type"]
+          estimated_minutes?: number
+          id?: string
+          notes?: string | null
+          order_number?: string
+          order_payload?: Json | null
+          outcome?: Database["public"]["Enums"]["delivery_outcome"] | null
+          outcome_at?: string | null
+          outcome_notes?: string | null
+          paid_value?: number
+          phone?: string | null
+          remaining_value?: number
+          rescheduled_from_id?: string | null
+          route_id?: string
+          seller_id?: string | null
+          seller_name?: string | null
+          status?: Database["public"]["Enums"]["delivery_status"]
+          total_value?: number
+          updated_at?: string
+          volume_m3?: number
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_deliveries_rescheduled_from_id_fkey"
+            columns: ["rescheduled_from_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_deliveries_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      recompute_route_counters: {
+        Args: { _route_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "vendedor"
+      delivery_outcome: "entregue" | "nao_entregue" | "entregue_parcial"
+      delivery_status:
+        | "agendado"
+        | "confirmado"
+        | "entregue"
+        | "cancelado"
+        | "reagendado"
+      delivery_type: "entrega" | "levantamento" | "recolha" | "troca"
+      route_status:
+        | "disponivel"
+        | "quase_cheia"
+        | "cheia"
+        | "fechada"
+        | "concluida"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +418,24 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "vendedor"],
+      delivery_outcome: ["entregue", "nao_entregue", "entregue_parcial"],
+      delivery_status: [
+        "agendado",
+        "confirmado",
+        "entregue",
+        "cancelado",
+        "reagendado",
+      ],
+      delivery_type: ["entrega", "levantamento", "recolha", "troca"],
+      route_status: [
+        "disponivel",
+        "quase_cheia",
+        "cheia",
+        "fechada",
+        "concluida",
+      ],
+    },
   },
 } as const

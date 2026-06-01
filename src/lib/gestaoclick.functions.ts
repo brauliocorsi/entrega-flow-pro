@@ -275,7 +275,21 @@ export const fetchOrder = createServerFn({ method: "POST" })
           error: `Encomenda ${data.orderNumber} não encontrada no GestãoClick`,
         };
       }
-      const dto = normalizeOrder(detail.json, data.orderNumber);
+      const clienteId =
+        detail.json?.data?.cliente_id ?? arr[0]?.cliente_id ?? null;
+      let clientePayload: any = null;
+      if (clienteId) {
+        try {
+          const cli = await gcFetch(
+            `${base}/api/clientes/${encodeURIComponent(String(clienteId))}`,
+            headers,
+          );
+          clientePayload = cli.json;
+        } catch {
+          // ignore - normalizeOrder will fall back to venda fields
+        }
+      }
+      const dto = normalizeOrder(detail.json, clientePayload, data.orderNumber);
 
       const { data: existing } = await context.supabase
         .from("scheduled_deliveries")

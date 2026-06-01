@@ -20,6 +20,7 @@ type RouteSimulation = {
   distanceMeters: number;
   duration: string;
   polyline: string;
+  optimizedOrder?: number[];
   legs: Array<{
     distanceMeters: number;
     duration: string;
@@ -41,6 +42,137 @@ function formatDuration(duration: string) {
 function formatDistance(distanceMeters: number) {
   if (distanceMeters >= 1000) return `${(distanceMeters / 1000).toFixed(1)} km`;
   return `${distanceMeters} m`;
+}
+
+function RouteSimulationSection({
+  rawStops,
+  selectedId,
+  setSelectedId,
+  selectStop,
+}: {
+  rawStops: Stop[];
+  selectedId: string | null;
+  setSelectedId: (id: string | null) => void;
+  selectStop: (id: string | null) => void;
+}) {
+  const simulationFn = useServerFn(getRouteSimulation);
+  const { data: optData } = useQuery<RouteSimulation>({
+    queryKey: ["route-simulation", rawStops.map((s) => s.id).join(",")],
+    enabled: rawStops.length > 0,
+    queryFn: () =>
+      simulationFn({
+        data: {
+          origin: WAREHOUSE_ADDRESS,
+          destination: WAREHOUSE_ADDRESS,
+          intermediates: rawStops.map((s) => s.full),
+        },
+      }),
+  });
+
+  const stops: Stop[] = useMemo(() => {
+    if (optData?.optimizedOrder && optData.optimizedOrder.length === rawStops.length) {
+      return optData.optimizedOrder.map((i) => rawStops[i]).filter(Boolean);
+    }
+    return rawStops;
+  }, [rawStops, optData]);
+
+  const origin = encodeURIComponent(WAREHOUSE_ADDRESS);
+  const fullUrl =
+    `https://www.google.com/maps/dir/?api=1` +
+    `&origin=${origin}` +
+    `&destination=${origin}` +
+    `&travelmode=driving` +
+    `&waypoints=${stops.map((s) => encodeURIComponent(s.full)).join("|")}`;
+  const selectedIdx = stops.findIndex((s) => s.id === selectedId);
+  const selectedStop: Stop | null = selectedIdx >= 0 ? stops[selectedIdx] : null;
+
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-4 py-3 border-b flex items-center justify-between flex-wrap gap-2 bg-muted/30">
+        <div>
+          <div className="text-sm font-medium">Simulação do trajeto (rota mais rápida)</div>
+          <div className="text-xs text-muted-foreground">
+            {selectedStop ? (
+              <>
+                Troço {selectedIdx === 0 ? "Armazém" : `paragem ${selectedIdx}`} →{" "}
+                <span className="font-medium text-foreground">{selectedStop.label}</span>
+              </>
+            ) : (
+              <>{stops.length} paragens · Armazém → entregas → Armazém · ordem otimizada por tempo</>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {selectedStop && (
+            <Button size="sm" variant="ghost" onClick={() => setSelectedId(null)}>
+              Ver rota completa
+            </Button>
+          )}
+          <a href={fullUrl} target="_blank" rel="noreferrer">
+            <Button size="sm">
+              <MapPin className="h-4 w-4 mr-1" /> Abrir trajeto ↗
+            </Button>
+          </a>
+        </div>
+      </div>
+
+      <RouteSimulationMap stops={stops} selectedId={selectedId} />
+
+      <ol className="divide-y">
+        <li className="flex items-center gap-3 px-4 py-2 text-sm bg-emerald-50/50">
+          <span className="h-6 w-6 rounded-full bg-emerald-600 text-white text-xs font-bold inline-flex items-center justify-center shrink-0">A</span>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium">Partida — Armazém</div>
+            <div className="text-xs text-muted-foreground truncate">{WAREHOUSE_ADDRESS}</div>
+          </div>
+        </li>
+        {stops.map((s, i) => {
+          const isSelected = s.id === selectedId;
+          return (
+            <li
+              key={s.id}
+              onClick={() => selectStop(isSelected ? null : s.id)}
+              className={`flex items-center gap-3 px-4 py-2 text-sm cursor-pointer transition-colors ${
+                isSelected
+                  ? "bg-primary/10 border-l-4 border-l-primary pl-3"
+                  : "hover:bg-muted/40 border-l-4 border-l-transparent pl-3"
+              }`}
+            >
+              <span
+                className={`h-6 w-6 rounded-full text-xs font-bold inline-flex items-center justify-center shrink-0 transition-transform ${
+                  isSelected
+                    ? "bg-primary text-primary-foreground scale-110 ring-2 ring-primary/30"
+                    : "bg-primary/80 text-primary-foreground"
+                }`}
+              >
+                {i + 1}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className={`truncate ${isSelected ? "font-semibold" : "font-medium"}`}>{s.label}</div>
+                <div className="text-xs text-muted-foreground truncate">{s.full}</div>
+              </div>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.full)}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs text-primary hover:underline shrink-0"
+              >
+                Ver ↗
+              </a>
+            </li>
+          );
+        })}
+        <li className="flex items-center gap-3 px-4 py-2 text-sm bg-emerald-50/50">
+          <span className="h-6 w-6 rounded-full bg-emerald-600 text-white text-xs font-bold inline-flex items-center justify-center shrink-0">B</span>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium">Regresso — Armazém</div>
+            <div className="text-xs text-muted-foreground truncate">{WAREHOUSE_ADDRESS}</div>
+          </div>
+        </li>
+      </ol>
+    </Card>
+  );
 }
 
 function RouteSimulationMap({
@@ -333,102 +465,18 @@ function RouteDetail() {
       </Card>
 
       {deliveries.length > 0 && (() => {
-        const stops: Stop[] = deliveries.map((d: any) => ({
+        const rawStops: Stop[] = deliveries.map((d: any) => ({
           id: d.id,
           label: `#${d.order_number} · ${d.customer_name}`,
           full: `${d.address}${d.zip_code ? `, ${d.zip_code}` : ""}${d.city ? ` ${d.city}` : ""}`.trim(),
         }));
-        const origin = encodeURIComponent(WAREHOUSE_ADDRESS);
-        const fullUrl =
-          `https://www.google.com/maps/dir/?api=1` +
-          `&origin=${origin}` +
-          `&destination=${origin}` +
-          `&travelmode=driving` +
-          `&waypoints=${stops.map((s) => encodeURIComponent(s.full)).join("|")}`;
-        const selectedIdx = stops.findIndex((s) => s.id === selectedId);
-        const selectedStop = selectedIdx >= 0 ? stops[selectedIdx] : null;
-
         return (
-          <Card className="p-0 overflow-hidden">
-            <div className="px-4 py-3 border-b flex items-center justify-between flex-wrap gap-2 bg-muted/30">
-              <div>
-                <div className="text-sm font-medium">Simulação do trajeto</div>
-                <div className="text-xs text-muted-foreground">
-                  {selectedStop
-                    ? <>Troço {selectedIdx === 0 ? "Armazém" : `paragem ${selectedIdx}`} → <span className="font-medium text-foreground">{selectedStop.label}</span></>
-                    : <>{stops.length} paragens · Armazém → entregas → Armazém</>}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {selectedStop && (
-                  <Button size="sm" variant="ghost" onClick={() => setSelectedId(null)}>
-                    Ver rota completa
-                  </Button>
-                )}
-                <a href={fullUrl} target="_blank" rel="noreferrer">
-                  <Button size="sm">
-                    <MapPin className="h-4 w-4 mr-1" /> Abrir trajeto ↗
-                  </Button>
-                </a>
-              </div>
-            </div>
-
-            <RouteSimulationMap stops={stops} selectedId={selectedId} />
-
-            <ol className="divide-y">
-              <li className="flex items-center gap-3 px-4 py-2 text-sm bg-emerald-50/50">
-                <span className="h-6 w-6 rounded-full bg-emerald-600 text-white text-xs font-bold inline-flex items-center justify-center shrink-0">A</span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium">Partida — Armazém</div>
-                  <div className="text-xs text-muted-foreground truncate">{WAREHOUSE_ADDRESS}</div>
-                </div>
-              </li>
-              {stops.map((s, i) => {
-                const isSelected = s.id === selectedId;
-                return (
-                  <li
-                    key={s.id}
-                    onClick={() => selectStop(isSelected ? null : s.id)}
-                    className={`flex items-center gap-3 px-4 py-2 text-sm cursor-pointer transition-colors ${
-                      isSelected
-                        ? "bg-primary/10 border-l-4 border-l-primary pl-3"
-                        : "hover:bg-muted/40 border-l-4 border-l-transparent pl-3"
-                    }`}
-                  >
-                    <span
-                      className={`h-6 w-6 rounded-full text-xs font-bold inline-flex items-center justify-center shrink-0 transition-transform ${
-                        isSelected
-                          ? "bg-primary text-primary-foreground scale-110 ring-2 ring-primary/30"
-                          : "bg-primary/80 text-primary-foreground"
-                      }`}
-                    >
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className={`truncate ${isSelected ? "font-semibold" : "font-medium"}`}>{s.label}</div>
-                      <div className="text-xs text-muted-foreground truncate">{s.full}</div>
-                    </div>
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.full)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-xs text-primary hover:underline shrink-0"
-                    >
-                      Ver ↗
-                    </a>
-                  </li>
-                );
-              })}
-              <li className="flex items-center gap-3 px-4 py-2 text-sm bg-emerald-50/50">
-                <span className="h-6 w-6 rounded-full bg-emerald-600 text-white text-xs font-bold inline-flex items-center justify-center shrink-0">B</span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium">Regresso — Armazém</div>
-                  <div className="text-xs text-muted-foreground truncate">{WAREHOUSE_ADDRESS}</div>
-                </div>
-              </li>
-            </ol>
-          </Card>
+          <RouteSimulationSection
+            rawStops={rawStops}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+            selectStop={selectStop}
+          />
         );
       })()}
 

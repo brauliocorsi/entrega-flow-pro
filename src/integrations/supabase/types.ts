@@ -295,6 +295,39 @@ export type Database = {
           },
         ]
       }
+      staff: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["staff_kind"]
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["staff_kind"]
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["staff_kind"]
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -313,6 +346,36 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          plate: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          plate?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          plate?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -349,6 +412,7 @@ export type Database = {
         | "cheia"
         | "fechada"
         | "concluida"
+      staff_kind: "motorista" | "auxiliar"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -493,6 +557,7 @@ export const Constants = {
         "fechada",
         "concluida",
       ],
+      staff_kind: ["motorista", "auxiliar"],
     },
   },
 } as const

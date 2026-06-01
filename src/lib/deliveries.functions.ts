@@ -116,6 +116,26 @@ export const cancelDelivery = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateDeliveryMeta = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        volume_m3: z.number().min(0).max(100),
+        estimated_minutes: z.number().int().min(5).max(480),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("scheduled_deliveries")
+      .update({ volume_m3: data.volume_m3, estimated_minutes: data.estimated_minutes })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 const CloseRouteInput = z.object({
   routeId: z.string().uuid(),
   outcomes: z.array(

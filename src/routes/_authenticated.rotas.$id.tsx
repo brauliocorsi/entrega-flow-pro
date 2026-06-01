@@ -132,11 +132,11 @@ function RouteDetail() {
           <Card className="p-0 overflow-hidden">
             <div className="px-4 py-3 border-b flex items-center justify-between flex-wrap gap-2 bg-muted/30">
               <div>
-                <div className="text-sm font-medium">Trajeto no Google Maps</div>
+              <div className="text-sm font-medium">Simulação do trajeto</div>
                 <div className="text-xs text-muted-foreground">
                   {selectedStop
-                    ? <>A focar: <span className="font-medium text-foreground">{selectedStop.label}</span></>
-                    : <>{stops.length} paragens · saída e regresso a {WAREHOUSE_ADDRESS}</>}
+                    ? <>Leg {selectedIdx === 0 ? "Armazém" : `paragem ${selectedIdx}`} → <span className="font-medium text-foreground">{selectedStop.label}</span></>
+                    : <>{stops.length} paragens · Armazém → entregas → Armazém</>}
                 </div>
               </div>
               <div className="flex gap-2">

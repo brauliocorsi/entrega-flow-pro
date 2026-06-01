@@ -146,15 +146,84 @@ function AgendarPage() {
           )}
 
           {orderData?.order && (
-            <div className="border rounded-md p-4 bg-muted/30 space-y-2">
-              <div className="font-semibold">{orderData.order.customer_name}</div>
-              <div className="text-sm text-muted-foreground">{orderData.order.address} {orderData.order.zip_code ? `(${orderData.order.zip_code})` : ""}</div>
-              {orderData.order.phone && <div className="text-sm text-muted-foreground">Tel: {orderData.order.phone}</div>}
-              <div className="flex gap-4 text-sm pt-2">
-                <div>Total: <strong>{formatEUR(orderData.order.total_value)}</strong></div>
-                <div>Pago: {formatEUR(orderData.order.paid_value)}</div>
-                {orderData.order.remaining_value > 0 && <div className="text-rose-600">Falta: <strong>{formatEUR(orderData.order.remaining_value)}</strong></div>}
+            <div className="space-y-3">
+              <div className="border rounded-md p-4 bg-muted/30 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold">{orderData.order.customer_name}</span>
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    {orderData.order.has_assembly && (
+                      <Badge className="bg-violet-100 text-violet-800 border-violet-200">
+                        <Wrench className="h-3 w-3 mr-1" /> Montagem incluída
+                      </Badge>
+                    )}
+                    {orderData.order.has_delivery_service && (
+                      <Badge className="bg-sky-100 text-sky-800 border-sky-200">
+                        <Truck className="h-3 w-3 mr-1" /> Entrega faturada
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  {orderData.order.customer_document && (
+                    <div className="flex items-center gap-1"><FileText className="h-3 w-3" /> {orderData.order.customer_document}</div>
+                  )}
+                  {orderData.order.customer_email && (
+                    <div className="flex items-center gap-1"><Mail className="h-3 w-3" /> {orderData.order.customer_email}</div>
+                  )}
+                  {(orderData.order.mobile || orderData.order.phone) && (
+                    <div className="flex items-center gap-1"><Phone className="h-3 w-3" /> {orderData.order.mobile || orderData.order.phone}</div>
+                  )}
+                  <div className="flex items-start gap-1 sm:col-span-2">
+                    <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+                    <span>
+                      {orderData.order.address}
+                      {orderData.order.address_complement && `, ${orderData.order.address_complement}`}
+                      {orderData.order.zip_code && ` · ${orderData.order.zip_code}`}
+                      {orderData.order.city && ` ${orderData.order.city}`}
+                      {orderData.order.state && ` (${orderData.order.state})`}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm pt-1 border-t">
+                  <div>Total: <strong>{formatEUR(orderData.order.total_value)}</strong></div>
+                  <div className="text-muted-foreground">Pago: {formatEUR(orderData.order.paid_value)}</div>
+                  {orderData.order.shipping > 0 && <div className="text-muted-foreground">Frete: {formatEUR(orderData.order.shipping)}</div>}
+                  {orderData.order.discount > 0 && <div className="text-muted-foreground">Desc.: {formatEUR(orderData.order.discount)}</div>}
+                  {orderData.order.remaining_value > 0 && <div className="text-rose-600">Falta: <strong>{formatEUR(orderData.order.remaining_value)}</strong></div>}
+                </div>
+                {orderData.order.observations && (
+                  <div className="text-xs text-muted-foreground border-t pt-2">
+                    <strong>Obs.:</strong> {orderData.order.observations}
+                  </div>
+                )}
               </div>
+
+              {orderData.order.items.length > 0 && (
+                <div className="border rounded-md overflow-hidden">
+                  <div className="px-3 py-2 bg-muted/50 text-xs font-medium flex items-center gap-1">
+                    <Package className="h-3 w-3" /> Produtos e serviços ({orderData.order.items.length})
+                  </div>
+                  <div className="divide-y">
+                    {orderData.order.items.map((it, i) => (
+                      <div key={i} className="px-3 py-2 text-sm flex justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate">{it.description}</span>
+                            {it.kind === "montagem" && <Badge variant="outline" className="text-[10px] border-violet-300 text-violet-700">Montagem</Badge>}
+                            {it.kind === "entrega" && <Badge variant="outline" className="text-[10px] border-sky-300 text-sky-700">Entrega</Badge>}
+                            {it.kind === "servico" && <Badge variant="outline" className="text-[10px]">Serviço</Badge>}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{it.quantity} × {formatEUR(it.price)}</div>
+                        </div>
+                        <div className="font-medium tabular-nums">{formatEUR(it.total)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

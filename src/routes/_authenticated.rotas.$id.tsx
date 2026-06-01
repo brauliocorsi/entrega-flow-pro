@@ -454,14 +454,34 @@ function RouteDetail() {
             )}
           </div>
         </div>
-        <div className="mt-4">
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-muted-foreground">Ocupação</span>
-            <span className="font-medium">{Number(r.current_volume_m3).toFixed(1)} / {Number(r.max_capacity_m3).toFixed(1)} m³</span>
+        <div className="mt-4 grid sm:grid-cols-2 gap-4">
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-muted-foreground">Volume</span>
+              <span className="font-medium">{Number(r.current_volume_m3).toFixed(1)} / {Number(r.max_capacity_m3).toFixed(1)} m³</span>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className={`h-full ${pct >= 100 ? "bg-rose-500" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+            </div>
           </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div className={`h-full ${pct >= 100 ? "bg-rose-500" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
-          </div>
+          {(() => {
+            const usedMin = deliveries
+              .filter((dd: any) => !["cancelado", "reagendado"].includes(dd.status))
+              .reduce((a: number, dd: any) => a + Number(dd.estimated_minutes ?? 0), 0);
+            const maxMin = Number((r as any).max_minutes ?? 480);
+            const tPct = Math.min(100, maxMin > 0 ? (usedMin / maxMin) * 100 : 0);
+            return (
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-muted-foreground">Tempo</span>
+                  <span className="font-medium">{usedMin} / {maxMin} min</span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className={`h-full ${tPct >= 100 ? "bg-rose-500" : tPct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${tPct}%` }} />
+                </div>
+              </div>
+            );
+          })()}
         </div>
         <div className="mt-3 text-xs text-muted-foreground">
           Ponto de partida: <span className="font-medium text-foreground">{WAREHOUSE_ADDRESS}</span>

@@ -156,7 +156,7 @@ function RouteDetail() {
             <iframe
               key={selectedId ?? "all"}
               title="Mapa da rota"
-              className="w-full h-[320px] border-0"
+              className="w-full h-[420px] border-0"
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
               src={embedSrc}

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getRouteSimulation, getRouteWithDeliveries, listRoutes } from "@/lib/routes.functions";
+import { getRouteSimulation, getRouteWithDeliveries, listRoutes, updateRouteFleet } from "@/lib/routes.functions";
+import { useAuth } from "@/hooks/use-auth";
 import {
   updateDeliveryMeta,
   refreshDeliveryPayload,

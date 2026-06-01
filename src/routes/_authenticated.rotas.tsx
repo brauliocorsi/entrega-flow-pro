@@ -277,11 +277,18 @@ function RouteCard({ r, code }: { r: any; code?: string }) {
             <div className="font-semibold flex items-center gap-1.5 truncate">
               <MapPin className="h-4 w-4 text-primary shrink-0" /> {r.zone}
             </div>
-            {r.driver && (
-              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                <User className="h-3 w-3" /> {r.driver}
-              </div>
-            )}
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              {code && (
+                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 tracking-wide">
+                  {code}
+                </span>
+              )}
+              {r.driver && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <User className="h-3 w-3" /> {r.driver}
+                </span>
+              )}
+            </div>
           </div>
           <Badge className={`${ROUTE_STATUS_TONE[r.status]} shrink-0`}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
         </div>

@@ -52,30 +52,43 @@ function detectKind(desc: string): OrderItemDTO["kind"] {
   return "produto";
 }
 
-function normalizeOrder(payload: any, orderNumber: string): OrderDTO {
-  const p = payload?.data ?? payload?.pedido ?? payload?.venda ?? payload;
-  const cliente = p?.cliente ?? p?.customer ?? {};
-  const endereco = cliente?.endereco ?? p?.endereco ?? {};
+function normalizeOrder(
+  vendaPayload: any,
+  clientePayload: any,
+  orderNumber: string,
+): OrderDTO {
+  const p = vendaPayload?.data ?? vendaPayload?.pedido ?? vendaPayload?.venda ?? vendaPayload ?? {};
+  const cliente = clientePayload?.data ?? clientePayload ?? {};
+
+  // Address: prefer venda.enderecos[0], fallback to cliente.enderecos[0]
+  const vendaEndArr = Array.isArray(p?.enderecos) ? p.enderecos : [];
+  const cliEndArr = Array.isArray(cliente?.enderecos) ? cliente.enderecos : [];
+  const endNode = vendaEndArr[0]?.endereco ?? cliEndArr[0]?.endereco ?? {};
 
   const total = Number(p?.valor_total ?? p?.total ?? p?.valor ?? 0);
-  const pago = Number(p?.valor_pago ?? p?.pago ?? 0);
-  const desconto = Number(p?.desconto ?? p?.valor_desconto ?? 0);
-  const frete = Number(p?.frete ?? p?.valor_frete ?? p?.transporte ?? 0);
+  const desconto = Number(p?.desconto_valor ?? p?.desconto ?? 0);
+  const frete = Number(p?.valor_frete ?? p?.frete ?? 0);
 
-  const rawItems = Array.isArray(p?.produtos)
-    ? p.produtos
-    : Array.isArray(p?.itens)
-      ? p.itens
-      : [];
+  // Pagamentos: somar valores cuja observação indica recebido (heurística)
+  const pagamentos = Array.isArray(p?.pagamentos) ? p.pagamentos : [];
+  const pago = pagamentos.reduce((acc: number, w: any) => {
+    const pay = w?.pagamento ?? w ?? {};
+    const obs = String(pay?.observacao ?? "").toLowerCase();
+    const isPaid = /pago|recebid|liquidad/.test(obs);
+    return isPaid ? acc + Number(pay?.valor ?? 0) : acc;
+  }, 0);
+
+  const rawItems = Array.isArray(p?.produtos) ? p.produtos : Array.isArray(p?.itens) ? p.itens : [];
   const rawServices = Array.isArray(p?.servicos) ? p.servicos : [];
 
   const items: OrderItemDTO[] = [
-    ...rawItems.map((it: any): OrderItemDTO => {
+    ...rawItems.map((wrap: any): OrderItemDTO => {
+      const it = wrap?.produto ?? wrap ?? {};
       const desc = String(
-        it?.produto?.nome ?? it?.descricao ?? it?.nome ?? it?.produto ?? "Item",
+        it?.nome_produto ?? it?.nome ?? it?.descricao ?? it?.produto ?? "Produto",
       );
       const qty = Number(it?.quantidade ?? it?.qtd ?? 1);
-      const price = Number(it?.valor ?? it?.valor_unitario ?? it?.preco ?? 0);
+      const price = Number(it?.valor_venda ?? it?.valor ?? it?.valor_unitario ?? it?.preco ?? 0);
       return {
         description: desc,
         quantity: qty,
@@ -84,10 +97,11 @@ function normalizeOrder(payload: any, orderNumber: string): OrderDTO {
         kind: detectKind(desc),
       };
     }),
-    ...rawServices.map((it: any): OrderItemDTO => {
-      const desc = String(it?.servico?.nome ?? it?.descricao ?? it?.nome ?? "Serviço");
+    ...rawServices.map((wrap: any): OrderItemDTO => {
+      const it = wrap?.servico ?? wrap ?? {};
+      const desc = String(it?.nome_servico ?? it?.nome ?? it?.descricao ?? "Serviço");
       const qty = Number(it?.quantidade ?? it?.qtd ?? 1);
-      const price = Number(it?.valor ?? it?.valor_unitario ?? it?.preco ?? 0);
+      const price = Number(it?.valor_venda ?? it?.valor ?? it?.valor_unitario ?? it?.preco ?? 0);
       return {
         description: desc,
         quantity: qty,
@@ -103,25 +117,43 @@ function normalizeOrder(payload: any, orderNumber: string): OrderDTO {
   const hasAssembly =
     items.some((i) => i.kind === "montagem") ||
     (obsText ? /montagem|montar|instala/i.test(obsText) : false);
-  const hasDeliveryService =
-    items.some((i) => i.kind === "entrega") || frete > 0;
+  const hasDeliveryService = items.some((i) => i.kind === "entrega") || frete > 0;
+
+  // Heurística para extrair CP português ("4715-105") de qualquer campo de morada
+  const allAddrStr = [
+    endNode?.logradouro,
+    endNode?.numero,
+    endNode?.complemento,
+    endNode?.bairro,
+    endNode?.nome_cidade,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const cpMatch = allAddrStr.match(/\b(\d{4}-\d{3})\b/);
+  const zipCode = String(endNode?.cep ?? endNode?.codigo_postal ?? "") || (cpMatch ? cpMatch[1] : null);
+
+  const customerName = String(
+    cliente?.nome ?? cliente?.razao_social ?? p?.nome_cliente ?? "—",
+  );
+  const customerDoc =
+    String(cliente?.cpf ?? cliente?.cnpj ?? cliente?.nif ?? cliente?.documento ?? "") || null;
 
   return {
     order_number: String(p?.codigo ?? p?.numero ?? p?.id ?? orderNumber),
     internal_id: p?.id ? String(p.id) : null,
-    date: p?.data ?? p?.data_venda ?? p?.created_at ?? null,
-    status: p?.situacao ?? p?.status ?? null,
-    customer_name: String(cliente?.nome ?? cliente?.name ?? p?.cliente_nome ?? "—"),
-    customer_document: String(cliente?.cpf_cnpj ?? cliente?.nif ?? cliente?.documento ?? "") || null,
-    customer_email: String(cliente?.email ?? "") || null,
-    address: [endereco?.logradouro ?? endereco?.rua ?? cliente?.endereco, endereco?.numero, endereco?.bairro]
-      .filter(Boolean)
-      .join(", ") || String(cliente?.endereco ?? "—"),
-    address_complement: String(endereco?.complemento ?? "") || null,
-    neighborhood: String(endereco?.bairro ?? "") || null,
-    zip_code: String(endereco?.cep ?? endereco?.codigo_postal ?? cliente?.cep ?? "") || null,
-    city: String(endereco?.cidade ?? endereco?.localidade ?? cliente?.cidade ?? "") || null,
-    state: String(endereco?.estado ?? endereco?.uf ?? "") || null,
+    date: p?.data ?? p?.data_venda ?? p?.cadastrado_em ?? null,
+    status: p?.nome_situacao ?? p?.situacao ?? p?.status ?? null,
+    customer_name: customerName,
+    customer_document: customerDoc,
+    customer_email: String(cliente?.email ?? cliente?.email_acesso ?? "") || null,
+    address:
+      [endNode?.logradouro, endNode?.numero].filter(Boolean).join(", ") ||
+      String(endNode?.logradouro ?? "—"),
+    address_complement: String(endNode?.complemento ?? "") || null,
+    neighborhood: String(endNode?.bairro ?? "") || null,
+    zip_code: zipCode,
+    city: String(endNode?.nome_cidade ?? endNode?.cidade ?? endNode?.localidade ?? "") || null,
+    state: String(endNode?.estado ?? endNode?.uf ?? "") || null,
     phone: String(cliente?.telefone ?? cliente?.phone ?? "") || null,
     mobile: String(cliente?.celular ?? cliente?.telemovel ?? "") || null,
     total_value: total,
@@ -243,7 +275,21 @@ export const fetchOrder = createServerFn({ method: "POST" })
           error: `Encomenda ${data.orderNumber} não encontrada no GestãoClick`,
         };
       }
-      const dto = normalizeOrder(detail.json, data.orderNumber);
+      const clienteId =
+        detail.json?.data?.cliente_id ?? arr[0]?.cliente_id ?? null;
+      let clientePayload: any = null;
+      if (clienteId) {
+        try {
+          const cli = await gcFetch(
+            `${base}/api/clientes/${encodeURIComponent(String(clienteId))}`,
+            headers,
+          );
+          clientePayload = cli.json;
+        } catch {
+          // ignore - normalizeOrder will fall back to venda fields
+        }
+      }
+      const dto = normalizeOrder(detail.json, clientePayload, data.orderNumber);
 
       const { data: existing } = await context.supabase
         .from("scheduled_deliveries")

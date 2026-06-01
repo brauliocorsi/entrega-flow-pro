@@ -175,6 +175,38 @@ export const updateDeliveryMeta = createServerFn({ method: "POST" })
     return { ok: true, total_volume_m3: newVol, total_minutes: newMin };
   });
 
+export const refreshDeliveryPayload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("scheduled_deliveries")
+      .select("id, order_number")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Entrega não encontrada");
+
+    const res = await fetchOrder({ data: { orderNumber: row.order_number } });
+    if (!res.order) throw new Error(res.error ?? "Encomenda não encontrada no GestãoClick");
+
+    const o = res.order;
+    const payload = {
+      items: o.items ?? [],
+      has_assembly: o.has_assembly ?? false,
+      has_delivery_service: o.has_delivery_service ?? false,
+      observations: o.observations ?? null,
+      status: o.status ?? null,
+      date: o.date ?? null,
+    };
+    const { error: uErr } = await context.supabase
+      .from("scheduled_deliveries")
+      .update({ order_payload: payload })
+      .eq("id", data.id);
+    if (uErr) throw new Error(uErr.message);
+    return { ok: true, items: payload.items.length };
+  });
+
 const CloseRouteInput = z.object({
   routeId: z.string().uuid(),
   outcomes: z.array(

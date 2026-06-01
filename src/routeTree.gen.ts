@@ -17,6 +17,7 @@ import { Route as AuthenticatedAgendarRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedRotasIdRouteImport } from './routes/_authenticated.rotas.$id'
 import { Route as AuthenticatedAdminTemplatesRouteImport } from './routes/_authenticated.admin.templates'
 import { Route as ApiPublicCronGenerateRoutesRouteImport } from './routes/api/public/cron/generate-routes'
+import { Route as AuthenticatedRotasIdFecharRouteImport } from './routes/_authenticated.rotas.$id.fechar'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -59,6 +60,12 @@ const ApiPublicCronGenerateRoutesRoute =
     path: '/api/public/cron/generate-routes',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedRotasIdFecharRoute =
+  AuthenticatedRotasIdFecharRouteImport.update({
+    id: '/fechar',
+    path: '/fechar',
+    getParentRoute: () => AuthenticatedRotasIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -66,7 +73,8 @@ export interface FileRoutesByFullPath {
   '/agendar': typeof AuthenticatedAgendarRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
-  '/rotas/$id': typeof AuthenticatedRotasIdRoute
+  '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
+  '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
 export interface FileRoutesByTo {
@@ -75,7 +83,8 @@ export interface FileRoutesByTo {
   '/agendar': typeof AuthenticatedAgendarRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
-  '/rotas/$id': typeof AuthenticatedRotasIdRoute
+  '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
+  '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
 export interface FileRoutesById {
@@ -86,7 +95,8 @@ export interface FileRoutesById {
   '/_authenticated/agendar': typeof AuthenticatedAgendarRoute
   '/_authenticated/rotas': typeof AuthenticatedRotasRouteWithChildren
   '/_authenticated/admin/templates': typeof AuthenticatedAdminTemplatesRoute
-  '/_authenticated/rotas/$id': typeof AuthenticatedRotasIdRoute
+  '/_authenticated/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
+  '/_authenticated/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
 export interface FileRouteTypes {
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/rotas'
     | '/admin/templates'
     | '/rotas/$id'
+    | '/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/rotas'
     | '/admin/templates'
     | '/rotas/$id'
+    | '/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
   id:
     | '__root__'
@@ -117,6 +129,7 @@ export interface FileRouteTypes {
     | '/_authenticated/rotas'
     | '/_authenticated/admin/templates'
     | '/_authenticated/rotas/$id'
+    | '/_authenticated/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
   fileRoutesById: FileRoutesById
 }
@@ -185,15 +198,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronGenerateRoutesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/rotas/$id/fechar': {
+      id: '/_authenticated/rotas/$id/fechar'
+      path: '/fechar'
+      fullPath: '/rotas/$id/fechar'
+      preLoaderRoute: typeof AuthenticatedRotasIdFecharRouteImport
+      parentRoute: typeof AuthenticatedRotasIdRoute
+    }
   }
 }
 
+interface AuthenticatedRotasIdRouteChildren {
+  AuthenticatedRotasIdFecharRoute: typeof AuthenticatedRotasIdFecharRoute
+}
+
+const AuthenticatedRotasIdRouteChildren: AuthenticatedRotasIdRouteChildren = {
+  AuthenticatedRotasIdFecharRoute: AuthenticatedRotasIdFecharRoute,
+}
+
+const AuthenticatedRotasIdRouteWithChildren =
+  AuthenticatedRotasIdRoute._addFileChildren(AuthenticatedRotasIdRouteChildren)
+
 interface AuthenticatedRotasRouteChildren {
-  AuthenticatedRotasIdRoute: typeof AuthenticatedRotasIdRoute
+  AuthenticatedRotasIdRoute: typeof AuthenticatedRotasIdRouteWithChildren
 }
 
 const AuthenticatedRotasRouteChildren: AuthenticatedRotasRouteChildren = {
-  AuthenticatedRotasIdRoute: AuthenticatedRotasIdRoute,
+  AuthenticatedRotasIdRoute: AuthenticatedRotasIdRouteWithChildren,
 }
 
 const AuthenticatedRotasRouteWithChildren =

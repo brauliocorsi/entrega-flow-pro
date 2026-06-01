@@ -74,6 +74,29 @@ function RouteDetail() {
         </div>
       </Card>
 
+      {deliveries.length > 0 && (
+        <Card className="p-0 overflow-hidden">
+          <div className="px-4 py-2 border-b flex items-center justify-between flex-wrap gap-2 bg-muted/30">
+            <div className="text-sm font-medium">Trajeto sugerido (Google Maps)</div>
+            <a
+              href={`https://www.google.com/maps/dir/${encodeURIComponent(WAREHOUSE_ADDRESS)}/${deliveries.map((d: any) => encodeURIComponent(`${d.address} ${d.zip_code ?? ""} ${d.city ?? ""}`.trim())).join("/")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-primary hover:underline"
+            >
+              Abrir no Google Maps ↗
+            </a>
+          </div>
+          <iframe
+            title="Mapa da rota"
+            className="w-full h-[360px] border-0"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            src={`https://www.google.com/maps?output=embed&saddr=${encodeURIComponent(WAREHOUSE_ADDRESS)}&daddr=${deliveries.map((d: any) => encodeURIComponent(`${d.address} ${d.zip_code ?? ""} ${d.city ?? ""}`.trim())).join("+to:")}`}
+          />
+        </Card>
+      )}
+
       <h2 className="font-semibold mt-6">Entregas ({deliveries.length})</h2>
       {deliveries.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">Sem entregas agendadas.</Card>

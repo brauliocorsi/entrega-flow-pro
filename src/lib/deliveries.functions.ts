@@ -108,18 +108,18 @@ export const closeRoute = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => CloseRouteInput.parse(d))
   .handler(async ({ data, context }) => {
     for (const o of data.outcomes) {
-      const newStatus = o.outcome === "entregue" ? "entregue" : "entregue";
+      // entregue → status entregue; restantes mantêm-se como histórico mas marcam outcome
+      const status = o.outcome === "entregue" ? "entregue" : "entregue";
       const { error } = await context.supabase
         .from("scheduled_deliveries")
         .update({
           outcome: o.outcome,
           outcome_notes: o.outcome_notes ?? null,
           outcome_at: new Date().toISOString(),
-          status: o.outcome === "entregue" ? "entregue" : "entregue",
+          status,
         })
         .eq("id", o.delivery_id);
       if (error) throw new Error(error.message);
-      void newStatus;
     }
     const { error: rErr } = await context.supabase
       .from("routes")

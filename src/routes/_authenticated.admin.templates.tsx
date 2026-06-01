@@ -231,7 +231,7 @@ function AdminTemplatesPage() {
                     {t.default_driver ? ` · ${t.default_driver}` : ""}
                   </p>
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {t.zip_prefixes.map((p) => (
+                    {t.zip_prefixes.map((p: string) => (
                       <Badge key={p} variant="outline" className="text-xs">CP {p}</Badge>
                     ))}
                   </div>

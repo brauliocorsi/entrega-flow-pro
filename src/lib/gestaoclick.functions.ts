@@ -16,6 +16,13 @@ export interface OrderDTO {
   
 }
 
+export interface FetchOrderResult {
+  order: OrderDTO | null;
+  existingActiveDelivery: any | null;
+  previousUnfinished: any | null;
+  error: string | null;
+}
+
 function normalizeOrder(payload: any, orderNumber: string): OrderDTO {
   // GestãoClick payloads vary; try common shapes.
   const p = payload?.data ?? payload?.pedido ?? payload?.venda ?? payload;
@@ -47,6 +54,29 @@ function normalizeOrder(payload: any, orderNumber: string): OrderDTO {
   };
 }
 
+function normalizeBaseUrl(baseUrl: string): string {
+  const trimmed = baseUrl.trim().replace(/\/$/, "");
+
+  try {
+    const url = new URL(trimmed);
+    const hostname = url.hostname.toLowerCase();
+    const pathname = url.pathname.replace(/\/$/, "");
+
+    if (
+      hostname === "gestaoclick.com" ||
+      hostname === "www.gestaoclick.com" ||
+      pathname === "/integracao_api/inicio" ||
+      pathname === "/integracao_api/login"
+    ) {
+      return "https://api.gestaoclick.com";
+    }
+
+    return `${url.origin}${pathname}`;
+  } catch {
+    return trimmed.replace(/\/integracao_api\/(inicio|login)$/, "");
+  }
+}
+
 async function gcFetch(url: string, headers: Record<string, string>): Promise<{ status: number; json: any }> {
   const res = await fetch(url, { headers });
   const text = await res.text();
@@ -72,65 +102,95 @@ async function gcFetch(url: string, headers: Record<string, string>): Promise<{ 
 export const fetchOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ orderNumber: z.string().min(1).max(40) }).parse(d))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }): Promise<FetchOrderResult> => {
     const baseUrl = process.env.GESTAOCLICK_BASE_URL;
     const apiKey = process.env.GESTAOCLICK_API_KEY;
     const email = process.env.GESTAOCLICK_EMAIL;
     if (!baseUrl || !apiKey || !email) {
-      throw new Error("Credenciais GestãoClick em falta");
+      return {
+        order: null,
+        existingActiveDelivery: null,
+        previousUnfinished: null,
+        error: "Credenciais GestãoClick em falta",
+      };
     }
-    const base = baseUrl.replace(/\/$/, "");
+    const base = normalizeBaseUrl(baseUrl);
     const headers = {
       "access-token": apiKey,
       "secret-access-token": email,
       Accept: "application/json",
     };
 
-    // 1) Listar vendas filtrando pelo código (número visível ao utilizador)
-    const list = await gcFetch(
-      `${base}/api/vendas?codigo=${encodeURIComponent(data.orderNumber)}`,
-      headers,
-    );
-    const arr: any[] = Array.isArray(list.json?.data)
-      ? list.json.data
-      : Array.isArray(list.json)
-        ? list.json
-        : [];
-    if (list.status === 404 || arr.length === 0) {
-      throw new Error(`Encomenda ${data.orderNumber} não encontrada no GestãoClick`);
+    try {
+      const list = await gcFetch(
+        `${base}/api/vendas?codigo=${encodeURIComponent(data.orderNumber)}`,
+        headers,
+      );
+      const arr: any[] = Array.isArray(list.json?.data)
+        ? list.json.data
+        : Array.isArray(list.json)
+          ? list.json
+          : [];
+      if (list.status === 404 || arr.length === 0) {
+        return {
+          order: null,
+          existingActiveDelivery: null,
+          previousUnfinished: null,
+          error: `Encomenda ${data.orderNumber} não encontrada no GestãoClick`,
+        };
+      }
+      const vendaId = arr[0]?.id ?? arr[0]?.venda?.id;
+      if (!vendaId) {
+        return {
+          order: null,
+          existingActiveDelivery: null,
+          previousUnfinished: null,
+          error: `Encomenda ${data.orderNumber} sem id interno no GestãoClick`,
+        };
+      }
+
+      const detail = await gcFetch(
+        `${base}/api/vendas/${encodeURIComponent(String(vendaId))}`,
+        headers,
+      );
+      if (detail.status === 404 || !detail.json) {
+        return {
+          order: null,
+          existingActiveDelivery: null,
+          previousUnfinished: null,
+          error: `Encomenda ${data.orderNumber} não encontrada no GestãoClick`,
+        };
+      }
+      const dto = normalizeOrder(detail.json, data.orderNumber);
+
+      const { data: existing } = await context.supabase
+        .from("scheduled_deliveries")
+        .select("id, route_id, status, routes:route_id(route_date, zone)")
+        .eq("order_number", dto.order_number)
+        .in("status", ["agendado", "confirmado"])
+        .maybeSingle();
+
+      const { data: previousUnfinished } = await context.supabase
+        .from("scheduled_deliveries")
+        .select("id, route_id, outcome, outcome_notes, routes:route_id(route_date, zone)")
+        .eq("order_number", dto.order_number)
+        .in("outcome", ["nao_entregue", "entregue_parcial"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      return {
+        order: dto,
+        existingActiveDelivery: existing ?? null,
+        previousUnfinished: previousUnfinished ?? null,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        order: null,
+        existingActiveDelivery: null,
+        previousUnfinished: null,
+        error: error instanceof Error ? error.message : "Falha ao consultar GestãoClick",
+      };
     }
-    const vendaId = arr[0]?.id ?? arr[0]?.venda?.id;
-    if (!vendaId) {
-      throw new Error(`Encomenda ${data.orderNumber} sem id interno no GestãoClick`);
-    }
-
-    // 2) Visualizar venda completa por id interno
-    const detail = await gcFetch(
-      `${base}/api/vendas/${encodeURIComponent(String(vendaId))}`,
-      headers,
-    );
-    if (detail.status === 404 || !detail.json) {
-      throw new Error(`Encomenda ${data.orderNumber} não encontrada no GestãoClick`);
-    }
-    const dto = normalizeOrder(detail.json, data.orderNumber);
-
-    // check existing active scheduling
-    const { data: existing } = await context.supabase
-      .from("scheduled_deliveries")
-      .select("id, route_id, status, routes:route_id(route_date, zone)")
-      .eq("order_number", dto.order_number)
-      .in("status", ["agendado", "confirmado"])
-      .maybeSingle();
-
-    // previous undelivered (for reschedule context)
-    const { data: previousUnfinished } = await context.supabase
-      .from("scheduled_deliveries")
-      .select("id, route_id, outcome, outcome_notes, routes:route_id(route_date, zone)")
-      .eq("order_number", dto.order_number)
-      .in("outcome", ["nao_entregue", "entregue_parcial"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    return { order: dto, existingActiveDelivery: existing ?? null, previousUnfinished: previousUnfinished ?? null };
   });

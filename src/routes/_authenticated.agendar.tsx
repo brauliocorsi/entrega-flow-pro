@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
-import { fetchOrder } from "@/lib/gestaoclick.functions";
+import { fetchOrder, type FetchOrderResult } from "@/lib/gestaoclick.functions";
 import { scheduleDelivery } from "@/lib/deliveries.functions";
 import { listRoutes } from "@/lib/routes.functions";
 import { Card } from "@/components/ui/card";
@@ -34,7 +34,7 @@ function AgendarPage() {
 
   const [step, setStep] = useState(1);
   const [orderNumber, setOrderNumber] = useState("");
-  const [orderData, setOrderData] = useState<any>(null);
+  const [orderData, setOrderData] = useState<FetchOrderResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState<"entrega" | "levantamento" | "recolha" | "troca">("entrega");
   const [minutes, setMinutes] = useState(30);
@@ -55,6 +55,10 @@ function AgendarPage() {
     try {
       const res = await fetchOrderFn({ data: { orderNumber } });
       setOrderData(res);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
       if (res.existingActiveDelivery) {
         toast.error("Esta encomenda já está agendada noutra rota");
       }
@@ -130,6 +134,16 @@ function AgendarPage() {
               </Button>
             </div>
           </div>
+
+          {orderData?.error && (
+            <div className="border rounded-md p-4 bg-rose-50 border-rose-200 flex gap-3">
+              <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium text-rose-900">Falha ao consultar a encomenda</p>
+                <p className="text-rose-700 mt-1">{orderData.error}</p>
+              </div>
+            </div>
+          )}
 
           {orderData?.order && (
             <div className="border rounded-md p-4 bg-muted/30 space-y-2">

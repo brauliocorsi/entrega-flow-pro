@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Truck, Calendar, Plus, Settings, LogOut, Calculator } from "lucide-react";
+import { Truck, Calendar, Plus, Settings, LogOut, Calculator, Users, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
@@ -45,7 +45,12 @@ function AuthenticatedLayout() {
               <>
                 <NavLink to="/admin/templates" active={isActive("/admin/templates")} icon={<Settings className="h-4 w-4" />} label="Templates" />
                 <NavLink to="/admin/taxas" active={isActive("/admin/taxas")} icon={<Calculator className="h-4 w-4" />} label="Taxas" />
+                <NavLink to="/admin/utilizadores" active={isActive("/admin/utilizadores")} icon={<Users className="h-4 w-4" />} label="Utilizadores" />
+                <NavLink to="/admin/otimizacao" active={isActive("/admin/otimizacao")} icon={<Sparkles className="h-4 w-4" />} label="Otimização" />
               </>
+            )}
+            {role === "logistico" && (
+              <NavLink to="/admin/otimizacao" active={isActive("/admin/otimizacao")} icon={<Sparkles className="h-4 w-4" />} label="Otimização" />
             )}
           </nav>
           <div className="hidden md:block text-xs text-muted-foreground truncate max-w-[180px]">{user.email}</div>

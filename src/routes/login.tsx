@@ -17,10 +17,8 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -31,22 +29,9 @@ function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: { display_name: name || email.split("@")[0] },
-          },
-        });
-        if (error) throw error;
-        toast.success("Conta criada. Verifica o teu email para confirmar.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Sessão iniciada");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      toast.success("Sessão iniciada");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     } finally {
@@ -66,12 +51,6 @@ function LoginPage() {
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {mode === "signup" && (
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Maria Silva" />
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vendedora@upmoveis.pt" />
@@ -81,16 +60,12 @@ function LoginPage() {
               <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "..." : mode === "signin" ? "Entrar" : "Criar conta"}
+              {loading ? "..." : "Entrar"}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            {mode === "signin" ? (
-              <button onClick={() => setMode("signup")} className="underline hover:text-foreground">Ainda não tens conta? Criar conta</button>
-            ) : (
-              <button onClick={() => setMode("signin")} className="underline hover:text-foreground">Já tens conta? Entrar</button>
-            )}
-          </div>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            As contas são criadas pelo administrador. Contacta a gestão se precisares de acesso.
+          </p>
         </CardContent>
       </Card>
     </div>

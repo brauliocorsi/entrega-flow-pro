@@ -44,6 +44,7 @@ const empty = {
   default_driver: "",
   active: true,
   notes: "",
+  color: "#3b82f6",
 };
 
 function AdminTemplatesPage() {

@@ -13,6 +13,7 @@ const TemplateInput = z.object({
   default_driver: z.string().max(100).nullable().optional(),
   active: z.boolean().default(true),
   notes: z.string().max(500).nullable().optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#3b82f6"),
 });
 
 export const listTemplates = createServerFn({ method: "GET" })
@@ -52,6 +53,7 @@ export const upsertTemplate = createServerFn({ method: "POST" })
           default_driver: data.default_driver ?? null,
           active: data.active,
           notes: data.notes ?? null,
+          color: data.color,
         })
         .eq("id", data.id);
       if (error) throw new Error(error.message);
@@ -69,6 +71,7 @@ export const upsertTemplate = createServerFn({ method: "POST" })
         default_driver: data.default_driver ?? null,
         active: data.active,
         notes: data.notes ?? null,
+        color: data.color,
       })
       .select("id")
       .single();
@@ -143,6 +146,7 @@ export async function generateRoutesShared(supabase: any, weeks: number) {
         driver: t.default_driver,
         max_capacity_m3: t.max_capacity_m3,
         max_minutes: t.max_minutes ?? 480,
+        color: t.color ?? "#3b82f6",
       });
       if (!insErr) created++;
     }

@@ -13,9 +13,11 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRotasRouteImport } from './routes/_authenticated.rotas'
+import { Route as AuthenticatedConferenciaRouteImport } from './routes/_authenticated.conferencia'
 import { Route as AuthenticatedAgendarRouteImport } from './routes/_authenticated.agendar'
 import { Route as AuthenticatedRotasIdRouteImport } from './routes/_authenticated.rotas.$id'
 import { Route as AuthenticatedAdminTemplatesRouteImport } from './routes/_authenticated.admin.templates'
+import { Route as AuthenticatedAdminTaxasRouteImport } from './routes/_authenticated.admin.taxas'
 import { Route as ApiPublicCronGenerateRoutesRouteImport } from './routes/api/public/cron/generate-routes'
 import { Route as AuthenticatedRotasIdFecharRouteImport } from './routes/_authenticated.rotas.$id.fechar'
 
@@ -38,6 +40,12 @@ const AuthenticatedRotasRoute = AuthenticatedRotasRouteImport.update({
   path: '/rotas',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedConferenciaRoute =
+  AuthenticatedConferenciaRouteImport.update({
+    id: '/conferencia',
+    path: '/conferencia',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAgendarRoute = AuthenticatedAgendarRouteImport.update({
   id: '/agendar',
   path: '/agendar',
@@ -54,6 +62,11 @@ const AuthenticatedAdminTemplatesRoute =
     path: '/admin/templates',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminTaxasRoute = AuthenticatedAdminTaxasRouteImport.update({
+  id: '/admin/taxas',
+  path: '/admin/taxas',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const ApiPublicCronGenerateRoutesRoute =
   ApiPublicCronGenerateRoutesRouteImport.update({
     id: '/api/public/cron/generate-routes',
@@ -71,7 +84,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/agendar': typeof AuthenticatedAgendarRoute
+  '/conferencia': typeof AuthenticatedConferenciaRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
@@ -81,7 +96,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/agendar': typeof AuthenticatedAgendarRoute
+  '/conferencia': typeof AuthenticatedConferenciaRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
@@ -93,7 +110,9 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/agendar': typeof AuthenticatedAgendarRoute
+  '/_authenticated/conferencia': typeof AuthenticatedConferenciaRoute
   '/_authenticated/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/_authenticated/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/_authenticated/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/_authenticated/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/_authenticated/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
@@ -105,7 +124,9 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/agendar'
+    | '/conferencia'
     | '/rotas'
+    | '/admin/taxas'
     | '/admin/templates'
     | '/rotas/$id'
     | '/rotas/$id/fechar'
@@ -115,7 +136,9 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/agendar'
+    | '/conferencia'
     | '/rotas'
+    | '/admin/taxas'
     | '/admin/templates'
     | '/rotas/$id'
     | '/rotas/$id/fechar'
@@ -126,7 +149,9 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/_authenticated/agendar'
+    | '/_authenticated/conferencia'
     | '/_authenticated/rotas'
+    | '/_authenticated/admin/taxas'
     | '/_authenticated/admin/templates'
     | '/_authenticated/rotas/$id'
     | '/_authenticated/rotas/$id/fechar'
@@ -170,6 +195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRotasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/conferencia': {
+      id: '/_authenticated/conferencia'
+      path: '/conferencia'
+      fullPath: '/conferencia'
+      preLoaderRoute: typeof AuthenticatedConferenciaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/agendar': {
       id: '/_authenticated/agendar'
       path: '/agendar'
@@ -189,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/templates'
       fullPath: '/admin/templates'
       preLoaderRoute: typeof AuthenticatedAdminTemplatesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/taxas': {
+      id: '/_authenticated/admin/taxas'
+      path: '/admin/taxas'
+      fullPath: '/admin/taxas'
+      preLoaderRoute: typeof AuthenticatedAdminTaxasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/api/public/cron/generate-routes': {
@@ -232,13 +271,17 @@ const AuthenticatedRotasRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAgendarRoute: typeof AuthenticatedAgendarRoute
+  AuthenticatedConferenciaRoute: typeof AuthenticatedConferenciaRoute
   AuthenticatedRotasRoute: typeof AuthenticatedRotasRouteWithChildren
+  AuthenticatedAdminTaxasRoute: typeof AuthenticatedAdminTaxasRoute
   AuthenticatedAdminTemplatesRoute: typeof AuthenticatedAdminTemplatesRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAgendarRoute: AuthenticatedAgendarRoute,
+  AuthenticatedConferenciaRoute: AuthenticatedConferenciaRoute,
   AuthenticatedRotasRoute: AuthenticatedRotasRouteWithChildren,
+  AuthenticatedAdminTaxasRoute: AuthenticatedAdminTaxasRoute,
   AuthenticatedAdminTemplatesRoute: AuthenticatedAdminTemplatesRoute,
 }
 
@@ -255,3 +298,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

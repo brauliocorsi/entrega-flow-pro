@@ -116,6 +116,122 @@ export const cancelDelivery = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Remover entrega da rota e devolver venda no GestãoClick para "Disponível para Entrega",
+// sem alterar quaisquer outros dados da encomenda (cliente, produtos, etc.)
+export const releaseDeliveryFromRoute = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("scheduled_deliveries")
+      .select("id, order_number, route_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Entrega não encontrada");
+
+    // tenta obter gestaoclick id via fetchOrder
+    let gcUpdate: { ok: boolean; error?: string } = { ok: false };
+    try {
+      const res = await fetchOrder({ data: { orderNumber: row.order_number } });
+      const vendaId = res.order?.internal_id;
+      if (vendaId) {
+        gcUpdate = await updateGestaoClickVendaSchedule({
+          vendaId,
+          routeDate: null,
+          statusLabel: "Disponível para Entrega",
+        });
+      }
+    } catch (e) {
+      gcUpdate = { ok: false, error: e instanceof Error ? e.message : "Falha GestãoClick" };
+    }
+
+    const { error: uErr } = await context.supabase
+      .from("scheduled_deliveries")
+      .update({ status: "cancelado" })
+      .eq("id", data.id);
+    if (uErr) throw new Error(uErr.message);
+
+    return { ok: true, gestaoclick_synced: gcUpdate.ok, gestaoclick_error: gcUpdate.error ?? null };
+  });
+
+// Transferir entrega para outra rota/data sem perder o histórico nem alterar dados da venda
+export const transferDeliveryToRoute = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), newRouteId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("scheduled_deliveries")
+      .select("id, order_number, route_id, volume_m3, estimated_minutes, status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Entrega não encontrada");
+    if (row.route_id === data.newRouteId) throw new Error("A entrega já está nesta rota");
+
+    const { data: newRoute } = await context.supabase
+      .from("routes")
+      .select("id, route_date, max_capacity_m3, current_volume_m3, max_minutes, status")
+      .eq("id", data.newRouteId)
+      .maybeSingle();
+    if (!newRoute) throw new Error("Rota destino não encontrada");
+    if (["fechada", "concluida"].includes(newRoute.status as string))
+      throw new Error("A rota destino está fechada");
+
+    // Capacidade de volume
+    if (
+      Number(newRoute.current_volume_m3) + Number(row.volume_m3) >
+      Number(newRoute.max_capacity_m3) + 0.001
+    ) {
+      throw new Error(
+        `Capacidade insuficiente na rota destino (restam ${(
+          Number(newRoute.max_capacity_m3) - Number(newRoute.current_volume_m3)
+        ).toFixed(2)} m³)`,
+      );
+    }
+
+    // Capacidade de tempo
+    const { data: siblings } = await context.supabase
+      .from("scheduled_deliveries")
+      .select("estimated_minutes, status")
+      .eq("route_id", data.newRouteId);
+    const usedMin = (siblings ?? [])
+      .filter((s) => !["cancelado", "reagendado"].includes(s.status as string))
+      .reduce((a, s) => a + Number(s.estimated_minutes ?? 0), 0);
+    if (usedMin + Number(row.estimated_minutes) > Number(newRoute.max_minutes)) {
+      throw new Error(
+        `Tempo insuficiente na rota destino (${usedMin + Number(row.estimated_minutes)} / ${newRoute.max_minutes} min)`,
+      );
+    }
+
+    const { error: uErr } = await context.supabase
+      .from("scheduled_deliveries")
+      .update({ route_id: data.newRouteId, status: "agendado" })
+      .eq("id", data.id);
+    if (uErr) throw new Error(uErr.message);
+
+    // Atualizar GestãoClick com nova data de entrega
+    let gcUpdate: { ok: boolean; error?: string } = { ok: false };
+    try {
+      const res = await fetchOrder({ data: { orderNumber: row.order_number } });
+      const vendaId = res.order?.internal_id;
+      if (vendaId) {
+        gcUpdate = await updateGestaoClickVendaSchedule({
+          vendaId,
+          routeDate: newRoute.route_date as string,
+          statusLabel: "Agendado Entrega",
+        });
+      }
+    } catch (e) {
+      gcUpdate = { ok: false, error: e instanceof Error ? e.message : "Falha GestãoClick" };
+    }
+
+    return { ok: true, gestaoclick_synced: gcUpdate.ok, gestaoclick_error: gcUpdate.error ?? null };
+  });
+
+
 export const updateDeliveryMeta = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>

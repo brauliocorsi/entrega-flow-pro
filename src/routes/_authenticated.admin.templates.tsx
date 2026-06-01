@@ -149,6 +149,7 @@ function AdminTemplatesPage() {
           default_driver: form.default_driver.trim() || null,
           active: form.active,
           notes: form.notes.trim() || null,
+          color: form.color,
         },
       });
       toast.success(editingId ? "Template atualizado" : "Template criado");

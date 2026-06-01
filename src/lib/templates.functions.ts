@@ -9,6 +9,7 @@ const TemplateInput = z.object({
   zone: z.string().min(1).max(100),
   zip_prefixes: z.array(z.string().min(1).max(8)).max(50),
   max_capacity_m3: z.number().min(1).max(200),
+  max_minutes: z.number().int().min(1).max(1440).default(480),
   default_driver: z.string().max(100).nullable().optional(),
   active: z.boolean().default(true),
   notes: z.string().max(500).nullable().optional(),

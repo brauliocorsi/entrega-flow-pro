@@ -246,11 +246,21 @@ function AdminTemplatesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Capacidade (m³)</Label>
-                <Input type="number" min={1} max={200} value={form.max_capacity_m3} onChange={(e) => setForm({ ...form, max_capacity_m3: Number(e.target.value) })} />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Capacidade (m³)</Label>
+              <Input type="number" min={1} max={200} value={form.max_capacity_m3} onChange={(e) => setForm({ ...form, max_capacity_m3: Number(e.target.value) })} />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Tempo de rota (min)</Label>
+              <Input type="number" min={1} max={1440} value={form.max_minutes} onChange={(e) => setForm({ ...form, max_minutes: Number(e.target.value) })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Motorista (opcional)</Label>
+              <Input value={form.default_driver} onChange={(e) => setForm({ ...form, default_driver: e.target.value })} />
+            </div>
+          </div>
             <div className="space-y-1.5">
               <Label>Zona</Label>
               <Input value={form.zone} onChange={(e) => setForm({ ...form, zone: e.target.value })} placeholder="Porto / Grande Porto" />

@@ -197,9 +197,19 @@ function AgendarPage() {
                   {orderData.order.remaining_value > 0 && <div className="text-rose-600">Falta: <strong>{formatEUR(orderData.order.remaining_value)}</strong></div>}
                 </div>
                 {orderData.order.observations && (
-                  <div className="text-xs text-muted-foreground border-t pt-2">
-                    <strong>Obs.:</strong> {orderData.order.observations}
-                  </div>
+                  <Collapsible open={obsOpen} onOpenChange={setObsOpen} className="border-t pt-2">
+                    <CollapsibleTrigger asChild>
+                      <button className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                        {obsOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        <span>Observações</span>
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="text-xs text-muted-foreground pt-1">
+                        {orderData.order.observations}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 )}
               </div>
 

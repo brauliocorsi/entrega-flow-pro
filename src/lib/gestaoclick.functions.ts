@@ -72,7 +72,16 @@ export const fetchOrder = createServerFn({ method: "POST" })
       const body = await res.text().catch(() => "");
       throw new Error(`GestãoClick respondeu ${res.status}: ${body.slice(0, 200)}`);
     }
-    const json = await res.json();
+    const text = await res.text();
+    let json: any;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      const snippet = text.slice(0, 200).replace(/\s+/g, " ");
+      throw new Error(
+        `GestãoClick devolveu resposta inválida (não-JSON). Verifica GESTAOCLICK_BASE_URL e credenciais. Início: ${snippet}`,
+      );
+    }
     const dto = normalizeOrder(json, data.orderNumber);
 
     // check existing active scheduling

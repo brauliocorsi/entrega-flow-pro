@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -37,6 +37,12 @@ function formatMinutes(min: number): string {
 }
 
 function RoutesPage() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  if (pathname !== "/rotas") {
+    return <Outlet />;
+  }
+
   const listFn = useServerFn(listRoutes);
   const pendingFn = useServerFn(listPendingReschedules);
   const [view, setView] = useState<"lista" | "calendario">("lista");
@@ -146,7 +152,7 @@ function RouteCard({ r }: { r: any }) {
   const accent = hasAssembly ? "border-l-violet-500" : "border-l-sky-500";
 
   return (
-    <Link to="/rotas/$id" params={{ id: r.id }}>
+    <Link to="/rotas/$id" params={{ id: r.id }} className="block h-full">
       <Card className={`p-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full border-l-4 ${accent}`}>
         <div className="flex items-start justify-between mb-2 gap-2">
           <div className="min-w-0">
@@ -258,7 +264,7 @@ function CalendarRouteCard({ r }: { r: any }) {
   const accent = hasAssembly ? "border-l-violet-500" : "border-l-sky-500";
 
   return (
-    <Link to="/rotas/$id" params={{ id: r.id }} className="block">
+    <Link to="/rotas/$id" params={{ id: r.id }} className="block h-full">
       <div className={`text-[10px] rounded border border-l-4 ${accent} bg-card p-1.5 hover:shadow-sm transition-shadow`} title={`${r.zone} — ${ROUTE_STATUS_LABEL[r.status]}`}>
         <div className="flex items-center justify-between gap-1 mb-1">
           <div className="font-semibold truncate">{r.zone}</div>

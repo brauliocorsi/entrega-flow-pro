@@ -564,6 +564,9 @@ function DeliveryCard({
   const qc = useQueryClient();
   const updateFn = useServerFn(updateDeliveryMeta);
   const refreshFn = useServerFn(refreshDeliveryPayload);
+  const releaseFn = useServerFn(releaseDeliveryFromRoute);
+  const transferFn = useServerFn(transferDeliveryToRoute);
+  const listRoutesFn = useServerFn(listRoutes);
   const refresh = useMutation({
     mutationFn: () => refreshFn({ data: { id: d.id } }),
     onSuccess: (r: any) => {
@@ -576,6 +579,41 @@ function DeliveryCard({
   const [editing, setEditing] = useState(false);
   const [volume, setVolume] = useState(String(d.volume_m3 ?? 0));
   const [minutes, setMinutes] = useState(String(d.estimated_minutes ?? 30));
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [targetRouteId, setTargetRouteId] = useState<string>("");
+  const [releaseOpen, setReleaseOpen] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: availableRoutes } = useQuery({
+    queryKey: ["available-routes", today],
+    enabled: transferOpen,
+    queryFn: () => listRoutesFn({ data: { from: today } }),
+  });
+
+  const release = useMutation({
+    mutationFn: () => releaseFn({ data: { id: d.id } }),
+    onSuccess: (r: any) => {
+      if (r?.gestaoclick_synced) toast.success("Entrega removida e disponível para reagendar");
+      else toast.success("Entrega removida da rota", { description: r?.gestaoclick_error ?? "GestãoClick não atualizado" });
+      setReleaseOpen(false);
+      qc.invalidateQueries({ queryKey: ["route", routeId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao remover"),
+  });
+
+  const transfer = useMutation({
+    mutationFn: () => transferFn({ data: { id: d.id, newRouteId: targetRouteId } }),
+    onSuccess: (r: any) => {
+      toast.success("Entrega transferida", {
+        description: r?.gestaoclick_synced ? undefined : r?.gestaoclick_error ?? "GestãoClick não atualizado",
+      });
+      setTransferOpen(false);
+      setTargetRouteId("");
+      qc.invalidateQueries({ queryKey: ["route", routeId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao transferir"),
+  });
+
 
   const payload = d.order_payload ?? {};
   const items: any[] = Array.isArray(payload.items) ? payload.items : [];

@@ -42,7 +42,10 @@ function AuthenticatedLayout() {
             <NavLink to="/agendar" active={isActive("/agendar")} icon={<Plus className="h-4 w-4" />} label="Agendar" />
             <NavLink to="/conferencia" active={isActive("/conferencia")} icon={<Calculator className="h-4 w-4" />} label="Conferência" />
             {role === "admin" && (
-              <NavLink to="/admin/templates" active={isActive("/admin")} icon={<Settings className="h-4 w-4" />} label="Admin" />
+              <>
+                <NavLink to="/admin/templates" active={isActive("/admin/templates")} icon={<Settings className="h-4 w-4" />} label="Templates" />
+                <NavLink to="/admin/taxas" active={isActive("/admin/taxas")} icon={<Calculator className="h-4 w-4" />} label="Taxas" />
+              </>
             )}
           </nav>
           <div className="hidden md:block text-xs text-muted-foreground truncate max-w-[180px]">{user.email}</div>

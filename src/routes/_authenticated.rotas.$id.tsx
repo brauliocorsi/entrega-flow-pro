@@ -103,10 +103,21 @@ function RouteDetail() {
       ) : (
         <div className="space-y-2">
           {deliveries.map((d: any) => {
-            const hasAssembly = d.notes && /montagem|montar|instala/i.test(d.notes);
+            const payload = d.order_payload ?? {};
+            const items: any[] = Array.isArray(payload.items) ? payload.items : [];
+            const hasAssembly =
+              payload.has_assembly === true ||
+              items.some((i) => i?.kind === "montagem") ||
+              (d.notes && /montagem|montar|instala/i.test(d.notes));
             const accent = hasAssembly
               ? "border-l-violet-500 bg-violet-50/40"
               : "border-l-sky-500 bg-sky-50/30";
+            const productItems = items.filter((i) => i?.kind !== "entrega");
+            const totalQty = productItems.reduce((acc, i) => acc + Number(i?.quantity ?? 0), 0);
+            const preview = productItems.slice(0, 3);
+            const extraCount = Math.max(0, productItems.length - preview.length);
+            const locality = [d.city, d.zip_code].filter(Boolean).join(" · ");
+
             return (
               <Card key={d.id} className={`p-4 border-l-4 ${accent}`}>
                 <div className="flex items-start justify-between flex-wrap gap-2">
@@ -127,11 +138,39 @@ function RouteDetail() {
                       {d.outcome && <Badge variant="secondary">{d.outcome}</Badge>}
                     </div>
                     <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                      <MapPin className="h-3 w-3" /> {d.address} {d.zip_code ? `(${d.zip_code})` : ""}
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      <span className="truncate">
+                        {d.address}
+                        {locality ? ` — ${locality}` : ""}
+                      </span>
                     </div>
                     {d.phone && (
                       <div className="text-sm text-muted-foreground flex items-center gap-1">
                         <Phone className="h-3 w-3" /> {d.phone}
+                      </div>
+                    )}
+
+                    {productItems.length > 0 && (
+                      <div className="mt-2 rounded-md border bg-background/70 p-2">
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+                          Produtos ({productItems.length}
+                          {totalQty ? ` · ${totalQty} un.` : ""})
+                        </div>
+                        <ul className="text-xs space-y-0.5">
+                          {preview.map((it, idx) => (
+                            <li key={idx} className="flex gap-2">
+                              <span className="text-muted-foreground tabular-nums w-8 shrink-0">
+                                {Number(it?.quantity ?? 1)}×
+                              </span>
+                              <span className="truncate">{it?.description ?? "Produto"}</span>
+                            </li>
+                          ))}
+                          {extraCount > 0 && (
+                            <li className="text-[11px] text-muted-foreground">
+                              + {extraCount} item(s)…
+                            </li>
+                          )}
+                        </ul>
                       </div>
                     )}
                   </div>

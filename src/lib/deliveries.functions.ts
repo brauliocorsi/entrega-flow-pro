@@ -19,6 +19,7 @@ const ScheduleInput = z.object({
   estimated_minutes: z.number().int().min(5).max(480),
   notes: z.string().max(1000).nullable().optional(),
   rescheduled_from_id: z.string().uuid().nullable().optional(),
+  order_payload: z.any().nullable().optional(),
 });
 
 export const scheduleDelivery = createServerFn({ method: "POST" })
@@ -72,6 +73,7 @@ export const scheduleDelivery = createServerFn({ method: "POST" })
         estimated_minutes: data.estimated_minutes,
         notes: data.notes ?? null,
         rescheduled_from_id: data.rescheduled_from_id ?? null,
+        order_payload: data.order_payload ?? null,
         seller_id: context.userId,
         seller_name: profile?.display_name ?? profile?.email ?? null,
         status: "agendado",

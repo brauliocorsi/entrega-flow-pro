@@ -103,6 +103,14 @@ function AgendarPage() {
           estimated_minutes: minutes,
           notes: notes || null,
           rescheduled_from_id: orderData.previousUnfinished?.id ?? null,
+          order_payload: {
+            items: o.items ?? [],
+            has_assembly: o.has_assembly ?? false,
+            has_delivery_service: o.has_delivery_service ?? false,
+            observations: o.observations ?? null,
+            status: o.status ?? null,
+            date: o.date ?? null,
+          },
         },
       });
       if (res?.gestaoclick_synced) {

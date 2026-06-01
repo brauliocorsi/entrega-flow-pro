@@ -393,7 +393,7 @@ function CalendarRouteCard({ r, code }: { r: any; code?: string }) {
       <div className="text-[10px] rounded border border-l-4 bg-card p-1.5 hover:shadow-sm transition-shadow" style={{ borderLeftColor: color }} title={`${code ? code + " · " : ""}${r.zone} — ${ROUTE_STATUS_LABEL[r.status]}`}>
         <div className="flex items-center justify-between gap-1 mb-1">
           <div className="font-semibold truncate">
-            {code && <span className="font-mono text-primary mr-1">{code}</span>}
+            {code && <span className="font-mono mr-1" style={{ color }}>{code}</span>}
             {r.zone}
           </div>
           <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${pct >= 100 ? "bg-rose-500" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} />

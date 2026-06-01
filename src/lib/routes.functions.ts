@@ -2,6 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const routeSimulationInput = z.object({
+  origin: z.string().min(5).max(255),
+  destination: z.string().min(5).max(255),
+  intermediates: z.array(z.string().min(5).max(255)).max(23).default([]),
+});
+
 export const listRoutes = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -94,4 +100,75 @@ export const updateRouteStatus = createServerFn({ method: "POST" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+export const getRouteSimulation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => routeSimulationInput.parse(d))
+  .handler(async ({ data }) => {
+    const lovableApiKey = process.env.LOVABLE_API_KEY;
+    if (!lovableApiKey) throw new Error("LOVABLE_API_KEY em falta para calcular o trajeto");
+
+    const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!googleMapsApiKey) throw new Error("GOOGLE_MAPS_API_KEY em falta para calcular o trajeto");
+
+    const response = await fetch("https://connector-gateway.lovable.dev/google_maps/routes/directions/v2:computeRoutes", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableApiKey}`,
+        "X-Connection-Api-Key": googleMapsApiKey,
+        "Content-Type": "application/json",
+        "X-Goog-FieldMask": [
+          "routes.distanceMeters",
+          "routes.duration",
+          "routes.polyline.encodedPolyline",
+          "routes.legs.distanceMeters",
+          "routes.legs.duration",
+          "routes.legs.startLocation",
+          "routes.legs.endLocation",
+        ].join(","),
+      },
+      body: JSON.stringify({
+        origin: { address: data.origin },
+        destination: { address: data.destination },
+        intermediates: data.intermediates.map((address) => ({ address })),
+        travelMode: "DRIVE",
+        routingPreference: "TRAFFIC_AWARE",
+        polylineQuality: "OVERVIEW",
+        languageCode: "pt-PT",
+        units: "METRIC",
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Falha ao calcular trajeto (${response.status}): ${body}`);
+    }
+
+    const result = await response.json();
+    const route = result?.routes?.[0];
+
+    if (!route?.polyline?.encodedPolyline) {
+      throw new Error("O Google Maps não devolveu geometria para este trajeto");
+    }
+
+    return {
+      distanceMeters: Number(route.distanceMeters ?? 0),
+      duration: String(route.duration ?? "0s"),
+      polyline: String(route.polyline.encodedPolyline),
+      legs: Array.isArray(route.legs)
+        ? route.legs.map((leg: any) => ({
+            distanceMeters: Number(leg.distanceMeters ?? 0),
+            duration: String(leg.duration ?? "0s"),
+            startLocation: {
+              lat: Number(leg.startLocation?.latLng?.latitude ?? 0),
+              lng: Number(leg.startLocation?.latLng?.longitude ?? 0),
+            },
+            endLocation: {
+              lat: Number(leg.endLocation?.latLng?.latitude ?? 0),
+              lng: Number(leg.endLocation?.latLng?.longitude ?? 0),
+            },
+          }))
+        : [],
+    };
   });

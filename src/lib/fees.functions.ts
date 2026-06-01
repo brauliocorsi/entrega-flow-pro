@@ -10,7 +10,7 @@ export const listFeeRanges = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("delivery_fee_ranges")
       .select("*")
-      .order("priority", { ascending: false })
+      .order("priority", { ascending: true })
       .order("zip_start", { ascending: true });
     if (error) throw new Error(error.message);
     return data ?? [];
@@ -73,7 +73,9 @@ export const suggestDeliveryFee = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const matches = (ranges ?? []).slice().sort((a, b) => {
-      if (b.priority !== a.priority) return b.priority - a.priority;
+      // Menor número de prioridade = mais prioritário (0 vence 1)
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      // Em empate, intervalo mais específico (mais estreito) vence
       const widthA = Number(a.zip_end) - Number(a.zip_start);
       const widthB = Number(b.zip_end) - Number(b.zip_start);
       return widthA - widthB;

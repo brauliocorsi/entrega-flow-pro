@@ -145,7 +145,7 @@ function AdminFeesPage() {
           <h1 className="text-2xl font-bold tracking-tight">Taxas de entrega</h1>
           <p className="text-sm text-muted-foreground">
             Define intervalos de código postal e a taxa sugerida. Em sobreposição vence o de
-            <strong> maior prioridade</strong>; em empate, o intervalo mais pequeno.
+            <strong> menor número de prioridade</strong> (0 = topo); em empate, o intervalo mais pequeno.
           </p>
         </div>
         <Button onClick={openNew}>
@@ -234,7 +234,7 @@ function AdminFeesPage() {
                 />
               </div>
               <div>
-                <Label>Prioridade</Label>
+                <Label>Prioridade (0 = topo)</Label>
                 <Input
                   type="number"
                   min="0"

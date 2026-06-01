@@ -53,6 +53,7 @@ export const upsertTemplate = createServerFn({ method: "POST" })
           default_driver: data.default_driver ?? null,
           active: data.active,
           notes: data.notes ?? null,
+          color: data.color,
         })
         .eq("id", data.id);
       if (error) throw new Error(error.message);
@@ -70,6 +71,7 @@ export const upsertTemplate = createServerFn({ method: "POST" })
         default_driver: data.default_driver ?? null,
         active: data.active,
         notes: data.notes ?? null,
+        color: data.color,
       })
       .select("id")
       .single();

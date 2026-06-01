@@ -60,6 +60,7 @@ function AdminTemplatesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...empty });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   async function refresh() {
     setBusy(true);
@@ -92,6 +93,7 @@ function AdminTemplatesPage() {
   function openNew() {
     setEditingId(null);
     setForm({ ...empty });
+    setFieldErrors({});
     setDialogOpen(true);
   }
 
@@ -108,10 +110,26 @@ function AdminTemplatesPage() {
       active: t.active,
       notes: t.notes ?? "",
     });
+    setFieldErrors({});
     setDialogOpen(true);
   }
 
+  function validateForm(): Record<string, string> {
+    const errors: Record<string, string> = {};
+    const val = Number(form.max_minutes);
+    if (!Number.isFinite(val) || !Number.isInteger(val) || val < 1) {
+      errors.max_minutes = "O tempo de rota deve ser um número inteiro positivo (mínimo 1 minuto).";
+    } else if (val > 1440) {
+      errors.max_minutes = "O tempo de rota não pode exceder 1440 minutos (24 horas).";
+    }
+    return errors;
+  }
+
   async function handleSave() {
+    const errors = validateForm();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     try {
       const prefixes = form.zip_prefixes
         .split(/[,;\s]+/)
@@ -254,7 +272,26 @@ function AdminTemplatesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Tempo de rota (min)</Label>
-                <Input type="number" min={1} max={1440} value={form.max_minutes} onChange={(e) => setForm({ ...form, max_minutes: Number(e.target.value) })} />
+                <Input
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={form.max_minutes}
+                  onChange={(e) => {
+                    setForm({ ...form, max_minutes: Number(e.target.value) });
+                    if (fieldErrors.max_minutes) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.max_minutes;
+                        return next;
+                      });
+                    }
+                  }}
+                  className={fieldErrors.max_minutes ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
+                {fieldErrors.max_minutes && (
+                  <p className="text-xs text-red-600">{fieldErrors.max_minutes}</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Motorista (opcional)</Label>

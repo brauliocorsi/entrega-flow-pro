@@ -127,6 +127,7 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
           "routes.legs.startLocation",
           "routes.legs.endLocation",
           "routes.legs.polyline.encodedPolyline",
+          "routes.optimizedIntermediateWaypointIndex",
         ].join(","),
       },
       body: JSON.stringify({

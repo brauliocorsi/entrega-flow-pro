@@ -540,6 +540,15 @@ function DeliveryCard({
 }) {
   const qc = useQueryClient();
   const updateFn = useServerFn(updateDeliveryMeta);
+  const refreshFn = useServerFn(refreshDeliveryPayload);
+  const refresh = useMutation({
+    mutationFn: () => refreshFn({ data: { id: d.id } }),
+    onSuccess: (r: any) => {
+      toast.success(`Produtos atualizados (${r?.items ?? 0} itens)`);
+      qc.invalidateQueries({ queryKey: ["route", routeId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao atualizar"),
+  });
   const [productsOpen, setProductsOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [volume, setVolume] = useState(String(d.volume_m3 ?? 0));

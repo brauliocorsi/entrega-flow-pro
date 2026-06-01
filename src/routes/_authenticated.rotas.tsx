@@ -36,6 +36,22 @@ function RoutesPage() {
 
   return (
     <div className="space-y-4">
+      {pending.length > 0 && (
+        <Card className="p-3 border-amber-300 bg-amber-50/60">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
+            <div className="text-sm flex-1">
+              <span className="font-medium text-amber-900">{pending.length} entrega(s) pendentes de reagendamento.</span>
+              <span className="text-amber-800/80 ml-1">
+                {pending.slice(0, 3).map((p: any) => `#${p.order_number}`).join(", ")}
+                {pending.length > 3 ? ` + ${pending.length - 3}` : ""}.
+                {" "}Reagenda em <Link to="/agendar" className="underline">Agendar</Link>.
+              </span>
+            </div>
+          </div>
+        </Card>
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Rotas de entrega</h1>

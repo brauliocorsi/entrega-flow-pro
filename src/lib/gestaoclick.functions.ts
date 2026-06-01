@@ -250,11 +250,25 @@ export async function updateGestaoClickVendaSchedule(args: {
       // ignore — segue sem alterar situação
     }
 
-    // 2) atualizar venda (PUT)
+    // 2) buscar venda existente — GestãoClick PUT substitui o recurso,
+    //    se enviarmos só alguns campos apaga os restantes (cliente, produtos, etc.)
+    const existing = await gcFetch(
+      `${base}/api/vendas/${encodeURIComponent(args.vendaId)}`,
+      headers,
+    );
+    const venda: any = existing.json?.data ?? existing.json ?? null;
+    if (!venda || typeof venda !== "object") {
+      return { ok: false, error: "GestãoClick não devolveu a venda existente" };
+    }
+
+    // Merge: preserva todos os campos da venda e altera apenas data_entrega + situacao_id
     const body: Record<string, unknown> = {
-      data_previsao: args.routeDate,
+      ...venda,
+      data_entrega: args.routeDate,
     };
     if (situacaoId) body.situacao_id = situacaoId;
+    // Segurança extra: garantir que o cliente_id continua presente
+    if (!body.cliente_id && venda.cliente_id) body.cliente_id = venda.cliente_id;
 
     const res = await fetch(`${base}/api/vendas/${encodeURIComponent(args.vendaId)}`, {
       method: "PUT",

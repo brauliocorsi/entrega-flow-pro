@@ -20,6 +20,7 @@ type RouteSimulation = {
   distanceMeters: number;
   duration: string;
   polyline: string;
+  optimizedOrder?: number[];
   legs: Array<{
     distanceMeters: number;
     duration: string;

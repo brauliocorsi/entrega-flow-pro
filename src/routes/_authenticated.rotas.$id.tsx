@@ -72,6 +72,27 @@ function formatDistance(distanceMeters: number) {
   return `${distanceMeters} m`;
 }
 
+// Compõe uma morada limpa para a Routes API: remove o CP duplicado dentro do
+// logradouro (ex.: "Rua X 4620-695, 83" + zip "4620-695") e garante o formato
+// "<rua e número>, <CP> <cidade>".
+function buildStopAddress(address: string, zip?: string | null, city?: string | null) {
+  const cpRegex = /\b\d{4}-\d{3}\b/;
+  const cpInAddr = address.match(cpRegex)?.[0];
+  const finalZip = zip || cpInAddr || "";
+  // Remove qualquer CP do logradouro e limpa vírgulas/espaços extra
+  const cleanedAddr = address
+    .replace(cpRegex, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s*,\s*,\s*/g, ", ")
+    .replace(/^[,\s]+|[,\s]+$/g, "")
+    .trim();
+  return [cleanedAddr, [finalZip, city].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ")
+    .trim();
+}
+
+
 function RouteSimulationSection({
   rawStops,
   selectedId,

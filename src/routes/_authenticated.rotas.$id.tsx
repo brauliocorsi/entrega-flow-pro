@@ -54,8 +54,8 @@ function RouteSimulationMap({
   const mapsKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
   const trackingId = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID;
   const mapRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<google.maps.Map | null>(null);
-  const overlaysRef = useRef<Array<google.maps.Marker | google.maps.Polyline>>([]);
+  const mapInstanceRef = useRef<any>(null);
+  const overlaysRef = useRef<any[]>([]);
   const simulationFn = useServerFn(getRouteSimulation);
 
   const selectedIdx = stops.findIndex((s) => s.id === selectedId);
@@ -97,9 +97,10 @@ function RouteSimulationMap({
       ...(trackingId ? { channel: trackingId } : {}),
     });
 
-    loader.load().then(() => {
+    Promise.all([loader.importLibrary("maps"), loader.importLibrary("marker")]).then(([mapsLib]) => {
       if (cancelled || !mapRef.current || mapInstanceRef.current) return;
-      mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+      const { Map } = mapsLib as any;
+      mapInstanceRef.current = new Map(mapRef.current, {
         center: { lat: 41.1579, lng: -8.6291 },
         zoom: 10,
         streetViewControl: false,
@@ -121,7 +122,10 @@ function RouteSimulationMap({
     overlaysRef.current = [];
 
     const decoded = polyline.decode(data.polyline).map(([lat, lng]) => ({ lat, lng }));
-    const path = new google.maps.Polyline({
+    const googleMaps = (globalThis as any).google?.maps;
+    if (!googleMaps) return;
+
+    const path = new googleMaps.Polyline({
       path: decoded,
       strokeColor: "#2563eb",
       strokeOpacity: 0.9,
@@ -139,16 +143,16 @@ function RouteSimulationMap({
       const isWarehouseStart = index === 0;
       const isWarehouseEnd = index === points.length - 1 && !selectedStop;
       const label = isWarehouseStart ? "A" : isWarehouseEnd ? "B" : String(index);
-      const marker = new google.maps.Marker({
+      const marker = new googleMaps.Marker({
         position: point,
         map,
         label,
-        animation: selectedStop && index === points.length - 1 ? google.maps.Animation.DROP : undefined,
+        animation: selectedStop && index === points.length - 1 ? googleMaps.Animation.DROP : undefined,
       });
       overlaysRef.current.push(marker);
     });
 
-    const bounds = new google.maps.LatLngBounds();
+    const bounds = new googleMaps.LatLngBounds();
     decoded.forEach((point) => bounds.extend(point));
     if (!bounds.isEmpty()) map.fitBounds(bounds, 48);
   }, [data, selectedStop]);

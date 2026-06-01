@@ -2,18 +2,39 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export interface OrderItemDTO {
+  description: string;
+  quantity: number;
+  price: number;
+  total: number;
+  kind: "produto" | "montagem" | "entrega" | "servico";
+}
+
 export interface OrderDTO {
   order_number: string;
+  internal_id: string | null;
+  date: string | null;
+  status: string | null;
   customer_name: string;
+  customer_document: string | null;
+  customer_email: string | null;
   address: string;
+  address_complement: string | null;
+  neighborhood: string | null;
   zip_code: string | null;
   city: string | null;
+  state: string | null;
   phone: string | null;
+  mobile: string | null;
   total_value: number;
   paid_value: number;
   remaining_value: number;
-  items: Array<{ description: string; quantity: number; price: number }>;
-  
+  discount: number;
+  shipping: number;
+  items: OrderItemDTO[];
+  has_assembly: boolean;
+  has_delivery_service: boolean;
+  observations: string | null;
 }
 
 export interface FetchOrderResult {
@@ -23,34 +44,95 @@ export interface FetchOrderResult {
   error: string | null;
 }
 
+function detectKind(desc: string): OrderItemDTO["kind"] {
+  const s = desc.toLowerCase();
+  if (/(montagem|montar|instala[cç][aã]o)/.test(s)) return "montagem";
+  if (/(entrega|frete|transporte|portes|envio)/.test(s)) return "entrega";
+  if (/(servi[cç]o|m[aã]o de obra|reparac)/.test(s)) return "servico";
+  return "produto";
+}
+
 function normalizeOrder(payload: any, orderNumber: string): OrderDTO {
-  // GestãoClick payloads vary; try common shapes.
   const p = payload?.data ?? payload?.pedido ?? payload?.venda ?? payload;
   const cliente = p?.cliente ?? p?.customer ?? {};
   const endereco = cliente?.endereco ?? p?.endereco ?? {};
 
   const total = Number(p?.valor_total ?? p?.total ?? p?.valor ?? 0);
   const pago = Number(p?.valor_pago ?? p?.pago ?? 0);
-  const itens = Array.isArray(p?.itens) ? p.itens : Array.isArray(p?.produtos) ? p.produtos : [];
+  const desconto = Number(p?.desconto ?? p?.valor_desconto ?? 0);
+  const frete = Number(p?.frete ?? p?.valor_frete ?? p?.transporte ?? 0);
+
+  const rawItems = Array.isArray(p?.produtos)
+    ? p.produtos
+    : Array.isArray(p?.itens)
+      ? p.itens
+      : [];
+  const rawServices = Array.isArray(p?.servicos) ? p.servicos : [];
+
+  const items: OrderItemDTO[] = [
+    ...rawItems.map((it: any): OrderItemDTO => {
+      const desc = String(
+        it?.produto?.nome ?? it?.descricao ?? it?.nome ?? it?.produto ?? "Item",
+      );
+      const qty = Number(it?.quantidade ?? it?.qtd ?? 1);
+      const price = Number(it?.valor ?? it?.valor_unitario ?? it?.preco ?? 0);
+      return {
+        description: desc,
+        quantity: qty,
+        price,
+        total: Number(it?.valor_total ?? qty * price),
+        kind: detectKind(desc),
+      };
+    }),
+    ...rawServices.map((it: any): OrderItemDTO => {
+      const desc = String(it?.servico?.nome ?? it?.descricao ?? it?.nome ?? "Serviço");
+      const qty = Number(it?.quantidade ?? it?.qtd ?? 1);
+      const price = Number(it?.valor ?? it?.valor_unitario ?? it?.preco ?? 0);
+      return {
+        description: desc,
+        quantity: qty,
+        price,
+        total: Number(it?.valor_total ?? qty * price),
+        kind: detectKind(desc),
+      };
+    }),
+  ];
+
+  const obs = p?.observacoes ?? p?.observacao ?? p?.obs ?? null;
+  const obsText = obs ? String(obs) : null;
+  const hasAssembly =
+    items.some((i) => i.kind === "montagem") ||
+    (obsText ? /montagem|montar|instala/i.test(obsText) : false);
+  const hasDeliveryService =
+    items.some((i) => i.kind === "entrega") || frete > 0;
 
   return {
-    order_number: String(p?.numero ?? p?.id ?? orderNumber),
+    order_number: String(p?.codigo ?? p?.numero ?? p?.id ?? orderNumber),
+    internal_id: p?.id ? String(p.id) : null,
+    date: p?.data ?? p?.data_venda ?? p?.created_at ?? null,
+    status: p?.situacao ?? p?.status ?? null,
     customer_name: String(cliente?.nome ?? cliente?.name ?? p?.cliente_nome ?? "—"),
+    customer_document: String(cliente?.cpf_cnpj ?? cliente?.nif ?? cliente?.documento ?? "") || null,
+    customer_email: String(cliente?.email ?? "") || null,
     address: [endereco?.logradouro ?? endereco?.rua ?? cliente?.endereco, endereco?.numero, endereco?.bairro]
       .filter(Boolean)
       .join(", ") || String(cliente?.endereco ?? "—"),
+    address_complement: String(endereco?.complemento ?? "") || null,
+    neighborhood: String(endereco?.bairro ?? "") || null,
     zip_code: String(endereco?.cep ?? endereco?.codigo_postal ?? cliente?.cep ?? "") || null,
     city: String(endereco?.cidade ?? endereco?.localidade ?? cliente?.cidade ?? "") || null,
-    phone: String(cliente?.telefone ?? cliente?.celular ?? cliente?.phone ?? "") || null,
+    state: String(endereco?.estado ?? endereco?.uf ?? "") || null,
+    phone: String(cliente?.telefone ?? cliente?.phone ?? "") || null,
+    mobile: String(cliente?.celular ?? cliente?.telemovel ?? "") || null,
     total_value: total,
     paid_value: pago,
     remaining_value: Math.max(total - pago, 0),
-    items: itens.map((it: any) => ({
-      description: String(it?.descricao ?? it?.nome ?? it?.produto ?? "Item"),
-      quantity: Number(it?.quantidade ?? it?.qtd ?? 1),
-      price: Number(it?.valor ?? it?.preco ?? 0),
-    })),
-    
+    discount: desconto,
+    shipping: frete,
+    items,
+    has_assembly: hasAssembly,
+    has_delivery_service: hasDeliveryService,
+    observations: obsText,
   };
 }
 

@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useQuery, queryOptions } from "@tanstack/react-query";
+import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getRouteSimulation, getRouteWithDeliveries } from "@/lib/routes.functions";
+import { updateDeliveryMeta } from "@/lib/deliveries.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
-import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon } from "lucide-react";
+import { toast } from "sonner";
+import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X } from "lucide-react";
 
 type Stop = {
   id: string;
@@ -485,100 +489,248 @@ function RouteDetail() {
         <Card className="p-8 text-center text-muted-foreground">Sem entregas agendadas.</Card>
       ) : (
         <div className="space-y-2">
-          {deliveries.map((d: any) => {
-            const payload = d.order_payload ?? {};
-            const items: any[] = Array.isArray(payload.items) ? payload.items : [];
-            const hasAssembly =
-              payload.has_assembly === true ||
-              items.some((i) => i?.kind === "montagem") ||
-              (d.notes && /montagem|montar|instala/i.test(d.notes));
-            const accent = hasAssembly
-              ? "border-l-violet-500 bg-violet-50/40"
-              : "border-l-sky-500 bg-sky-50/30";
-            const productItems = items.filter((i) => i?.kind !== "entrega");
-            const totalQty = productItems.reduce((acc, i) => acc + Number(i?.quantity ?? 0), 0);
-            const preview = productItems.slice(0, 3);
-            const extraCount = Math.max(0, productItems.length - preview.length);
-            const locality = [d.city, d.zip_code].filter(Boolean).join(" · ");
-
-            const isSelected = d.id === selectedId;
-            return (
-              <Card
-                key={d.id}
-                id={`delivery-${d.id}`}
-                onClick={() => setSelectedId(isSelected ? null : d.id)}
-                className={`p-4 border-l-4 ${accent} cursor-pointer transition-all ${
-                  isSelected ? "ring-2 ring-primary shadow-lg scale-[1.01]" : "hover:shadow-md"
-                }`}
-              >
-                <div className="flex items-start justify-between flex-wrap gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold">#{d.order_number}</span>
-                      <span className="text-sm">{d.customer_name}</span>
-                      <Badge variant="outline">{DELIVERY_TYPE_LABEL[d.delivery_type]}</Badge>
-                      {hasAssembly ? (
-                        <Badge className="bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-100">
-                          <Wrench className="h-3 w-3 mr-1" /> Montagem
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-sky-100 text-sky-800 border-sky-200 hover:bg-sky-100">
-                          <Truck className="h-3 w-3 mr-1" /> Só entrega
-                        </Badge>
-                      )}
-                      {d.outcome && <Badge variant="secondary">{d.outcome}</Badge>}
-                    </div>
-                    <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                      <MapPin className="h-3 w-3 shrink-0" />
-                      <span className="truncate">
-                        {d.address}
-                        {locality ? ` — ${locality}` : ""}
-                      </span>
-                    </div>
-                    {d.phone && (
-                      <div className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Phone className="h-3 w-3" /> {d.phone}
-                      </div>
-                    )}
-
-                    {productItems.length > 0 && (
-                      <div className="mt-2 rounded-md border bg-background/70 p-2">
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
-                          Produtos ({productItems.length}
-                          {totalQty ? ` · ${totalQty} un.` : ""})
-                        </div>
-                        <ul className="text-xs space-y-0.5">
-                          {preview.map((it, idx) => (
-                            <li key={idx} className="flex gap-2">
-                              <span className="text-muted-foreground tabular-nums w-8 shrink-0">
-                                {Number(it?.quantity ?? 1)}×
-                              </span>
-                              <span className="truncate">{it?.description ?? "Produto"}</span>
-                            </li>
-                          ))}
-                          {extraCount > 0 && (
-                            <li className="text-[11px] text-muted-foreground">
-                              + {extraCount} item(s)…
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-sm font-semibold">{formatEUR(d.total_value)}</div>
-                    {Number(d.remaining_value) > 0 && (
-                      <div className="text-xs text-rose-600">Falta {formatEUR(d.remaining_value)}</div>
-                    )}
-                    <div className="text-xs text-muted-foreground">{Number(d.volume_m3).toFixed(1)} m³ · {d.estimated_minutes} min</div>
-                    {d.seller_name && <div className="text-xs text-muted-foreground">{d.seller_name}</div>}
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+          {deliveries.map((d: any) => (
+            <DeliveryCard
+              key={d.id}
+              d={d}
+              routeId={id}
+              isSelected={d.id === selectedId}
+              onSelect={() => setSelectedId(d.id === selectedId ? null : d.id)}
+              isClosed={isClosed}
+            />
+          ))}
         </div>
       )}
     </div>
+  );
+}
+
+function DeliveryCard({
+  d,
+  routeId,
+  isSelected,
+  onSelect,
+  isClosed,
+}: {
+  d: any;
+  routeId: string;
+  isSelected: boolean;
+  onSelect: () => void;
+  isClosed: boolean;
+}) {
+  const qc = useQueryClient();
+  const updateFn = useServerFn(updateDeliveryMeta);
+  const [productsOpen, setProductsOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [volume, setVolume] = useState(String(d.volume_m3 ?? 0));
+  const [minutes, setMinutes] = useState(String(d.estimated_minutes ?? 30));
+
+  const payload = d.order_payload ?? {};
+  const items: any[] = Array.isArray(payload.items) ? payload.items : [];
+  const assemblyItems = items.filter((i) => i?.kind === "montagem");
+  const hasAssembly =
+    payload.has_assembly === true ||
+    assemblyItems.length > 0 ||
+    (d.notes && /montagem|montar|instala/i.test(d.notes));
+  const productItems = items.filter((i) => i?.kind !== "entrega" && i?.kind !== "montagem");
+  const totalQty = productItems.reduce((acc, i) => acc + Number(i?.quantity ?? 0), 0);
+  const accent = hasAssembly
+    ? "border-l-violet-500 bg-violet-50/40"
+    : "border-l-sky-500 bg-sky-50/30";
+  const locality = [d.city, d.zip_code].filter(Boolean).join(" · ");
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const v = Number(volume.replace(",", "."));
+      const m = Number(minutes);
+      if (!Number.isFinite(v) || v < 0) throw new Error("Volume inválido");
+      if (!Number.isInteger(m) || m < 5) throw new Error("Tempo inválido (min. 5)");
+      return updateFn({ data: { id: d.id, volume_m3: v, estimated_minutes: m } });
+    },
+    onSuccess: () => {
+      toast.success("Entrega atualizada");
+      setEditing(false);
+      qc.invalidateQueries({ queryKey: ["route", routeId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao atualizar"),
+  });
+
+  return (
+    <Card
+      id={`delivery-${d.id}`}
+      onClick={onSelect}
+      className={`p-4 border-l-4 ${accent} cursor-pointer transition-all ${
+        isSelected ? "ring-2 ring-primary shadow-lg scale-[1.01]" : "hover:shadow-md"
+      }`}
+    >
+      <div className="flex items-start justify-between flex-wrap gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold">#{d.order_number}</span>
+            <span className="text-sm">{d.customer_name}</span>
+            <Badge variant="outline">{DELIVERY_TYPE_LABEL[d.delivery_type]}</Badge>
+            {hasAssembly ? (
+              <Badge className="bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-100">
+                <Wrench className="h-3 w-3 mr-1" /> Montagem
+              </Badge>
+            ) : (
+              <Badge className="bg-sky-100 text-sky-800 border-sky-200 hover:bg-sky-100">
+                <Truck className="h-3 w-3 mr-1" /> Só entrega
+              </Badge>
+            )}
+            {d.outcome && <Badge variant="secondary">{d.outcome}</Badge>}
+          </div>
+          <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">
+              {d.address}
+              {locality ? ` — ${locality}` : ""}
+            </span>
+          </div>
+          {d.phone && (
+            <div className="text-sm text-muted-foreground flex items-center gap-1">
+              <Phone className="h-3 w-3" /> {d.phone}
+            </div>
+          )}
+
+          {(productItems.length > 0 || assemblyItems.length > 0) && (
+            <Collapsible open={productsOpen} onOpenChange={setProductsOpen}>
+              <CollapsibleTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 h-8 gap-2 text-xs"
+                >
+                  <Package className="h-3.5 w-3.5" />
+                  <span>
+                    {productItems.length} produto(s)
+                    {totalQty ? ` · ${totalQty} un.` : ""}
+                    {assemblyItems.length > 0 ? ` · ${assemblyItems.length} montagem` : ""}
+                  </span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform ${productsOpen ? "rotate-180" : ""}`}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent
+                onClick={(e) => e.stopPropagation()}
+                className="mt-2 rounded-md border bg-background/70 p-2"
+              >
+                {productItems.length > 0 && (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+                      Produtos
+                    </div>
+                    <ul className="text-xs space-y-0.5">
+                      {productItems.map((it, idx) => (
+                        <li key={idx} className="flex gap-2">
+                          <span className="text-muted-foreground tabular-nums w-8 shrink-0">
+                            {Number(it?.quantity ?? 1)}×
+                          </span>
+                          <span className="flex-1">{it?.description ?? "Produto"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {assemblyItems.length > 0 && (
+                  <div className={productItems.length > 0 ? "mt-2 pt-2 border-t" : ""}>
+                    <div className="text-[10px] uppercase tracking-wide text-violet-700 mb-1 flex items-center gap-1">
+                      <Wrench className="h-3 w-3" /> Montagem
+                    </div>
+                    <ul className="text-xs space-y-0.5">
+                      {assemblyItems.map((it, idx) => (
+                        <li key={idx} className="flex gap-2">
+                          <span className="text-muted-foreground tabular-nums w-8 shrink-0">
+                            {Number(it?.quantity ?? 1)}×
+                          </span>
+                          <span className="flex-1">{it?.description ?? "Montagem"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {productItems.length === 0 && assemblyItems.length === 0 && (
+                  <div className="text-xs text-muted-foreground">Sem itens.</div>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+        </div>
+        <div className="text-right shrink-0 space-y-1" onClick={(e) => e.stopPropagation()}>
+          <div className="text-sm font-semibold">{formatEUR(d.total_value)}</div>
+          {Number(d.remaining_value) > 0 && (
+            <div className="text-xs text-rose-600">Falta {formatEUR(d.remaining_value)}</div>
+          )}
+          {editing ? (
+            <div className="flex flex-col items-end gap-1.5 mt-1">
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={volume}
+                  onChange={(e) => setVolume(e.target.value)}
+                  className="h-7 w-20 text-xs"
+                />
+                <span className="text-xs text-muted-foreground">m³</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  step="5"
+                  min="5"
+                  value={minutes}
+                  onChange={(e) => setMinutes(e.target.value)}
+                  className="h-7 w-20 text-xs"
+                />
+                <span className="text-xs text-muted-foreground">min</span>
+              </div>
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2"
+                  onClick={() => {
+                    setEditing(false);
+                    setVolume(String(d.volume_m3 ?? 0));
+                    setMinutes(String(d.estimated_minutes ?? 30));
+                  }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-7 px-2"
+                  disabled={save.isPending}
+                  onClick={() => save.mutate()}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-end gap-1.5">
+              <div className="text-xs text-muted-foreground">
+                {Number(d.volume_m3).toFixed(1)} m³ · {d.estimated_minutes} min
+              </div>
+              {!isClosed && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0"
+                  onClick={() => setEditing(true)}
+                  title="Editar volume e tempo"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          )}
+          {d.seller_name && <div className="text-xs text-muted-foreground">{d.seller_name}</div>}
+        </div>
+      </div>
+    </Card>
   );
 }

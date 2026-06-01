@@ -142,6 +142,7 @@ export async function generateRoutesShared(supabase: any, weeks: number) {
         zip_prefixes: t.zip_prefixes,
         driver: t.default_driver,
         max_capacity_m3: t.max_capacity_m3,
+        max_minutes: t.max_minutes ?? 480,
       });
       if (!insErr) created++;
     }

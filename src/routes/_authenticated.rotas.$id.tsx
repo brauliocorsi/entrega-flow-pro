@@ -682,7 +682,35 @@ function DeliveryCard({
                   </div>
                 )}
                 {productItems.length === 0 && assemblyItems.length === 0 && (
-                  <div className="text-xs text-muted-foreground">Sem itens.</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs text-muted-foreground">
+                      Sem itens guardados. Esta entrega foi agendada antes de guardarmos os produtos.
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 text-xs shrink-0"
+                      disabled={refresh.isPending}
+                      onClick={() => refresh.mutate()}
+                    >
+                      <RefreshCw className={`h-3 w-3 ${refresh.isPending ? "animate-spin" : ""}`} />
+                      Buscar do GestãoClick
+                    </Button>
+                  </div>
+                )}
+                {(productItems.length > 0 || assemblyItems.length > 0) && (
+                  <div className="mt-2 pt-2 border-t flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 gap-1 text-[11px] text-muted-foreground"
+                      disabled={refresh.isPending}
+                      onClick={() => refresh.mutate()}
+                    >
+                      <RefreshCw className={`h-3 w-3 ${refresh.isPending ? "animate-spin" : ""}`} />
+                      Atualizar do GestãoClick
+                    </Button>
+                  </div>
                 )}
               </CollapsibleContent>
             </Collapsible>

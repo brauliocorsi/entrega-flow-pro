@@ -2,17 +2,40 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getRouteSimulation, getRouteWithDeliveries } from "@/lib/routes.functions";
-import { updateDeliveryMeta, refreshDeliveryPayload } from "@/lib/deliveries.functions";
+import { getRouteSimulation, getRouteWithDeliveries, listRoutes } from "@/lib/routes.functions";
+import {
+  updateDeliveryMeta,
+  refreshDeliveryPayload,
+  releaseDeliveryFromRoute,
+  transferDeliveryToRoute,
+} from "@/lib/deliveries.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2 } from "lucide-react";
 
 type Stop = {
   id: string;
@@ -541,6 +564,9 @@ function DeliveryCard({
   const qc = useQueryClient();
   const updateFn = useServerFn(updateDeliveryMeta);
   const refreshFn = useServerFn(refreshDeliveryPayload);
+  const releaseFn = useServerFn(releaseDeliveryFromRoute);
+  const transferFn = useServerFn(transferDeliveryToRoute);
+  const listRoutesFn = useServerFn(listRoutes);
   const refresh = useMutation({
     mutationFn: () => refreshFn({ data: { id: d.id } }),
     onSuccess: (r: any) => {
@@ -553,6 +579,41 @@ function DeliveryCard({
   const [editing, setEditing] = useState(false);
   const [volume, setVolume] = useState(String(d.volume_m3 ?? 0));
   const [minutes, setMinutes] = useState(String(d.estimated_minutes ?? 30));
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [targetRouteId, setTargetRouteId] = useState<string>("");
+  const [releaseOpen, setReleaseOpen] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: availableRoutes } = useQuery({
+    queryKey: ["available-routes", today],
+    enabled: transferOpen,
+    queryFn: () => listRoutesFn({ data: { from: today } }),
+  });
+
+  const release = useMutation({
+    mutationFn: () => releaseFn({ data: { id: d.id } }),
+    onSuccess: (r: any) => {
+      if (r?.gestaoclick_synced) toast.success("Entrega removida e disponível para reagendar");
+      else toast.success("Entrega removida da rota", { description: r?.gestaoclick_error ?? "GestãoClick não atualizado" });
+      setReleaseOpen(false);
+      qc.invalidateQueries({ queryKey: ["route", routeId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao remover"),
+  });
+
+  const transfer = useMutation({
+    mutationFn: () => transferFn({ data: { id: d.id, newRouteId: targetRouteId } }),
+    onSuccess: (r: any) => {
+      toast.success("Entrega transferida", {
+        description: r?.gestaoclick_synced ? undefined : r?.gestaoclick_error ?? "GestãoClick não atualizado",
+      });
+      setTransferOpen(false);
+      setTargetRouteId("");
+      qc.invalidateQueries({ queryKey: ["route", routeId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao transferir"),
+  });
+
 
   const payload = d.order_payload ?? {};
   const items: any[] = Array.isArray(payload.items) ? payload.items : [];
@@ -787,8 +848,104 @@ function DeliveryCard({
             </div>
           )}
           {d.seller_name && <div className="text-xs text-muted-foreground">{d.seller_name}</div>}
+          {!isClosed && (
+            <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-dashed">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs"
+                onClick={() => setTransferOpen(true)}
+                title="Transferir para outra rota"
+              >
+                <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Transferir
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                onClick={() => setReleaseOpen(true)}
+                title="Remover da rota e libertar"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Remover
+              </Button>
+            </div>
+          )}
         </div>
       </div>
+
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transferir entrega para outra rota</DialogTitle>
+            <DialogDescription>
+              #{d.order_number} · {d.customer_name} — {Number(d.volume_m3).toFixed(1)} m³ · {d.estimated_minutes} min
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+            {(availableRoutes ?? [])
+              .filter((rt: any) => rt.id !== routeId && !["fechada", "concluida"].includes(rt.status))
+              .map((rt: any) => {
+                const remaining = Number(rt.max_capacity_m3) - Number(rt.current_volume_m3);
+                const fits = remaining + 0.001 >= Number(d.volume_m3);
+                return (
+                  <button
+                    key={rt.id}
+                    type="button"
+                    disabled={!fits}
+                    onClick={() => setTargetRouteId(rt.id)}
+                    className={`w-full text-left rounded-md border px-3 py-2 text-sm transition-colors ${
+                      targetRouteId === rt.id ? "border-primary bg-primary/5" : "hover:bg-muted/40"
+                    } ${!fits ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-medium">{rt.zone}</div>
+                      <Badge className={ROUTE_STATUS_TONE[rt.status]}>{ROUTE_STATUS_LABEL[rt.status]}</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatDatePT(rt.route_date)} · restam {remaining.toFixed(1)} m³ {fits ? "" : "(sem espaço)"}
+                    </div>
+                  </button>
+                );
+              })}
+            {(availableRoutes ?? []).filter((rt: any) => rt.id !== routeId && !["fechada", "concluida"].includes(rt.status)).length === 0 && (
+              <div className="text-sm text-muted-foreground text-center py-6">Sem rotas disponíveis.</div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancelar</Button>
+            <Button
+              disabled={!targetRouteId || transfer.isPending}
+              onClick={() => transfer.mutate()}
+            >
+              Transferir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={releaseOpen} onOpenChange={setReleaseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover entrega da rota?</AlertDialogTitle>
+            <AlertDialogDescription>
+              #{d.order_number} · {d.customer_name} será removida desta rota. No GestãoClick, a venda volta ao estado
+              <span className="font-medium"> "Disponível para Entrega"</span>, sem alterar quaisquer outros dados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={release.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                release.mutate();
+              }}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

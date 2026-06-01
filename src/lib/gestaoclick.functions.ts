@@ -215,7 +215,7 @@ async function gcFetch(url: string, headers: Record<string, string>): Promise<{ 
 
 export async function updateGestaoClickVendaSchedule(args: {
   vendaId: string;
-  routeDate: string; // YYYY-MM-DD
+  routeDate: string | null; // YYYY-MM-DD, ou null para limpar
   statusLabel?: string; // default: "Agendado Entrega"
 }): Promise<{ ok: boolean; situacaoId?: string; error?: string }> {
   const baseUrl = process.env.GESTAOCLICK_BASE_URL;
@@ -264,7 +264,7 @@ export async function updateGestaoClickVendaSchedule(args: {
     // Merge: preserva todos os campos da venda e altera apenas data_entrega + situacao_id
     const body: Record<string, unknown> = {
       ...venda,
-      data_entrega: args.routeDate,
+      data_entrega: args.routeDate ?? "",
     };
     if (situacaoId) body.situacao_id = situacaoId;
     // Segurança extra: garantir que o cliente_id continua presente

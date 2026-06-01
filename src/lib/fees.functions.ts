@@ -10,7 +10,7 @@ export const listFeeRanges = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("delivery_fee_ranges")
       .select("*")
-      .order("priority", { ascending: false })
+      .order("priority", { ascending: true })
       .order("zip_start", { ascending: true });
     if (error) throw new Error(error.message);
     return data ?? [];

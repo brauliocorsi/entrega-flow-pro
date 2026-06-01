@@ -3,7 +3,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getRouteSimulation, getRouteWithDeliveries } from "@/lib/routes.functions";
-import { updateDeliveryMeta } from "@/lib/deliveries.functions";
+import { updateDeliveryMeta, refreshDeliveryPayload } from "@/lib/deliveries.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

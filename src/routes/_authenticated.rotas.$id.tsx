@@ -12,6 +12,169 @@ import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT
 import { formatDatePT, formatEUR } from "@/lib/format";
 import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon } from "lucide-react";
 
+type Stop = {
+  id: string;
+  label: string;
+  full: string;
+};
+
+type RouteSimulation = {
+  distanceMeters: number;
+  duration: string;
+  polyline: string;
+  legs: Array<{
+    distanceMeters: number;
+    duration: string;
+    startLocation: { lat: number; lng: number };
+    endLocation: { lat: number; lng: number };
+  }>;
+};
+
+function formatDuration(duration: string) {
+  const totalSeconds = Number.parseInt(duration.replace("s", ""), 10) || 0;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.round((totalSeconds % 3600) / 60);
+  if (hours <= 0) return `${minutes} min`;
+  if (minutes <= 0) return `${hours} h`;
+  return `${hours} h ${minutes} min`;
+}
+
+function formatDistance(distanceMeters: number) {
+  if (distanceMeters >= 1000) return `${(distanceMeters / 1000).toFixed(1)} km`;
+  return `${distanceMeters} m`;
+}
+
+function RouteSimulationMap({
+  stops,
+  selectedId,
+}: {
+  stops: Stop[];
+  selectedId: string | null;
+}) {
+  const mapsKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
+  const trackingId = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID;
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const overlaysRef = useRef<Array<google.maps.Marker | google.maps.Polyline>>([]);
+  const simulationFn = useServerFn(getRouteSimulation);
+
+  const selectedIdx = stops.findIndex((s) => s.id === selectedId);
+  const selectedStop = selectedIdx >= 0 ? stops[selectedIdx] : null;
+
+  const simulationInput = useMemo(() => {
+    if (stops.length === 0) return null;
+
+    if (selectedStop) {
+      const previous = selectedIdx === 0 ? WAREHOUSE_ADDRESS : stops[selectedIdx - 1].full;
+      return {
+        origin: previous,
+        destination: selectedStop.full,
+        intermediates: [],
+      };
+    }
+
+    return {
+      origin: WAREHOUSE_ADDRESS,
+      destination: WAREHOUSE_ADDRESS,
+      intermediates: stops.map((stop) => stop.full),
+    };
+  }, [selectedIdx, selectedStop, stops]);
+
+  const { data, isLoading, error } = useQuery<RouteSimulation>({
+    queryKey: ["route-simulation", selectedId ?? "all", stops.map((s) => s.id).join(",")],
+    enabled: Boolean(simulationInput),
+    queryFn: () => simulationFn({ data: simulationInput! }),
+  });
+
+  useEffect(() => {
+    if (!mapsKey || !mapRef.current) return;
+
+    let cancelled = false;
+    const loader = new Loader({
+      apiKey: mapsKey,
+      version: "weekly",
+      libraries: [],
+      ...(trackingId ? { channel: trackingId } : {}),
+    });
+
+    loader.load().then(() => {
+      if (cancelled || !mapRef.current || mapInstanceRef.current) return;
+      mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+        center: { lat: 41.1579, lng: -8.6291 },
+        zoom: 10,
+        streetViewControl: false,
+        mapTypeControl: false,
+        fullscreenControl: false,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mapsKey, trackingId]);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !data) return;
+
+    overlaysRef.current.forEach((overlay) => overlay.setMap(null));
+    overlaysRef.current = [];
+
+    const decoded = polyline.decode(data.polyline).map(([lat, lng]) => ({ lat, lng }));
+    const path = new google.maps.Polyline({
+      path: decoded,
+      strokeColor: "#2563eb",
+      strokeOpacity: 0.9,
+      strokeWeight: 5,
+    });
+    path.setMap(map);
+    overlaysRef.current.push(path);
+
+    const points = data.legs.flatMap((leg, index) => {
+      const start = index === 0 ? [leg.startLocation] : [];
+      return [...start, leg.endLocation];
+    });
+
+    points.forEach((point, index) => {
+      const isWarehouseStart = index === 0;
+      const isWarehouseEnd = index === points.length - 1 && !selectedStop;
+      const label = isWarehouseStart ? "A" : isWarehouseEnd ? "B" : String(index);
+      const marker = new google.maps.Marker({
+        position: point,
+        map,
+        label,
+        animation: selectedStop && index === points.length - 1 ? google.maps.Animation.DROP : undefined,
+      });
+      overlaysRef.current.push(marker);
+    });
+
+    const bounds = new google.maps.LatLngBounds();
+    decoded.forEach((point) => bounds.extend(point));
+    if (!bounds.isEmpty()) map.fitBounds(bounds, 48);
+  }, [data, selectedStop]);
+
+  if (!mapsKey) {
+    return <div className="h-[420px] grid place-items-center text-sm text-muted-foreground bg-muted/20">A chave do mapa não está disponível.</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div ref={mapRef} className="w-full h-[420px]" />
+      <div className="px-4 pb-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
+        {isLoading && <span>A calcular trajeto…</span>}
+        {error && <span className="text-rose-600">Não foi possível calcular o trajeto.</span>}
+        {data && (
+          <>
+            <span className="inline-flex items-center gap-1"><RouteIcon className="h-3.5 w-3.5" /> {formatDistance(data.distanceMeters)}</span>
+            <span>{formatDuration(data.duration)}</span>
+            <span>{data.legs.length} troço(s)</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/_authenticated/rotas/$id")({
   component: RouteDetail,
 });

@@ -54,6 +54,29 @@ function normalizeOrder(payload: any, orderNumber: string): OrderDTO {
   };
 }
 
+function normalizeBaseUrl(baseUrl: string): string {
+  const trimmed = baseUrl.trim().replace(/\/$/, "");
+
+  try {
+    const url = new URL(trimmed);
+    const hostname = url.hostname.toLowerCase();
+    const pathname = url.pathname.replace(/\/$/, "");
+
+    if (
+      hostname === "gestaoclick.com" ||
+      hostname === "www.gestaoclick.com" ||
+      pathname === "/integracao_api/inicio" ||
+      pathname === "/integracao_api/login"
+    ) {
+      return "https://api.gestaoclick.com";
+    }
+
+    return `${url.origin}${pathname}`;
+  } catch {
+    return trimmed.replace(/\/integracao_api\/(inicio|login)$/, "");
+  }
+}
+
 async function gcFetch(url: string, headers: Record<string, string>): Promise<{ status: number; json: any }> {
   const res = await fetch(url, { headers });
   const text = await res.text();
@@ -91,7 +114,7 @@ export const fetchOrder = createServerFn({ method: "POST" })
         error: "Credenciais GestãoClick em falta",
       };
     }
-    const base = baseUrl.replace(/\/$/, "").replace(/\/integracao_api\/inicio$/, "");
+    const base = normalizeBaseUrl(baseUrl);
     const headers = {
       "access-token": apiKey,
       "secret-access-token": email,

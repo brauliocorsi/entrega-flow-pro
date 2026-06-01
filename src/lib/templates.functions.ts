@@ -146,6 +146,7 @@ export async function generateRoutesShared(supabase: any, weeks: number) {
         driver: t.default_driver,
         max_capacity_m3: t.max_capacity_m3,
         max_minutes: t.max_minutes ?? 480,
+        color: t.color ?? "#3b82f6",
       });
       if (!insErr) created++;
     }

@@ -28,6 +28,7 @@ type Template = {
   zone: string;
   zip_prefixes: string[];
   max_capacity_m3: number;
+  max_minutes: number;
   default_driver: string | null;
   active: boolean;
   notes: string | null;
@@ -39,6 +40,7 @@ const empty = {
   zone: "",
   zip_prefixes: "",
   max_capacity_m3: 20,
+  max_minutes: 480,
   default_driver: "",
   active: true,
   notes: "",
@@ -101,6 +103,7 @@ function AdminTemplatesPage() {
       zone: t.zone,
       zip_prefixes: t.zip_prefixes.join(", "),
       max_capacity_m3: Number(t.max_capacity_m3),
+      max_minutes: Number(t.max_minutes),
       default_driver: t.default_driver ?? "",
       active: t.active,
       notes: t.notes ?? "",
@@ -122,6 +125,7 @@ function AdminTemplatesPage() {
           zone: form.zone.trim(),
           zip_prefixes: prefixes,
           max_capacity_m3: Number(form.max_capacity_m3),
+          max_minutes: Number(form.max_minutes),
           default_driver: form.default_driver.trim() || null,
           active: form.active,
           notes: form.notes.trim() || null,
@@ -197,7 +201,7 @@ function AdminTemplatesPage() {
                     {!t.active && <Badge variant="outline">Inativo</Badge>}
                   </div>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    {t.zone} · {Number(t.max_capacity_m3)} m³
+                    {t.zone} · {Number(t.max_capacity_m3)} m³ · {Number(t.max_minutes)} min
                     {t.default_driver ? ` · ${t.default_driver}` : ""}
                   </p>
                   <div className="flex flex-wrap gap-1 mt-2">
@@ -247,6 +251,16 @@ function AdminTemplatesPage() {
                 <Input type="number" min={1} max={200} value={form.max_capacity_m3} onChange={(e) => setForm({ ...form, max_capacity_m3: Number(e.target.value) })} />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Tempo de rota (min)</Label>
+                <Input type="number" min={1} max={1440} value={form.max_minutes} onChange={(e) => setForm({ ...form, max_minutes: Number(e.target.value) })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Motorista (opcional)</Label>
+                <Input value={form.default_driver} onChange={(e) => setForm({ ...form, default_driver: e.target.value })} />
+              </div>
+            </div>
             <div className="space-y-1.5">
               <Label>Zona</Label>
               <Input value={form.zone} onChange={(e) => setForm({ ...form, zone: e.target.value })} placeholder="Porto / Grande Porto" />
@@ -259,10 +273,6 @@ function AdminTemplatesPage() {
                 placeholder="4000, 4100, 4200"
               />
               <p className="text-xs text-muted-foreground">Separar por vírgula. Ex.: 4000, 4100</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Motorista (opcional)</Label>
-              <Input value={form.default_driver} onChange={(e) => setForm({ ...form, default_driver: e.target.value })} />
             </div>
             <div className="space-y-1.5">
               <Label>Notas</Label>

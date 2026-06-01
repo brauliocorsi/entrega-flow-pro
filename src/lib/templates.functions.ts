@@ -9,6 +9,7 @@ const TemplateInput = z.object({
   zone: z.string().min(1).max(100),
   zip_prefixes: z.array(z.string().min(1).max(8)).max(50),
   max_capacity_m3: z.number().min(1).max(200),
+  max_minutes: z.number().int().min(1).max(1440).default(480),
   default_driver: z.string().max(100).nullable().optional(),
   active: z.boolean().default(true),
   notes: z.string().max(500).nullable().optional(),
@@ -47,6 +48,7 @@ export const upsertTemplate = createServerFn({ method: "POST" })
           zone: data.zone,
           zip_prefixes: data.zip_prefixes,
           max_capacity_m3: data.max_capacity_m3,
+          max_minutes: data.max_minutes,
           default_driver: data.default_driver ?? null,
           active: data.active,
           notes: data.notes ?? null,
@@ -63,6 +65,7 @@ export const upsertTemplate = createServerFn({ method: "POST" })
         zone: data.zone,
         zip_prefixes: data.zip_prefixes,
         max_capacity_m3: data.max_capacity_m3,
+        max_minutes: data.max_minutes,
         default_driver: data.default_driver ?? null,
         active: data.active,
         notes: data.notes ?? null,
@@ -139,6 +142,7 @@ export async function generateRoutesShared(supabase: any, weeks: number) {
         zip_prefixes: t.zip_prefixes,
         driver: t.default_driver,
         max_capacity_m3: t.max_capacity_m3,
+        max_minutes: t.max_minutes ?? 480,
       });
       if (!insErr) created++;
     }

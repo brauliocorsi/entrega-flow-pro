@@ -16,6 +16,7 @@ export const Route = createFileRoute("/_authenticated/rotas/$id")({
 
 function RouteDetail() {
   const { id } = useParams({ from: "/_authenticated/rotas/$id" });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const fn = useServerFn(getRouteWithDeliveries);
   const { data, isLoading } = useQuery(
     queryOptions({

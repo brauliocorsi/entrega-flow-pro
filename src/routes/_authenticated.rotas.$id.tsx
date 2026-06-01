@@ -125,6 +125,8 @@ function RouteSimulationSection({
     return rawStops;
   }, [rawStops, optData]);
 
+  const legs = optData?.legs ?? [];
+
   const origin = encodeURIComponent(WAREHOUSE_ADDRESS);
   const fullUrl =
     `https://www.google.com/maps/dir/?api=1` +

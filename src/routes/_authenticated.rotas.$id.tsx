@@ -334,18 +334,17 @@ function RouteDetail() {
       </Card>
 
       {deliveries.length > 0 && (() => {
-        const stops: Stop[] = deliveries.map((d: any) => ({
+        const rawStops: Stop[] = deliveries.map((d: any) => ({
           id: d.id,
           label: `#${d.order_number} · ${d.customer_name}`,
           full: `${d.address}${d.zip_code ? `, ${d.zip_code}` : ""}${d.city ? ` ${d.city}` : ""}`.trim(),
         }));
+        return <RouteSimulationSection rawStops={rawStops} selectedId={selectedId} setSelectedId={setSelectedId} selectStop={selectStop} />;
+      })()}
+      {false && (() => {
+        const stops: Stop[] = [];
         const origin = encodeURIComponent(WAREHOUSE_ADDRESS);
-        const fullUrl =
-          `https://www.google.com/maps/dir/?api=1` +
-          `&origin=${origin}` +
-          `&destination=${origin}` +
-          `&travelmode=driving` +
-          `&waypoints=${stops.map((s) => encodeURIComponent(s.full)).join("|")}`;
+        const fullUrl = "";
         const selectedIdx = stops.findIndex((s) => s.id === selectedId);
         const selectedStop = selectedIdx >= 0 ? stops[selectedIdx] : null;
 

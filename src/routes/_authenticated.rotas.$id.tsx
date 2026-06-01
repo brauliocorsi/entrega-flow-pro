@@ -2,8 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
-import polyline from "@mapbox/polyline";
 import { getRouteSimulation, getRouteWithDeliveries } from "@/lib/routes.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -90,13 +88,14 @@ function RouteSimulationMap({
     if (!mapsKey || !mapRef.current) return;
 
     let cancelled = false;
-    setOptions({
-      key: mapsKey,
-      v: "weekly",
-      ...(trackingId ? { channel: trackingId } : {}),
-    });
-
-    Promise.all([importLibrary("maps"), importLibrary("marker")]).then(([mapsLib]) => {
+    (async () => {
+      const { setOptions, importLibrary } = await import("@googlemaps/js-api-loader");
+      setOptions({
+        key: mapsKey,
+        v: "weekly",
+        ...(trackingId ? { channel: trackingId } : {}),
+      });
+      const [mapsLib] = await Promise.all([importLibrary("maps"), importLibrary("marker")]);
       if (cancelled || !mapRef.current || mapInstanceRef.current) return;
       const { Map } = mapsLib as any;
       mapInstanceRef.current = new Map(mapRef.current, {
@@ -106,7 +105,7 @@ function RouteSimulationMap({
         mapTypeControl: false,
         fullscreenControl: false,
       });
-    });
+    })();
 
     return () => {
       cancelled = true;
@@ -117,43 +116,55 @@ function RouteSimulationMap({
     const map = mapInstanceRef.current;
     if (!map || !data) return;
 
-    overlaysRef.current.forEach((overlay) => overlay.setMap(null));
-    overlaysRef.current = [];
+    let cancelled = false;
+    (async () => {
+      const polylineMod = (await import("@mapbox/polyline")).default;
+      if (cancelled) return;
 
-    const decoded = polyline.decode(data.polyline).map(([lat, lng]) => ({ lat, lng }));
-    const googleMaps = (globalThis as any).google?.maps;
-    if (!googleMaps) return;
+      overlaysRef.current.forEach((overlay) => overlay.setMap(null));
+      overlaysRef.current = [];
 
-    const path = new googleMaps.Polyline({
-      path: decoded,
-      strokeColor: "#2563eb",
-      strokeOpacity: 0.9,
-      strokeWeight: 5,
-    });
-    path.setMap(map);
-    overlaysRef.current.push(path);
+      const decoded = polylineMod
+        .decode(data.polyline)
+        .map(([lat, lng]: [number, number]) => ({ lat, lng }));
+      const googleMaps = (globalThis as any).google?.maps;
+      if (!googleMaps) return;
 
-    const points = data.legs.flatMap((leg, index) => {
-      const start = index === 0 ? [leg.startLocation] : [];
-      return [...start, leg.endLocation];
-    });
-
-    points.forEach((point, index) => {
-      const isWarehouseStart = index === 0;
-      const isWarehouseEnd = index === points.length - 1 && !selectedStop;
-      const label = isWarehouseStart ? "A" : isWarehouseEnd ? "B" : String(index);
-      const marker = new googleMaps.Marker({
-        position: point,
-        map,
-        label,
-        animation: selectedStop && index === points.length - 1 ? googleMaps.Animation.DROP : undefined,
+      const path = new googleMaps.Polyline({
+        path: decoded,
+        strokeColor: "#2563eb",
+        strokeOpacity: 0.9,
+        strokeWeight: 5,
       });
-      overlaysRef.current.push(marker);
-    });
+      path.setMap(map);
+      overlaysRef.current.push(path);
 
-    const bounds = new googleMaps.LatLngBounds();
-    decoded.forEach((point) => bounds.extend(point));
-    if (!bounds.isEmpty()) map.fitBounds(bounds, 48);
+      const points = data.legs.flatMap((leg, index) => {
+        const start = index === 0 ? [leg.startLocation] : [];
+        return [...start, leg.endLocation];
+      });
+
+      points.forEach((point: { lat: number; lng: number }, index: number) => {
+        const isWarehouseStart = index === 0;
+        const isWarehouseEnd = index === points.length - 1 && !selectedStop;
+        const label = isWarehouseStart ? "A" : isWarehouseEnd ? "B" : String(index);
+        const marker = new googleMaps.Marker({
+          position: point,
+          map,
+          label,
+          animation: selectedStop && index === points.length - 1 ? googleMaps.Animation.DROP : undefined,
+        });
+        overlaysRef.current.push(marker);
+      });
+
+      const bounds = new googleMaps.LatLngBounds();
+      decoded.forEach((point: { lat: number; lng: number }) => bounds.extend(point));
+      if (!bounds.isEmpty()) map.fitBounds(bounds, 48);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [data, selectedStop]);
 
   if (!mapsKey) {

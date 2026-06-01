@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRotasRouteImport } from './routes/_authenticated.rotas'
+import { Route as AuthenticatedRotasIdRouteImport } from './routes/_authenticated.rotas.$id'
 import { Route as ApiPublicCronGenerateRoutesRouteImport } from './routes/api/public/cron/generate-routes'
 
 const LoginRoute = LoginRouteImport.update({
@@ -34,6 +35,11 @@ const AuthenticatedRotasRoute = AuthenticatedRotasRouteImport.update({
   path: '/rotas',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedRotasIdRoute = AuthenticatedRotasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedRotasRoute,
+} as any)
 const ApiPublicCronGenerateRoutesRoute =
   ApiPublicCronGenerateRoutesRouteImport.update({
     id: '/api/public/cron/generate-routes',
@@ -44,13 +50,15 @@ const ApiPublicCronGenerateRoutesRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/rotas': typeof AuthenticatedRotasRoute
+  '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/rotas/$id': typeof AuthenticatedRotasIdRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/rotas': typeof AuthenticatedRotasRoute
+  '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/rotas/$id': typeof AuthenticatedRotasIdRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
 export interface FileRoutesById {
@@ -58,20 +66,32 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/_authenticated/rotas': typeof AuthenticatedRotasRoute
+  '/_authenticated/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/_authenticated/rotas/$id': typeof AuthenticatedRotasIdRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/rotas' | '/api/public/cron/generate-routes'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/rotas'
+    | '/rotas/$id'
+    | '/api/public/cron/generate-routes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/rotas' | '/api/public/cron/generate-routes'
+  to:
+    | '/'
+    | '/login'
+    | '/rotas'
+    | '/rotas/$id'
+    | '/api/public/cron/generate-routes'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
     | '/_authenticated/rotas'
+    | '/_authenticated/rotas/$id'
     | '/api/public/cron/generate-routes'
   fileRoutesById: FileRoutesById
 }
@@ -112,6 +132,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRotasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/rotas/$id': {
+      id: '/_authenticated/rotas/$id'
+      path: '/$id'
+      fullPath: '/rotas/$id'
+      preLoaderRoute: typeof AuthenticatedRotasIdRouteImport
+      parentRoute: typeof AuthenticatedRotasRoute
+    }
     '/api/public/cron/generate-routes': {
       id: '/api/public/cron/generate-routes'
       path: '/api/public/cron/generate-routes'
@@ -122,12 +149,23 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedRotasRouteChildren {
+  AuthenticatedRotasIdRoute: typeof AuthenticatedRotasIdRoute
+}
+
+const AuthenticatedRotasRouteChildren: AuthenticatedRotasRouteChildren = {
+  AuthenticatedRotasIdRoute: AuthenticatedRotasIdRoute,
+}
+
+const AuthenticatedRotasRouteWithChildren =
+  AuthenticatedRotasRoute._addFileChildren(AuthenticatedRotasRouteChildren)
+
 interface AuthenticatedRouteChildren {
-  AuthenticatedRotasRoute: typeof AuthenticatedRotasRoute
+  AuthenticatedRotasRoute: typeof AuthenticatedRotasRouteWithChildren
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedRotasRoute: AuthenticatedRotasRoute,
+  AuthenticatedRotasRoute: AuthenticatedRotasRouteWithChildren,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

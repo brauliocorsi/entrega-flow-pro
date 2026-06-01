@@ -40,6 +40,7 @@ function AuthenticatedLayout() {
           <nav className="flex items-center gap-1 ml-2 flex-1 overflow-x-auto">
             <NavLink to="/rotas" active={isActive("/rotas")} icon={<Calendar className="h-4 w-4" />} label="Rotas" />
             <NavLink to="/agendar" active={isActive("/agendar")} icon={<Plus className="h-4 w-4" />} label="Agendar" />
+            <NavLink to="/conferencia" active={isActive("/conferencia")} icon={<Calculator className="h-4 w-4" />} label="Conferência" />
             {role === "admin" && (
               <NavLink to="/admin/templates" active={isActive("/admin")} icon={<Settings className="h-4 w-4" />} label="Admin" />
             )}

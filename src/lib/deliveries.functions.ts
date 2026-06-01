@@ -19,6 +19,7 @@ const ScheduleInput = z.object({
   estimated_minutes: z.number().int().min(5).max(480),
   notes: z.string().max(1000).nullable().optional(),
   rescheduled_from_id: z.string().uuid().nullable().optional(),
+  order_payload: z.any().nullable().optional(),
 });
 
 export const scheduleDelivery = createServerFn({ method: "POST" })

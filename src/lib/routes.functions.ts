@@ -102,6 +102,36 @@ export const updateRouteStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateRouteFleet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        driver: z.string().max(100).nullable().optional(),
+        vehicle: z.string().max(100).nullable().optional(),
+        assistant: z.string().max(100).nullable().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: roleData } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "logistico"]);
+    if (!roleData || roleData.length === 0) {
+      throw new Error("Apenas administradores ou logística podem alterar a frota");
+    }
+    const patch: Record<string, any> = {};
+    if (data.driver !== undefined) patch.driver = data.driver?.trim() || null;
+    if (data.vehicle !== undefined) patch.vehicle = data.vehicle?.trim() || null;
+    if (data.assistant !== undefined) patch.assistant = data.assistant?.trim() || null;
+    const { error } = await context.supabase.from("routes").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const getRouteSimulation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => routeSimulationInput.parse(d))

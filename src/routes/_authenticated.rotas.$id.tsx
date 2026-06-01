@@ -1,14 +1,182 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getRouteWithDeliveries } from "@/lib/routes.functions";
+import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
+import polyline from "@mapbox/polyline";
+import { getRouteSimulation, getRouteWithDeliveries } from "@/lib/routes.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
-import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon } from "lucide-react";
+
+type Stop = {
+  id: string;
+  label: string;
+  full: string;
+};
+
+type RouteSimulation = {
+  distanceMeters: number;
+  duration: string;
+  polyline: string;
+  legs: Array<{
+    distanceMeters: number;
+    duration: string;
+    startLocation: { lat: number; lng: number };
+    endLocation: { lat: number; lng: number };
+  }>;
+};
+
+function formatDuration(duration: string) {
+  const totalSeconds = Number.parseInt(duration.replace("s", ""), 10) || 0;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.round((totalSeconds % 3600) / 60);
+  if (hours <= 0) return `${minutes} min`;
+  if (minutes <= 0) return `${hours} h`;
+  return `${hours} h ${minutes} min`;
+}
+
+function formatDistance(distanceMeters: number) {
+  if (distanceMeters >= 1000) return `${(distanceMeters / 1000).toFixed(1)} km`;
+  return `${distanceMeters} m`;
+}
+
+function RouteSimulationMap({
+  stops,
+  selectedId,
+}: {
+  stops: Stop[];
+  selectedId: string | null;
+}) {
+  const mapsKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
+  const trackingId = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID;
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const overlaysRef = useRef<any[]>([]);
+  const simulationFn = useServerFn(getRouteSimulation);
+
+  const selectedIdx = stops.findIndex((s) => s.id === selectedId);
+  const selectedStop = selectedIdx >= 0 ? stops[selectedIdx] : null;
+
+  const simulationInput = useMemo(() => {
+    if (stops.length === 0) return null;
+
+    if (selectedStop) {
+      const previous = selectedIdx === 0 ? WAREHOUSE_ADDRESS : stops[selectedIdx - 1].full;
+      return {
+        origin: previous,
+        destination: selectedStop.full,
+        intermediates: [],
+      };
+    }
+
+    return {
+      origin: WAREHOUSE_ADDRESS,
+      destination: WAREHOUSE_ADDRESS,
+      intermediates: stops.map((stop) => stop.full),
+    };
+  }, [selectedIdx, selectedStop, stops]);
+
+  const { data, isLoading, error } = useQuery<RouteSimulation>({
+    queryKey: ["route-simulation", selectedId ?? "all", stops.map((s) => s.id).join(",")],
+    enabled: Boolean(simulationInput),
+    queryFn: () => simulationFn({ data: simulationInput! }),
+  });
+
+  useEffect(() => {
+    if (!mapsKey || !mapRef.current) return;
+
+    let cancelled = false;
+    setOptions({
+      key: mapsKey,
+      v: "weekly",
+      ...(trackingId ? { channel: trackingId } : {}),
+    });
+
+    Promise.all([importLibrary("maps"), importLibrary("marker")]).then(([mapsLib]) => {
+      if (cancelled || !mapRef.current || mapInstanceRef.current) return;
+      const { Map } = mapsLib as any;
+      mapInstanceRef.current = new Map(mapRef.current, {
+        center: { lat: 41.1579, lng: -8.6291 },
+        zoom: 10,
+        streetViewControl: false,
+        mapTypeControl: false,
+        fullscreenControl: false,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mapsKey, trackingId]);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !data) return;
+
+    overlaysRef.current.forEach((overlay) => overlay.setMap(null));
+    overlaysRef.current = [];
+
+    const decoded = polyline.decode(data.polyline).map(([lat, lng]) => ({ lat, lng }));
+    const googleMaps = (globalThis as any).google?.maps;
+    if (!googleMaps) return;
+
+    const path = new googleMaps.Polyline({
+      path: decoded,
+      strokeColor: "#2563eb",
+      strokeOpacity: 0.9,
+      strokeWeight: 5,
+    });
+    path.setMap(map);
+    overlaysRef.current.push(path);
+
+    const points = data.legs.flatMap((leg, index) => {
+      const start = index === 0 ? [leg.startLocation] : [];
+      return [...start, leg.endLocation];
+    });
+
+    points.forEach((point, index) => {
+      const isWarehouseStart = index === 0;
+      const isWarehouseEnd = index === points.length - 1 && !selectedStop;
+      const label = isWarehouseStart ? "A" : isWarehouseEnd ? "B" : String(index);
+      const marker = new googleMaps.Marker({
+        position: point,
+        map,
+        label,
+        animation: selectedStop && index === points.length - 1 ? googleMaps.Animation.DROP : undefined,
+      });
+      overlaysRef.current.push(marker);
+    });
+
+    const bounds = new googleMaps.LatLngBounds();
+    decoded.forEach((point) => bounds.extend(point));
+    if (!bounds.isEmpty()) map.fitBounds(bounds, 48);
+  }, [data, selectedStop]);
+
+  if (!mapsKey) {
+    return <div className="h-[420px] grid place-items-center text-sm text-muted-foreground bg-muted/20">A chave do mapa não está disponível.</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div ref={mapRef} className="w-full h-[420px]" />
+      <div className="px-4 pb-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
+        {isLoading && <span>A calcular trajeto…</span>}
+        {error && <span className="text-rose-600">Não foi possível calcular o trajeto.</span>}
+        {data && (
+          <>
+            <span className="inline-flex items-center gap-1"><RouteIcon className="h-3.5 w-3.5" /> {formatDistance(data.distanceMeters)}</span>
+            <span>{formatDuration(data.duration)}</span>
+            <span>{data.legs.length} troço(s)</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/_authenticated/rotas/$id")({
   component: RouteDetail,
@@ -85,7 +253,7 @@ function RouteDetail() {
       </Card>
 
       {deliveries.length > 0 && (() => {
-        const stops = deliveries.map((d: any) => ({
+        const stops: Stop[] = deliveries.map((d: any) => ({
           id: d.id,
           label: `#${d.order_number} · ${d.customer_name}`,
           full: `${d.address}${d.zip_code ? `, ${d.zip_code}` : ""}${d.city ? ` ${d.city}` : ""}`.trim(),
@@ -99,43 +267,15 @@ function RouteDetail() {
           `&waypoints=${stops.map((s) => encodeURIComponent(s.full)).join("|")}`;
         const selectedIdx = stops.findIndex((s) => s.id === selectedId);
         const selectedStop = selectedIdx >= 0 ? stops[selectedIdx] : null;
-        const mapsKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
-
-        // Build a directions embed that draws the real driving path destino-a-destino.
-        // When a stop is selected, simulate just the leg "anterior → selecionado".
-        let embedSrc = "";
-        if (mapsKey) {
-          if (selectedStop) {
-            const prev = selectedIdx === 0 ? WAREHOUSE_ADDRESS : stops[selectedIdx - 1].full;
-            embedSrc =
-              `https://www.google.com/maps/embed/v1/directions?key=${mapsKey}` +
-              `&origin=${encodeURIComponent(prev)}` +
-              `&destination=${encodeURIComponent(selectedStop.full)}` +
-              `&mode=driving`;
-          } else {
-            const waypoints = stops.map((s) => s.full).join("|");
-            embedSrc =
-              `https://www.google.com/maps/embed/v1/directions?key=${mapsKey}` +
-              `&origin=${encodeURIComponent(WAREHOUSE_ADDRESS)}` +
-              `&destination=${encodeURIComponent(WAREHOUSE_ADDRESS)}` +
-              `&waypoints=${encodeURIComponent(waypoints)}` +
-              `&mode=driving`;
-          }
-        } else {
-          // Fallback (sem chave): apenas pinos
-          embedSrc = selectedStop
-            ? `https://maps.google.com/maps?output=embed&q=${encodeURIComponent(selectedStop.full)}&z=16`
-            : `https://maps.google.com/maps?output=embed&q=${encodeURIComponent(stops.map((s) => s.full).join(" to "))}&z=11`;
-        }
 
         return (
           <Card className="p-0 overflow-hidden">
             <div className="px-4 py-3 border-b flex items-center justify-between flex-wrap gap-2 bg-muted/30">
               <div>
-              <div className="text-sm font-medium">Simulação do trajeto</div>
+                <div className="text-sm font-medium">Simulação do trajeto</div>
                 <div className="text-xs text-muted-foreground">
                   {selectedStop
-                    ? <>Leg {selectedIdx === 0 ? "Armazém" : `paragem ${selectedIdx}`} → <span className="font-medium text-foreground">{selectedStop.label}</span></>
+                    ? <>Troço {selectedIdx === 0 ? "Armazém" : `paragem ${selectedIdx}`} → <span className="font-medium text-foreground">{selectedStop.label}</span></>
                     : <>{stops.length} paragens · Armazém → entregas → Armazém</>}
                 </div>
               </div>
@@ -153,14 +293,7 @@ function RouteDetail() {
               </div>
             </div>
 
-            <iframe
-              key={selectedId ?? "all"}
-              title="Mapa da rota"
-              className="w-full h-[420px] border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              src={embedSrc}
-            />
+            <RouteSimulationMap stops={stops} selectedId={selectedId} />
 
             <ol className="divide-y">
               <li className="flex items-center gap-3 px-4 py-2 text-sm bg-emerald-50/50">

@@ -14,9 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { formatEUR, formatDatePT, zipPrefix } from "@/lib/format";
 import { DELIVERY_TYPE_LABEL, ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT } from "@/lib/constants";
-import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText } from "lucide-react";
+import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText, ChevronDown, ChevronUp } from "lucide-react";
 
 const searchSchema = z.object({ routeId: z.string().optional() });
 
@@ -41,6 +42,7 @@ function AgendarPage() {
   const [volume, setVolume] = useState(2);
   const [notes, setNotes] = useState("");
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(search.routeId ?? null);
+  const [obsOpen, setObsOpen] = useState(false);
 
   const { data: routes = [] } = useQuery(
     queryOptions({
@@ -195,9 +197,19 @@ function AgendarPage() {
                   {orderData.order.remaining_value > 0 && <div className="text-rose-600">Falta: <strong>{formatEUR(orderData.order.remaining_value)}</strong></div>}
                 </div>
                 {orderData.order.observations && (
-                  <div className="text-xs text-muted-foreground border-t pt-2">
-                    <strong>Obs.:</strong> {orderData.order.observations}
-                  </div>
+                  <Collapsible open={obsOpen} onOpenChange={setObsOpen} className="border-t pt-2">
+                    <CollapsibleTrigger asChild>
+                      <button className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                        {obsOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        <span>Observações</span>
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="text-xs text-muted-foreground pt-1">
+                        {orderData.order.observations}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 )}
               </div>
 

@@ -7,6 +7,8 @@ import { listPendingReschedules } from "@/lib/deliveries.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT } from "@/lib/constants";
 import { formatDatePT } from "@/lib/format";
 import {
@@ -20,6 +22,8 @@ import {
   Wrench,
   Box,
   User,
+  Search,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/rotas")({
@@ -34,6 +38,37 @@ function formatMinutes(min: number): string {
   if (h === 0) return `${m}min`;
   if (m === 0) return `${h}h`;
   return `${h}h${String(m).padStart(2, "0")}`;
+}
+
+// Derives a short code prefix from a zone name (e.g. "Grande Porto" -> "Porto").
+export function zoneCodePrefix(zone: string): string {
+  if (!zone) return "RT";
+  const words = zone.trim().split(/\s+/).filter(Boolean);
+  const last = words[words.length - 1] ?? zone;
+  return last.charAt(0).toUpperCase() + last.slice(1).toLowerCase();
+}
+
+// Assigns a stable sequential code per zone, ordered by route_date then created_at.
+export function buildRouteCodes(rows: any[]): Map<string, string> {
+  const byZone = new Map<string, any[]>();
+  for (const r of rows) {
+    const k = r.zone ?? "";
+    if (!byZone.has(k)) byZone.set(k, []);
+    byZone.get(k)!.push(r);
+  }
+  const codes = new Map<string, string>();
+  for (const [zone, list] of byZone) {
+    const sorted = [...list].sort(
+      (a, b) =>
+        String(a.route_date ?? "").localeCompare(String(b.route_date ?? "")) ||
+        String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")),
+    );
+    const prefix = zoneCodePrefix(zone);
+    sorted.forEach((r, i) => {
+      codes.set(r.id, `${prefix}${String(i + 1).padStart(2, "0")}`);
+    });
+  }
+  return codes;
 }
 
 function RoutesPage() {

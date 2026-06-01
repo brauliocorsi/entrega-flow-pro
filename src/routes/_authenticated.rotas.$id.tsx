@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getRouteWithDeliveries } from "@/lib/routes.functions";
+import { Loader } from "@googlemaps/js-api-loader";
+import polyline from "@mapbox/polyline";
+import { getRouteSimulation, getRouteWithDeliveries } from "@/lib/routes.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
-import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/rotas/$id")({
   component: RouteDetail,

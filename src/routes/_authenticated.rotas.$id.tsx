@@ -593,7 +593,7 @@ function DeliveryCard({
             </div>
           )}
 
-          {(productItems.length > 0 || assemblyItems.length > 0) && (
+          {(
             <Collapsible open={productsOpen} onOpenChange={setProductsOpen}>
               <CollapsibleTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button

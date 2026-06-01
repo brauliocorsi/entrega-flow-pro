@@ -315,6 +315,24 @@ function AdminTemplatesPage() {
               <p className="text-xs text-muted-foreground">Separar por vírgula. Ex.: 4000, 4100</p>
             </div>
             <div className="space-y-1.5">
+              <Label>Cor do template</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  className="h-9 w-12 rounded border cursor-pointer"
+                />
+                <Input
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  placeholder="#3b82f6"
+                  className="font-mono"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Cor usada para identificar visualmente as rotas geradas deste template.</p>
+            </div>
+            <div className="space-y-1.5">
               <Label>Notas</Label>
               <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
             </div>

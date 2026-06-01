@@ -128,12 +128,51 @@ export const updateDeliveryMeta = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
+    const { data: current, error: cErr } = await context.supabase
+      .from("scheduled_deliveries")
+      .select("route_id, volume_m3, estimated_minutes")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (cErr) throw new Error(cErr.message);
+    if (!current) throw new Error("Entrega não encontrada");
+
+    const { data: route } = await context.supabase
+      .from("routes")
+      .select("max_capacity_m3, max_minutes, status")
+      .eq("id", current.route_id)
+      .maybeSingle();
+    if (!route) throw new Error("Rota não encontrada");
+    if (["fechada", "concluida"].includes(route.status as string))
+      throw new Error("Esta rota já está fechada");
+
+    const { data: siblings } = await context.supabase
+      .from("scheduled_deliveries")
+      .select("id, volume_m3, estimated_minutes, status")
+      .eq("route_id", current.route_id);
+
+    const others = (siblings ?? []).filter(
+      (s) => s.id !== data.id && !["cancelado", "reagendado"].includes(s.status as string),
+    );
+    const newVol = others.reduce((a, s) => a + Number(s.volume_m3), 0) + data.volume_m3;
+    const newMin = others.reduce((a, s) => a + Number(s.estimated_minutes), 0) + data.estimated_minutes;
+
+    if (newVol > Number(route.max_capacity_m3) + 0.001) {
+      throw new Error(
+        `Capacidade de volume excedida: ${newVol.toFixed(2)} m³ / ${Number(route.max_capacity_m3).toFixed(2)} m³`,
+      );
+    }
+    if (newMin > Number(route.max_minutes)) {
+      throw new Error(
+        `Tempo total excedido: ${newMin} min / ${route.max_minutes} min`,
+      );
+    }
+
     const { error } = await context.supabase
       .from("scheduled_deliveries")
       .update({ volume_m3: data.volume_m3, estimated_minutes: data.estimated_minutes })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, total_volume_m3: newVol, total_minutes: newMin };
   });
 
 const CloseRouteInput = z.object({

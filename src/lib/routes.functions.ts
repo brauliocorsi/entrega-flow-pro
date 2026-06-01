@@ -112,35 +112,41 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
     const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!googleMapsApiKey) throw new Error("GOOGLE_MAPS_API_KEY em falta para calcular o trajeto");
 
+    const shouldOptimizeWaypointOrder = data.intermediates.length > 1;
+
+    const fieldMask = [
+      "routes.distanceMeters",
+      "routes.duration",
+      "routes.polyline.encodedPolyline",
+      "routes.legs.distanceMeters",
+      "routes.legs.duration",
+      "routes.legs.startLocation",
+      "routes.legs.endLocation",
+      "routes.legs.polyline.encodedPolyline",
+      ...(shouldOptimizeWaypointOrder ? ["routes.optimizedIntermediateWaypointIndex"] : []),
+    ].join(",");
+
+    const requestBody = {
+      origin: { address: data.origin },
+      destination: { address: data.destination },
+      intermediates: data.intermediates.map((address) => ({ address })),
+      travelMode: "DRIVE",
+      routingPreference: shouldOptimizeWaypointOrder ? "TRAFFIC_AWARE" : "TRAFFIC_AWARE_OPTIMAL",
+      polylineQuality: "HIGH_QUALITY",
+      languageCode: "pt-PT",
+      units: "METRIC",
+      ...(shouldOptimizeWaypointOrder ? { optimizeWaypointOrder: true } : {}),
+    };
+
     const response = await fetch("https://connector-gateway.lovable.dev/google_maps/routes/directions/v2:computeRoutes", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${lovableApiKey}`,
         "X-Connection-Api-Key": googleMapsApiKey,
         "Content-Type": "application/json",
-        "X-Goog-FieldMask": [
-          "routes.distanceMeters",
-          "routes.duration",
-          "routes.polyline.encodedPolyline",
-          "routes.legs.distanceMeters",
-          "routes.legs.duration",
-          "routes.legs.startLocation",
-          "routes.legs.endLocation",
-          "routes.legs.polyline.encodedPolyline",
-          "routes.optimizedIntermediateWaypointIndex",
-        ].join(","),
+        "X-Goog-FieldMask": fieldMask,
       },
-      body: JSON.stringify({
-        origin: { address: data.origin },
-        destination: { address: data.destination },
-        intermediates: data.intermediates.map((address) => ({ address })),
-        travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_AWARE",
-        polylineQuality: "HIGH_QUALITY",
-        optimizeWaypointOrder: true,
-        languageCode: "pt-PT",
-        units: "METRIC",
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {

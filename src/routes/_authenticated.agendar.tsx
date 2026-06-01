@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { formatEUR, formatDatePT, zipPrefix } from "@/lib/format";
 import { DELIVERY_TYPE_LABEL, ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT } from "@/lib/constants";
-import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText } from "lucide-react";
 
 const searchSchema = z.object({ routeId: z.string().optional() });
 
@@ -146,15 +146,84 @@ function AgendarPage() {
           )}
 
           {orderData?.order && (
-            <div className="border rounded-md p-4 bg-muted/30 space-y-2">
-              <div className="font-semibold">{orderData.order.customer_name}</div>
-              <div className="text-sm text-muted-foreground">{orderData.order.address} {orderData.order.zip_code ? `(${orderData.order.zip_code})` : ""}</div>
-              {orderData.order.phone && <div className="text-sm text-muted-foreground">Tel: {orderData.order.phone}</div>}
-              <div className="flex gap-4 text-sm pt-2">
-                <div>Total: <strong>{formatEUR(orderData.order.total_value)}</strong></div>
-                <div>Pago: {formatEUR(orderData.order.paid_value)}</div>
-                {orderData.order.remaining_value > 0 && <div className="text-rose-600">Falta: <strong>{formatEUR(orderData.order.remaining_value)}</strong></div>}
+            <div className="space-y-3">
+              <div className="border rounded-md p-4 bg-muted/30 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold">{orderData.order.customer_name}</span>
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    {orderData.order.has_assembly && (
+                      <Badge className="bg-violet-100 text-violet-800 border-violet-200">
+                        <Wrench className="h-3 w-3 mr-1" /> Montagem incluída
+                      </Badge>
+                    )}
+                    {orderData.order.has_delivery_service && (
+                      <Badge className="bg-sky-100 text-sky-800 border-sky-200">
+                        <Truck className="h-3 w-3 mr-1" /> Entrega faturada
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  {orderData.order.customer_document && (
+                    <div className="flex items-center gap-1"><FileText className="h-3 w-3" /> {orderData.order.customer_document}</div>
+                  )}
+                  {orderData.order.customer_email && (
+                    <div className="flex items-center gap-1"><Mail className="h-3 w-3" /> {orderData.order.customer_email}</div>
+                  )}
+                  {(orderData.order.mobile || orderData.order.phone) && (
+                    <div className="flex items-center gap-1"><Phone className="h-3 w-3" /> {orderData.order.mobile || orderData.order.phone}</div>
+                  )}
+                  <div className="flex items-start gap-1 sm:col-span-2">
+                    <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+                    <span>
+                      {orderData.order.address}
+                      {orderData.order.address_complement && `, ${orderData.order.address_complement}`}
+                      {orderData.order.zip_code && ` · ${orderData.order.zip_code}`}
+                      {orderData.order.city && ` ${orderData.order.city}`}
+                      {orderData.order.state && ` (${orderData.order.state})`}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm pt-1 border-t">
+                  <div>Total: <strong>{formatEUR(orderData.order.total_value)}</strong></div>
+                  <div className="text-muted-foreground">Pago: {formatEUR(orderData.order.paid_value)}</div>
+                  {orderData.order.shipping > 0 && <div className="text-muted-foreground">Frete: {formatEUR(orderData.order.shipping)}</div>}
+                  {orderData.order.discount > 0 && <div className="text-muted-foreground">Desc.: {formatEUR(orderData.order.discount)}</div>}
+                  {orderData.order.remaining_value > 0 && <div className="text-rose-600">Falta: <strong>{formatEUR(orderData.order.remaining_value)}</strong></div>}
+                </div>
+                {orderData.order.observations && (
+                  <div className="text-xs text-muted-foreground border-t pt-2">
+                    <strong>Obs.:</strong> {orderData.order.observations}
+                  </div>
+                )}
               </div>
+
+              {orderData.order.items.length > 0 && (
+                <div className="border rounded-md overflow-hidden">
+                  <div className="px-3 py-2 bg-muted/50 text-xs font-medium flex items-center gap-1">
+                    <Package className="h-3 w-3" /> Produtos e serviços ({orderData.order.items.length})
+                  </div>
+                  <div className="divide-y">
+                    {orderData.order.items.map((it, i) => (
+                      <div key={i} className="px-3 py-2 text-sm flex justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate">{it.description}</span>
+                            {it.kind === "montagem" && <Badge variant="outline" className="text-[10px] border-violet-300 text-violet-700">Montagem</Badge>}
+                            {it.kind === "entrega" && <Badge variant="outline" className="text-[10px] border-sky-300 text-sky-700">Entrega</Badge>}
+                            {it.kind === "servico" && <Badge variant="outline" className="text-[10px]">Serviço</Badge>}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{it.quantity} × {formatEUR(it.price)}</div>
+                        </div>
+                        <div className="font-medium tabular-nums">{formatEUR(it.total)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -181,7 +250,13 @@ function AgendarPage() {
           )}
 
           <div className="flex justify-end">
-            <Button disabled={!orderData?.order || !!orderData?.existingActiveDelivery} onClick={() => setStep(2)}>
+            <Button
+              disabled={!orderData?.order || !!orderData?.existingActiveDelivery}
+              onClick={() => {
+                if (orderData?.order?.has_assembly && minutes < 60) setMinutes(60);
+                setStep(2);
+              }}
+            >
               Continuar <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
@@ -224,31 +299,89 @@ function AgendarPage() {
 
       {step === 3 && (
         <Card className="p-5 space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {compatibleRoutes.length} rota(s) compatível(eis) {zipPrefix(orderData?.order?.zip_code) && `com CP ${zipPrefix(orderData?.order?.zip_code)}`}
-          </p>
-          {compatibleRoutes.length === 0 && <p className="text-sm text-rose-600">Sem rotas compatíveis. Tenta reduzir o volume ou contacta o admin.</p>}
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {compatibleRoutes.map((r: any) => {
-              const d = new Date(r.route_date + "T00:00:00");
-              const restante = Number(r.max_capacity_m3) - Number(r.current_volume_m3);
-              return (
-                <div
-                  key={r.id}
-                  onClick={() => setSelectedRouteId(r.id)}
-                  className={`border rounded-md p-3 cursor-pointer transition-colors ${selectedRouteId === r.id ? "border-primary bg-primary/5" : "hover:bg-accent"}`}
-                >
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <div className="font-medium">{r.zone} <span className="text-muted-foreground font-normal">— {WEEKDAYS_PT[d.getDay()]}, {formatDatePT(r.route_date)}</span></div>
-                      <div className="text-xs text-muted-foreground">{r.driver ?? "Sem motorista"} · {restante.toFixed(1)} m³ disponíveis</div>
-                    </div>
-                    <Badge className={ROUTE_STATUS_TONE[r.status]}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
+          {(() => {
+            const sorted = [...compatibleRoutes].sort((a: any, b: any) =>
+              a.route_date.localeCompare(b.route_date),
+            );
+            const bestId = sorted[0]?.id ?? null;
+            const dates = Array.from(new Set(sorted.map((r: any) => r.route_date)));
+            const grouped = dates.map((date) => ({
+              date,
+              routes: sorted.filter((r: any) => r.route_date === date),
+            }));
+            const zip = zipPrefix(orderData?.order?.zip_code);
+            return (
+              <>
+                <div className="flex items-start justify-between flex-wrap gap-2">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {dates.length} data(s) disponível(is) · {compatibleRoutes.length} rota(s)
+                    </p>
+                    {zip && (
+                      <p className="text-xs text-muted-foreground">Filtrado por CP {zip}</p>
+                    )}
                   </div>
+                  {bestId && (
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                      <Sparkles className="h-3 w-3 mr-1" /> Melhor data: {formatDatePT(sorted[0].route_date)}
+                    </Badge>
+                  )}
                 </div>
-              );
-            })}
-          </div>
+                {compatibleRoutes.length === 0 && (
+                  <p className="text-sm text-rose-600">
+                    Sem rotas compatíveis. Reduz o volume ou pede ao admin para abrir uma nova rota.
+                  </p>
+                )}
+                <div className="space-y-3 max-h-[28rem] overflow-y-auto">
+                  {grouped.map(({ date, routes: dayRoutes }) => {
+                    const d = new Date(date + "T00:00:00");
+                    return (
+                      <div key={date} className="space-y-1">
+                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-1">
+                          {WEEKDAYS_PT[d.getDay()]}, {formatDatePT(date)}
+                        </div>
+                        {dayRoutes.map((r: any) => {
+                          const restante = Number(r.max_capacity_m3) - Number(r.current_volume_m3);
+                          const pct = (Number(r.current_volume_m3) / Number(r.max_capacity_m3)) * 100;
+                          const isBest = r.id === bestId;
+                          return (
+                            <div
+                              key={r.id}
+                              onClick={() => setSelectedRouteId(r.id)}
+                              className={`border rounded-md p-3 cursor-pointer transition-colors ${selectedRouteId === r.id ? "border-primary bg-primary/5" : "hover:bg-accent"}`}
+                            >
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div className="min-w-0">
+                                  <div className="font-medium flex items-center gap-2">
+                                    {r.zone}
+                                    {isBest && (
+                                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
+                                        Recomendado
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {r.driver ?? "Sem motorista"} · {restante.toFixed(1)} m³ livres ({pct.toFixed(0)}% ocupado)
+                                  </div>
+                                </div>
+                                <Badge className={ROUTE_STATUS_TONE[r.status]}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
+                              </div>
+                              <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full ${pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`}
+                                  style={{ width: `${Math.min(pct, 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4 mr-1" /> Voltar</Button>
             <Button disabled={!selectedRouteId} onClick={() => setStep(4)}>Continuar <ArrowRight className="h-4 w-4 ml-1" /></Button>

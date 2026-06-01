@@ -250,7 +250,13 @@ function AgendarPage() {
           )}
 
           <div className="flex justify-end">
-            <Button disabled={!orderData?.order || !!orderData?.existingActiveDelivery} onClick={() => setStep(2)}>
+            <Button
+              disabled={!orderData?.order || !!orderData?.existingActiveDelivery}
+              onClick={() => {
+                if (orderData?.order?.has_assembly && minutes < 60) setMinutes(60);
+                setStep(2);
+              }}
+            >
               Continuar <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </div>

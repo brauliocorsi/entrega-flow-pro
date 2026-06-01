@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader } from "@googlemaps/js-api-loader";
+import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 import polyline from "@mapbox/polyline";
 import { getRouteSimulation, getRouteWithDeliveries } from "@/lib/routes.functions";
 import { Card } from "@/components/ui/card";
@@ -90,14 +90,13 @@ function RouteSimulationMap({
     if (!mapsKey || !mapRef.current) return;
 
     let cancelled = false;
-    const loader = new Loader({
+    setOptions({
       apiKey: mapsKey,
       version: "weekly",
-      libraries: [],
       ...(trackingId ? { channel: trackingId } : {}),
     });
 
-    Promise.all([loader.importLibrary("maps"), loader.importLibrary("marker")]).then(([mapsLib]) => {
+    Promise.all([importLibrary("maps"), importLibrary("marker")]).then(([mapsLib]) => {
       if (cancelled || !mapRef.current || mapInstanceRef.current) return;
       const { Map } = mapsLib as any;
       mapInstanceRef.current = new Map(mapRef.current, {

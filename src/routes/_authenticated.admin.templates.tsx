@@ -125,6 +125,7 @@ function AdminTemplatesPage() {
           zone: form.zone.trim(),
           zip_prefixes: prefixes,
           max_capacity_m3: Number(form.max_capacity_m3),
+          max_minutes: Number(form.max_minutes),
           default_driver: form.default_driver.trim() || null,
           active: form.active,
           notes: form.notes.trim() || null,

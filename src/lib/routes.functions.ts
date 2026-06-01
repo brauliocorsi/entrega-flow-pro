@@ -123,7 +123,7 @@ export const updateRouteFleet = createServerFn({ method: "POST" })
     if (!roleData || roleData.length === 0) {
       throw new Error("Apenas administradores ou logística podem alterar a frota");
     }
-    const patch: Record<string, any> = {};
+    const patch: { driver?: string | null; vehicle?: string | null; assistant?: string | null } = {};
     if (data.driver !== undefined) patch.driver = data.driver?.trim() || null;
     if (data.vehicle !== undefined) patch.vehicle = data.vehicle?.trim() || null;
     if (data.assistant !== undefined) patch.assistant = data.assistant?.trim() || null;

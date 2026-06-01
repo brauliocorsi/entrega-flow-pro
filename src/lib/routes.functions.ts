@@ -149,17 +149,34 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
       body: JSON.stringify(requestBody),
     });
 
+    const emptyResult = {
+      distanceMeters: 0,
+      duration: "0s",
+      polyline: "",
+      optimizedOrder: [] as number[],
+      legs: [] as Array<{
+        distanceMeters: number;
+        duration: string;
+        polyline: string;
+        startLocation: { lat: number; lng: number };
+        endLocation: { lat: number; lng: number };
+      }>,
+    };
+
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Falha ao calcular trajeto (${response.status}): ${body}`);
+      console.error(`Google Maps Routes API error ${response.status}: ${body}`);
+      return emptyResult;
     }
 
     const result = await response.json();
     const route = result?.routes?.[0];
 
     if (!route?.polyline?.encodedPolyline) {
-      throw new Error("O Google Maps não devolveu geometria para este trajeto");
+      console.warn("Google Maps did not return geometry", JSON.stringify(result).slice(0, 500));
+      return emptyResult;
     }
+
 
     return {
       distanceMeters: Number(route.distanceMeters ?? 0),

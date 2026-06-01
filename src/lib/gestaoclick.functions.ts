@@ -43,7 +43,7 @@ function normalizeOrder(payload: any, orderNumber: string): OrderDTO {
       quantity: Number(it?.quantidade ?? it?.qtd ?? 1),
       price: Number(it?.valor ?? it?.preco ?? 0),
     })),
-    raw: payload,
+    
   };
 }
 

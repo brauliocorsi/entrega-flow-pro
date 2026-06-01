@@ -103,6 +103,7 @@ function AdminTemplatesPage() {
       zone: t.zone,
       zip_prefixes: t.zip_prefixes.join(", "),
       max_capacity_m3: Number(t.max_capacity_m3),
+      max_minutes: Number(t.max_minutes),
       default_driver: t.default_driver ?? "",
       active: t.active,
       notes: t.notes ?? "",

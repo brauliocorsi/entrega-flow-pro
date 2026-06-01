@@ -267,15 +267,15 @@ function RouteCard({ r, code }: { r: any; code?: string }) {
   const cap = Number(r.max_capacity_m3);
   const pct = Math.min(100, (vol / cap) * 100);
   const hasAssembly = (r.assembly_count ?? 0) > 0;
-  const accent = hasAssembly ? "border-l-violet-500" : "border-l-sky-500";
+  const color = r.color ?? "#3b82f6";
 
   return (
     <Link to="/rotas/$id" params={{ id: r.id }} className="block h-full">
-      <Card className={`p-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full border-l-4 ${accent}`}>
+      <Card className="p-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full border-l-4" style={{ borderLeftColor: color }}>
         <div className="flex items-start justify-between mb-2 gap-2">
           <div className="min-w-0">
             <div className="font-semibold flex items-center gap-1.5 truncate">
-              <MapPin className="h-4 w-4 text-primary shrink-0" /> {r.zone}
+              <MapPin className="h-4 w-4 shrink-0" style={{ color }} /> {r.zone}
             </div>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {code && (
@@ -386,14 +386,14 @@ function CalendarRouteCard({ r, code }: { r: any; code?: string }) {
   const cap = Number(r.max_capacity_m3);
   const pct = Math.min(100, (vol / cap) * 100);
   const hasAssembly = (r.assembly_count ?? 0) > 0;
-  const accent = hasAssembly ? "border-l-violet-500" : "border-l-sky-500";
+  const color = r.color ?? "#3b82f6";
 
   return (
     <Link to="/rotas/$id" params={{ id: r.id }} className="block h-full">
-      <div className={`text-[10px] rounded border border-l-4 ${accent} bg-card p-1.5 hover:shadow-sm transition-shadow`} title={`${code ? code + " · " : ""}${r.zone} — ${ROUTE_STATUS_LABEL[r.status]}`}>
+      <div className="text-[10px] rounded border border-l-4 bg-card p-1.5 hover:shadow-sm transition-shadow" style={{ borderLeftColor: color }} title={`${code ? code + " · " : ""}${r.zone} — ${ROUTE_STATUS_LABEL[r.status]}`}>
         <div className="flex items-center justify-between gap-1 mb-1">
           <div className="font-semibold truncate">
-            {code && <span className="font-mono text-primary mr-1">{code}</span>}
+            {code && <span className="font-mono mr-1" style={{ color }}>{code}</span>}
             {r.zone}
           </div>
           <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${pct >= 100 ? "bg-rose-500" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} />

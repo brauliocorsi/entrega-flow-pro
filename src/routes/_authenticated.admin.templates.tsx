@@ -98,7 +98,7 @@ function AdminTemplatesPage() {
     setDialogOpen(true);
   }
 
-  function openEdit(t: Template) {
+  function openEdit(t: Template & { color?: string }) {
     setEditingId(t.id);
     setForm({
       name: t.name,
@@ -110,6 +110,7 @@ function AdminTemplatesPage() {
       default_driver: t.default_driver ?? "",
       active: t.active,
       notes: t.notes ?? "",
+      color: t.color ?? "#3b82f6",
     });
     setFieldErrors({});
     setDialogOpen(true);
@@ -148,6 +149,7 @@ function AdminTemplatesPage() {
           default_driver: form.default_driver.trim() || null,
           active: form.active,
           notes: form.notes.trim() || null,
+          color: form.color,
         },
       });
       toast.success(editingId ? "Template atualizado" : "Template criado");
@@ -210,9 +212,14 @@ function AdminTemplatesPage() {
             </CardContent>
           </Card>
         ) : (
-          items.map((t) => (
-            <Card key={t.id} className={t.active ? "" : "opacity-60"}>
+          items.map((t: any) => (
+            <Card key={t.id} className={`border-l-4 ${t.active ? "" : "opacity-60"}`} style={{ borderLeftColor: t.color ?? "#3b82f6" }}>
               <CardContent className="p-4 flex flex-wrap items-center gap-4">
+                <div
+                  className="h-10 w-10 rounded-md border shrink-0"
+                  style={{ backgroundColor: t.color ?? "#3b82f6" }}
+                  title={t.color ?? "#3b82f6"}
+                />
                 <div className="flex-1 min-w-[200px]">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold">{t.name}</h3>
@@ -224,7 +231,7 @@ function AdminTemplatesPage() {
                     {t.default_driver ? ` · ${t.default_driver}` : ""}
                   </p>
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {t.zip_prefixes.map((p) => (
+                    {t.zip_prefixes.map((p: string) => (
                       <Badge key={p} variant="outline" className="text-xs">CP {p}</Badge>
                     ))}
                   </div>
@@ -311,6 +318,24 @@ function AdminTemplatesPage() {
                 placeholder="4000, 4100, 4200"
               />
               <p className="text-xs text-muted-foreground">Separar por vírgula. Ex.: 4000, 4100</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cor do template</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  className="h-9 w-12 rounded border cursor-pointer"
+                />
+                <Input
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  placeholder="#3b82f6"
+                  className="font-mono"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Cor usada para identificar visualmente as rotas geradas deste template.</p>
             </div>
             <div className="space-y-1.5">
               <Label>Notas</Label>

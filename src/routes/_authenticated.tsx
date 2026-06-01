@@ -2,11 +2,39 @@ import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tan
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Truck, Calendar, Plus, Settings, LogOut, Calculator, Users, Sparkles } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  Truck,
+  Calendar,
+  Plus,
+  Settings,
+  LogOut,
+  Calculator,
+  Users,
+  Sparkles,
+  ChevronDown,
+  LayoutTemplate,
+  Car,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
 });
+
+const SETTINGS_PATHS = [
+  "/admin/templates",
+  "/admin/taxas",
+  "/admin/utilizadores",
+  "/admin/veiculos",
+  "/admin/equipa",
+];
 
 function AuthenticatedLayout() {
   const { user, loading, role, signOut } = useAuth();
@@ -26,6 +54,7 @@ function AuthenticatedLayout() {
   }
 
   const isActive = (p: string) => path === p || path.startsWith(p + "/");
+  const settingsActive = SETTINGS_PATHS.some((p) => isActive(p));
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -41,16 +70,47 @@ function AuthenticatedLayout() {
             <NavLink to="/rotas" active={isActive("/rotas")} icon={<Calendar className="h-4 w-4" />} label="Rotas" />
             <NavLink to="/agendar" active={isActive("/agendar")} icon={<Plus className="h-4 w-4" />} label="Agendar" />
             <NavLink to="/conferencia" active={isActive("/conferencia")} icon={<Calculator className="h-4 w-4" />} label="Conferência" />
-            {role === "admin" && (
-              <>
-                <NavLink to="/admin/templates" active={isActive("/admin/templates")} icon={<Settings className="h-4 w-4" />} label="Templates" />
-                <NavLink to="/admin/taxas" active={isActive("/admin/taxas")} icon={<Calculator className="h-4 w-4" />} label="Taxas" />
-                <NavLink to="/admin/utilizadores" active={isActive("/admin/utilizadores")} icon={<Users className="h-4 w-4" />} label="Utilizadores" />
-                <NavLink to="/admin/otimizacao" active={isActive("/admin/otimizacao")} icon={<Sparkles className="h-4 w-4" />} label="Otimização" />
-              </>
-            )}
-            {role === "logistico" && (
+            {(role === "admin" || role === "logistico") && (
               <NavLink to="/admin/otimizacao" active={isActive("/admin/otimizacao")} icon={<Sparkles className="h-4 w-4" />} label="Otimização" />
+            )}
+            {role === "admin" && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      settingsActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    }`}
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Configurações</span>
+                    <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Operação</DropdownMenuLabel>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin/templates"><LayoutTemplate className="h-4 w-4 mr-2" /> Templates de rota</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin/veiculos"><Car className="h-4 w-4 mr-2" /> Veículos</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin/equipa"><Users className="h-4 w-4 mr-2" /> Equipa (motoristas)</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Comercial</DropdownMenuLabel>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin/taxas"><Calculator className="h-4 w-4 mr-2" /> Taxas de entrega</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Acessos</DropdownMenuLabel>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin/utilizadores"><Users className="h-4 w-4 mr-2" /> Utilizadores</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </nav>
           <div className="hidden md:block text-xs text-muted-foreground truncate max-w-[180px]">{user.email}</div>

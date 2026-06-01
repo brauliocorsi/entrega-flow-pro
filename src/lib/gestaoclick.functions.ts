@@ -13,7 +13,7 @@ export interface OrderDTO {
   paid_value: number;
   remaining_value: number;
   items: Array<{ description: string; quantity: number; price: number }>;
-  raw: unknown;
+  
 }
 
 function normalizeOrder(payload: any, orderNumber: string): OrderDTO {

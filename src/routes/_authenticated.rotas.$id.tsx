@@ -115,15 +115,24 @@ function RouteSimulationMap({
       overlaysRef.current.forEach((overlay) => overlay.setMap(null));
       overlaysRef.current = [];
 
-      const decoded = polylineMod
-        .decode(data.polyline)
-        .map(([lat, lng]: [number, number]) => ({ lat, lng }));
+      const decodePath = (encoded: string) =>
+        polylineMod.decode(encoded).map(([lat, lng]: [number, number]) => ({ lat, lng }));
+
+      // Compor o caminho completo a partir das polylines de cada troço — garante
+      // que TODOS os troços (incluindo o regresso ao armazém) estão presentes.
+      const legPaths = data.legs.map((leg) =>
+        leg.polyline ? decodePath(leg.polyline) : [leg.startLocation, leg.endLocation],
+      );
+      const fullDecoded = legPaths.length > 0
+        ? legPaths.flatMap((p, i) => (i === 0 ? p : p.slice(1)))
+        : decodePath(data.polyline);
+
       const googleMaps = (globalThis as any).google?.maps;
       if (!googleMaps) return;
 
       // Trajeto completo (sempre visível, incluindo regresso ao armazém)
       const fullPath = new googleMaps.Polyline({
-        path: decoded,
+        path: fullDecoded,
         strokeColor: selectedStop ? "#94a3b8" : "#2563eb",
         strokeOpacity: selectedStop ? 0.55 : 0.9,
         strokeWeight: selectedStop ? 4 : 5,
@@ -151,26 +160,23 @@ function RouteSimulationMap({
         overlaysRef.current.push(marker);
       });
 
-      // Quando uma paragem está selecionada, destaca o troço correspondente
-      if (selectedStop && data.legs[selectedIdx]) {
-        const leg = data.legs[selectedIdx];
+      // Quando uma paragem está selecionada, destaca o troço com a polyline real
+      if (selectedStop && legPaths[selectedIdx]) {
         const highlight = new googleMaps.Polyline({
-          path: [leg.startLocation, leg.endLocation],
+          path: legPaths[selectedIdx],
           strokeColor: "#2563eb",
           strokeOpacity: 1,
           strokeWeight: 6,
-          geodesic: true,
         });
         highlight.setMap(map);
         overlaysRef.current.push(highlight);
 
         const bounds = new googleMaps.LatLngBounds();
-        bounds.extend(leg.startLocation);
-        bounds.extend(leg.endLocation);
+        legPaths[selectedIdx].forEach((p: { lat: number; lng: number }) => bounds.extend(p));
         map.fitBounds(bounds, 96);
       } else {
         const bounds = new googleMaps.LatLngBounds();
-        decoded.forEach((point: { lat: number; lng: number }) => bounds.extend(point));
+        fullDecoded.forEach((point: { lat: number; lng: number }) => bounds.extend(point));
         if (!bounds.isEmpty()) map.fitBounds(bounds, 48);
       }
     })();

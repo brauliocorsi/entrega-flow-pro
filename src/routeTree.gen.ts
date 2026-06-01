@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRotasRouteImport } from './routes/_authenticated.rotas'
 import { Route as AuthenticatedAgendarRouteImport } from './routes/_authenticated.agendar'
 import { Route as AuthenticatedRotasIdRouteImport } from './routes/_authenticated.rotas.$id'
+import { Route as AuthenticatedAdminTemplatesRouteImport } from './routes/_authenticated.admin.templates'
 import { Route as ApiPublicCronGenerateRoutesRouteImport } from './routes/api/public/cron/generate-routes'
 
 const LoginRoute = LoginRouteImport.update({
@@ -46,6 +47,12 @@ const AuthenticatedRotasIdRoute = AuthenticatedRotasIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedRotasRoute,
 } as any)
+const AuthenticatedAdminTemplatesRoute =
+  AuthenticatedAdminTemplatesRouteImport.update({
+    id: '/admin/templates',
+    path: '/admin/templates',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const ApiPublicCronGenerateRoutesRoute =
   ApiPublicCronGenerateRoutesRouteImport.update({
     id: '/api/public/cron/generate-routes',
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/agendar': typeof AuthenticatedAgendarRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/rotas/$id': typeof AuthenticatedRotasIdRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/agendar': typeof AuthenticatedAgendarRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/rotas/$id': typeof AuthenticatedRotasIdRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
@@ -76,6 +85,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/agendar': typeof AuthenticatedAgendarRoute
   '/_authenticated/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/_authenticated/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/_authenticated/rotas/$id': typeof AuthenticatedRotasIdRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/agendar'
     | '/rotas'
+    | '/admin/templates'
     | '/rotas/$id'
     | '/api/public/cron/generate-routes'
   fileRoutesByTo: FileRoutesByTo
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/agendar'
     | '/rotas'
+    | '/admin/templates'
     | '/rotas/$id'
     | '/api/public/cron/generate-routes'
   id:
@@ -103,6 +115,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/agendar'
     | '/_authenticated/rotas'
+    | '/_authenticated/admin/templates'
     | '/_authenticated/rotas/$id'
     | '/api/public/cron/generate-routes'
   fileRoutesById: FileRoutesById
@@ -158,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRotasIdRouteImport
       parentRoute: typeof AuthenticatedRotasRoute
     }
+    '/_authenticated/admin/templates': {
+      id: '/_authenticated/admin/templates'
+      path: '/admin/templates'
+      fullPath: '/admin/templates'
+      preLoaderRoute: typeof AuthenticatedAdminTemplatesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/api/public/cron/generate-routes': {
       id: '/api/public/cron/generate-routes'
       path: '/api/public/cron/generate-routes'
@@ -182,11 +202,13 @@ const AuthenticatedRotasRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedAgendarRoute: typeof AuthenticatedAgendarRoute
   AuthenticatedRotasRoute: typeof AuthenticatedRotasRouteWithChildren
+  AuthenticatedAdminTemplatesRoute: typeof AuthenticatedAdminTemplatesRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAgendarRoute: AuthenticatedAgendarRoute,
   AuthenticatedRotasRoute: AuthenticatedRotasRouteWithChildren,
+  AuthenticatedAdminTemplatesRoute: AuthenticatedAdminTemplatesRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -202,3 +224,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

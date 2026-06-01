@@ -126,6 +126,7 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
           "routes.legs.duration",
           "routes.legs.startLocation",
           "routes.legs.endLocation",
+          "routes.legs.polyline.encodedPolyline",
         ].join(","),
       },
       body: JSON.stringify({
@@ -134,7 +135,7 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
         intermediates: data.intermediates.map((address) => ({ address })),
         travelMode: "DRIVE",
         routingPreference: "TRAFFIC_AWARE",
-        polylineQuality: "OVERVIEW",
+        polylineQuality: "HIGH_QUALITY",
         languageCode: "pt-PT",
         units: "METRIC",
       }),
@@ -160,6 +161,7 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
         ? route.legs.map((leg: any) => ({
             distanceMeters: Number(leg.distanceMeters ?? 0),
             duration: String(leg.duration ?? "0s"),
+            polyline: String(leg.polyline?.encodedPolyline ?? ""),
             startLocation: {
               lat: Number(leg.startLocation?.latLng?.latitude ?? 0),
               lng: Number(leg.startLocation?.latLng?.longitude ?? 0),

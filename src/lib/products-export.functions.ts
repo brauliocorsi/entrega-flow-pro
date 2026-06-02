@@ -21,6 +21,22 @@ function flatten(obj: any, prefix = "", out: Record<string, any> = {}): Record<s
   return out;
 }
 
+async function gcFetchRetry(url: string, headers: Record<string, string>, attempts = 3) {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await gcFetch(url, headers);
+    } catch (e) {
+      lastErr = e;
+      const msg = e instanceof Error ? e.message : String(e);
+      // retry only on transient network errors
+      if (!/fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket|network/i.test(msg)) throw e;
+      await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("fetch failed");
+}
+
 async function fetchAllProducts(situation: "ativo" | "all"): Promise<Record<string, any>[]> {
   const baseUrl = process.env.GESTAOCLICK_BASE_URL;
   const apiKey = process.env.GESTAOCLICK_API_KEY;
@@ -38,7 +54,7 @@ async function fetchAllProducts(situation: "ativo" | "all"): Promise<Record<stri
   const maxPages = 200;
   while (page <= maxPages) {
     const url = `${base}/api/produtos?pagina=${page}${situation === "ativo" ? "&situacao=ativo" : ""}`;
-    const res = await gcFetch(url, headers);
+    const res = await gcFetchRetry(url, headers);
     const data: any[] = Array.isArray(res.json?.data) ? res.json.data : Array.isArray(res.json) ? res.json : [];
     if (data.length === 0) break;
     for (const wrap of data) {
@@ -50,6 +66,8 @@ async function fetchAllProducts(situation: "ativo" | "all"): Promise<Record<stri
     if (totalPages && page >= totalPages) break;
     if (data.length < 20) break;
     page++;
+    // small pacing to avoid rate limits
+    await new Promise((r) => setTimeout(r, 100));
   }
   return all;
 }

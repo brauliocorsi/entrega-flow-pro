@@ -28,6 +28,9 @@ export function computeForecastForDelivery(d: any): ForecastItem {
   const servicesValue = items
     .filter((i) => i?.kind && i.kind !== "produto")
     .reduce((acc, i) => acc + Number(i?.total ?? 0), 0);
+  const productsValue = items
+    .filter((i) => !i?.kind || i.kind === "produto")
+    .reduce((acc, i) => acc + Number(i?.total ?? 0), 0);
 
   const pagamentos: any[] = Array.isArray(payload.pagamentos)
     ? payload.pagamentos.map((w: any) => w?.pagamento ?? w)

@@ -511,6 +511,7 @@ function RouteDetail() {
             <p className="text-xs text-muted-foreground mt-1">CP: {(r.zip_prefixes ?? []).join(", ") || "—"}</p>
           </div>
           <div className="flex gap-2">
+            {canForecast && <ForecastButton routeId={r.id} />}
             {!isClosed && (
               <Link to="/agendar" search={{ routeId: r.id }}>
                 <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Agendar entrega</Button>

@@ -110,6 +110,18 @@ async function findSupplierByDoc(doc: string | null): Promise<string | null> {
   }
 }
 
+async function findSupplierByName(name: string): Promise<string | null> {
+  try {
+    const { base, headers } = gcCreds();
+    const res = await gcFetch(`${base}/api/fornecedores?nome=${encodeURIComponent(name)}`, headers);
+    const arr: any[] = Array.isArray(res.json?.data) ? res.json.data : Array.isArray(res.json) ? res.json : [];
+    const first = arr[0]?.fornecedor ?? arr[0];
+    return first?.id ? String(first.id) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function createSupplier(name: string, doc: string | null): Promise<string> {
   const body: Record<string, unknown> = {
     tipo_pessoa: doc && doc.replace(/\D/g, "").length === 9 ? "PJ" : "PF",
@@ -318,6 +330,9 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
       // 1) Supplier
       let supplierId = await findSupplierByDoc(data.supplier_document);
       if (!supplierId) {
+        supplierId = await findSupplierByName(data.supplier_name);
+      }
+      if (!supplierId) {
         supplierId = await createSupplier(data.supplier_name, data.supplier_document);
       }
 
@@ -358,23 +373,32 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         data.items.reduce((sum, item) => sum + Number(item.total || 0), 0).toFixed(2),
       );
       const valorImpostos = Number(Math.max(data.total - valorProdutos, 0).toFixed(2));
+      const codigoCompra = Number(String(Date.now()).slice(-6));
+      const pagamentos = [
+        {
+          pagamento: {
+            data_vencimento: data.due_date ?? data.invoice_date,
+            valor: data.total,
+            forma_pagamento_id: formaPagamentoId ? numericId(formaPagamentoId) : undefined,
+            plano_contas_id: planoContasId ? numericId(planoContasId) : undefined,
+            observacao: `Fatura ${data.invoice_number}`,
+            liquidado: data.finance.mode === "paga" ? "pg" : "ab",
+          },
+        },
+      ];
       const compraBody: Record<string, unknown> = {
-        tipo: "produto",
+        codigo: codigoCompra,
         fornecedor_id: numericId(supplierId),
         situacao_id: numericId(situacaoId),
-        data_emissao: data.invoice_date,
+        data: data.invoice_date,
         numero_nfe: data.invoice_number || undefined,
         valor_produtos: valorProdutos,
         valor_impostos: valorImpostos,
         valor_frete: 0,
         pagar_frete: 1,
         valor_total: data.total,
-        condicao_pagamento: "a_vista",
-        forma_pagamento_id: formaPagamentoId ? numericId(formaPagamentoId) : undefined,
-        numero_parcelas: 1,
-        data_primeira_parcela: data.due_date ?? data.invoice_date,
-        plano_contas_id: planoContasId ? numericId(planoContasId) : undefined,
         produtos,
+        pagamentos,
         observacoes: `Fatura ${data.invoice_number}`,
         observacoes_interna: data.notes ?? undefined,
       };
@@ -383,12 +407,12 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         compraRes?.data?.id ?? compraRes?.id ?? compraRes?.compra?.id ?? "",
       );
 
-      // 4) Account payable → /api/pagamentos
+      // 4) Optional extra payment sync only when user marked as paid
       let contaWarning: string | null = null;
-      if (!planoContasId || !formaPagamentoId || !contaBancariaId) {
+      if (data.finance.mode === "paga" && (!planoContasId || !formaPagamentoId || !contaBancariaId)) {
         contaWarning =
           "Lançamento financeiro não criado: configura em GestãoClick um Plano de contas, Forma de pagamento e Conta bancária padrão.";
-      } else {
+      } else if (data.finance.mode === "paga") {
         const pagamentoBody: Record<string, unknown> = {
           fornecedor_id: supplierId,
           descricao: `Fatura ${data.invoice_number} — ${data.supplier_name}`,

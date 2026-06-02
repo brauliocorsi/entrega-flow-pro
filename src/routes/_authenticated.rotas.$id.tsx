@@ -1276,7 +1276,7 @@ function ForecastHistoryButton({ routeId }: { routeId: string }) {
               onClick={() => setOpen(true)}
               aria-label="Histórico de previsões"
             >
-              <History className="h-4 w-4" />
+              <HistoryIcon className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Histórico de previsões</TooltipContent>

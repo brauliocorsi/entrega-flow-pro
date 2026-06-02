@@ -35,6 +35,7 @@ export interface OrderDTO {
   has_assembly: boolean;
   has_delivery_service: boolean;
   observations: string | null;
+  pagamentos: any[];
 }
 
 export interface FetchOrderResult {

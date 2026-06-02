@@ -1203,11 +1203,34 @@ function ForecastButton({ routeId }: { routeId: string }) {
   const qc = useQueryClient();
   const generateFn = useServerFn(generateRouteForecast);
   const generate = useMutation({
-    mutationFn: () => generateFn({ data: { routeId } }),
+    mutationFn: async () => {
+      const tid = toast.loading("A sincronizar valores com o GestãoClick…");
+      try {
+        const f = await generateFn({ data: { routeId } });
+        toast.dismiss(tid);
+        return f;
+      } catch (e) {
+        toast.dismiss(tid);
+        throw e;
+      }
+    },
     onSuccess: (f: any) => {
-      toast.success(`Previsão gerada: ${formatEUR(f.total_forecast)}`);
+      const synced = f?.route_snapshot?.synced_count ?? 0;
+      const errs: any[] = f?.route_snapshot?.sync_errors ?? [];
+      if (errs.length > 0) {
+        toast.warning(
+          `Previsão gerada: ${formatEUR(f.total_forecast)} · ${synced} sincronizada(s), ${errs.length} sem atualizar`,
+        );
+      } else {
+        toast.success(
+          `Previsão gerada: ${formatEUR(f.total_forecast)} · ${synced} encomenda(s) atualizadas`,
+        );
+      }
       downloadForecastPdf(f);
       qc.invalidateQueries({ queryKey: ["route-forecasts", routeId] });
+      qc.invalidateQueries({ queryKey: ["route", routeId] });
+      qc.invalidateQueries({ queryKey: ["scheduled-deliveries", routeId] });
+      qc.invalidateQueries({ queryKey: ["route-deliveries", routeId] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha ao gerar previsão"),
   });
@@ -1220,16 +1243,17 @@ function ForecastButton({ routeId }: { routeId: string }) {
             variant="outline"
             onClick={() => generate.mutate()}
             disabled={generate.isPending}
-            aria-label="Extrair previsão de recebimentos"
+            aria-label="Atualizar valores e extrair previsão"
           >
             <Wallet className={`h-4 w-4 ${generate.isPending ? "animate-pulse" : ""}`} />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Extrair previsão de recebimentos</TooltipContent>
+        <TooltipContent>Atualizar valores GestãoClick e extrair previsão</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
 }
+
 
 function ForecastHistoryCard({ routeId }: { routeId: string }) {
   const listFn = useServerFn(listRouteForecasts);

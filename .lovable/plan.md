@@ -1,71 +1,51 @@
-# Previsão de Recebimentos da Rota
+## Objetivo
 
-Adicionar uma funcionalidade isolada (sem mexer em nada existente) para extrair, num PDF, a previsão de recebimentos de uma rota — somando os valores marcados como "Pagar na entrega" no GestãoClick — e manter um histórico de quem gerou cada previsão.
+Garantir que a "Previsão de Recebimentos" usa sempre valores atualizados do GestãoClick. Ao clicar no botão, antes de gerar o PDF/registo, refazer uma consulta ao GestãoClick para cada encomenda da rota, atualizar a base de dados, e só depois calcular os totais previstos.
 
-## O que o utilizador vai ver
+## Comportamento
 
-Na página de detalhe da rota (`/rotas/$id`):
-- Um novo botão só com ícone (cofre/€) ao lado dos restantes botões de ação da rota.
-- Visível apenas para `admin` e `logistico` (ocultado para `vendedor`).
-- Tooltip: "Extrair previsão de recebimentos".
-- Ao clicar: gera o PDF, faz download automático e regista no histórico.
+1. Utilizador (admin/logístico) clica no botão "Previsão de Recebimentos" na rota.
+2. O servidor:
+   - Lê todas as entregas ativas (não canceladas/reagendadas) da rota.
+   - Para cada entrega, refaz `fetchOrder` ao GestãoClick (`/api/vendas?codigo=...` + `/api/vendas/{id}`), obtendo `valor_total`, `pagamentos[]` e itens atualizados.
+   - Atualiza `scheduled_deliveries.order_payload`, `total_value` e `remaining_value` (o trigger `tg_compute_remaining` recalcula sozinho, mas escrevemos os valores frescos vindos do GC).
+   - Se uma encomenda falhar a sincronizar (erro GC, sem credenciais, 404), continua mas marca esse item com `sync_error` no snapshot — não bloqueia toda a previsão.
+3. Com os dados frescos, recalcula `items` via `computeForecastForDelivery` e insere em `route_payment_forecasts` exatamente como hoje.
+4. PDF é gerado normalmente (já é client-side dinâmico) e a entrada aparece no histórico.
 
-Logo abaixo, um novo cartão **"Histórico de previsões"** com a lista das previsões já geradas para aquela rota:
-- Data/hora, utilizador que gerou, total previsto, nº de encomendas, botão para voltar a descarregar o PDF dessa geração.
+## UX
 
-Nada do fluxo atual de rotas, entregas, conferência ou agendamento é alterado.
-
-## Conteúdo do PDF
-
-Cabeçalho:
-- ID da rota, data da rota, zona, motorista/veículo, data/hora da geração, utilizador.
-
-Tabela (uma linha por entrega da rota com `outcome` ≠ cancelado/reagendado):
-- Nº encomenda
-- Cliente
-- Valor total da encomenda
-- Valor de serviços (montagem/entrega/serviço — soma dos `items` de `order_payload` com `kind` ≠ `produto`)
-- Valor previsto a receber (soma das parcelas em `order_payload.pagamentos` cuja `observacao` indica "pagar na entrega" / "à entrega" / "na entrega" / "cod"; fallback para `remaining_value` quando não houver pagamentos marcados)
-
-Rodapé:
-- Total de encomendas
-- Total bruto da rota
-- Total de serviços
-- **Total previsto a receber na rota** (destaque)
+- Botão fica em loading durante a sincronização (toast: "A sincronizar valores com o GestãoClick…").
+- Ao terminar:
+  - Sucesso: toast "Previsão gerada com X encomenda(s) atualizada(s)." + download do PDF.
+  - Sucesso parcial: toast warning "Y encomenda(s) não puderam ser sincronizadas — usados últimos valores conhecidos." e prossegue.
+- Invalida queries da rota (`scheduled_deliveries`, totais) para refletir os novos valores na tela imediatamente.
 
 ## Detalhes técnicos
 
-**Base de dados** (uma migração nova, sem alterar tabelas existentes):
+- `src/lib/forecasts.functions.ts → generateRouteForecast`:
+  - Antes do `map(computeForecastForDelivery)`, percorrer `deliveries` e, para cada uma, chamar uma nova função interna `refreshDeliveryFromGestaoClick(supabase, delivery)` que:
+    - reusa a lógica de `fetchOrder` (extraída para um helper compartilhado em `src/lib/gestaoclick.server.ts` que retorna o DTO sem tocar em Supabase de scheduling), OU
+    - chama diretamente o GestãoClick com os mesmos headers (`access-token`, `secret-access-token`) e `normalizeOrder` — preferível para evitar passar pelo `requireSupabaseAuth` do `fetchOrder`.
+  - Após receber o DTO atualizado:
+    ```
+    UPDATE scheduled_deliveries
+    SET order_payload = <novo dto>,
+        total_value   = dto.total_value,
+        paid_value    = dto.total_value - dto.remaining_value
+    WHERE id = delivery.id
+    ```
+  - Em paralelo limitado (ex.: lotes de 5) para não estourar limites do GC.
+  - Adicionar campos `synced_count` e `sync_errors[]` no `route_snapshot` gravado em `route_payment_forecasts` para auditoria no histórico.
 
-Tabela `route_payment_forecasts`:
-- `route_id uuid` (referência lógica a `routes.id`)
-- `generated_by uuid` (auth user)
-- `generated_by_name text` (snapshot do `profiles.display_name`)
-- `total_orders int`, `total_gross numeric`, `total_services numeric`, `total_forecast numeric`
-- `items jsonb` (snapshot do que foi para o PDF, para poder reimprimir)
-- timestamps
+- `src/lib/gestaoclick.server.ts` (novo): mover o miolo do `fetchOrder` (chamadas HTTP + `normalizeOrder`) para um helper puro `fetchOrderDtoFromGestaoClick(orderNumber)` reutilizável. `fetchOrder` (server fn) passa a ser um wrapper fino.
 
-GRANTs + RLS:
-- `SELECT` para `authenticated`
-- `INSERT/SELECT` permitido para `admin` e `logistico` via `has_role()`
-- Sem update/delete (histórico imutável); `service_role` com `ALL`
+- `src/routes/_authenticated.rotas.$id.tsx`:
+  - Texto do botão / tooltip: "Atualizar valores e extrair previsão".
+  - Após `mutate` bem-sucedido, `queryClient.invalidateQueries` para a query da rota e da lista de entregas.
 
-**Server functions** (`src/lib/forecasts.functions.ts`, ficheiro novo):
-- `generateRouteForecast({ routeId })` — `requireSupabaseAuth`, valida que o role é `admin` ou `logistico`, lê `routes` + `scheduled_deliveries` (com `order_payload`), calcula serviços e previsto, grava em `route_payment_forecasts`, devolve `{ forecast, items }`.
-- `listRouteForecasts({ routeId })` — lista o histórico para mostrar no cartão.
-- `getRouteForecast({ id })` — devolve uma geração específica para reimprimir.
+## Fora do escopo
 
-A heurística de "Pagar na entrega" vive numa função partilhada em `src/lib/forecasts.shared.ts` para reutilizar entre o cálculo do PDF e a reimpressão (regex em `pagamento.observacao` e/ou `forma_pagamento`).
-
-**PDF no cliente** (não precisamos de dependência nova se usarmos `jspdf` + `jspdf-autotable`; instalar via `bun add` se ainda não existir). O PDF é montado a partir dos `items` devolvidos pela server fn — assim a reimpressão a partir do histórico produz exatamente o mesmo conteúdo.
-
-**UI** (apenas adições em `src/routes/_authenticated.rotas.$id.tsx`):
-- Importar o novo botão e cartão de histórico.
-- `useAuth()` para esconder se `role !== 'admin' && role !== 'logistico'`.
-- `useMutation` para gerar; `useQuery` para o histórico (invalidado após gerar).
-- Toast de sucesso/erro.
-
-## Fora do âmbito
-
-- Não altera tabelas existentes, RLS existentes, edge functions, agendamento, conferência, otimização, fleet, templates ou login.
-- Não envia o PDF por email nem cria storage bucket — o PDF é gerado/baixado no browser; o histórico guarda apenas os dados (jsonb), não o ficheiro binário.
+- Não mexer na lógica de conferência, fechamento, otimização ou agendamento.
+- Não alterar tabelas existentes nem políticas RLS.
+- Não tocar no PDF (já está OK).

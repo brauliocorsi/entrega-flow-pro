@@ -373,19 +373,23 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         data.items.reduce((sum, item) => sum + Number(item.total || 0), 0).toFixed(2),
       );
       const valorImpostos = Number(Math.max(data.total - valorProdutos, 0).toFixed(2));
+      const valorTotalCompra = Number((valorProdutos + valorImpostos).toFixed(2));
       const codigoCompra = Number(String(Date.now()).slice(-6));
-      const pagamentos = [
-        {
-          pagamento: {
-            data_vencimento: data.due_date ?? data.invoice_date,
-            valor: data.total,
-            forma_pagamento_id: formaPagamentoId ? numericId(formaPagamentoId) : undefined,
-            plano_contas_id: planoContasId ? numericId(planoContasId) : undefined,
-            observacao: `Fatura ${data.invoice_number}`,
-            liquidado: data.finance.mode === "paga" ? "pg" : "ab",
-          },
-        },
-      ];
+      const pagamentos =
+        data.finance.mode === "paga"
+          ? [
+              {
+                pagamento: {
+                  data_vencimento: data.due_date ?? data.invoice_date,
+                  valor: valorTotalCompra,
+                  forma_pagamento_id: formaPagamentoId ? numericId(formaPagamentoId) : undefined,
+                  plano_contas_id: planoContasId ? numericId(planoContasId) : undefined,
+                  observacao: `Fatura ${data.invoice_number}`,
+                  liquidado: "pg",
+                },
+              },
+            ]
+          : undefined;
       const compraBody: Record<string, unknown> = {
         codigo: codigoCompra,
         fornecedor_id: numericId(supplierId),
@@ -396,7 +400,7 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         valor_impostos: valorImpostos,
         valor_frete: 0,
         pagar_frete: 1,
-        valor_total: data.total,
+        valor_total: valorTotalCompra,
         produtos,
         pagamentos,
         observacoes: `Fatura ${data.invoice_number}`,
@@ -416,7 +420,7 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         const pagamentoBody: Record<string, unknown> = {
           fornecedor_id: supplierId,
           descricao: `Fatura ${data.invoice_number} — ${data.supplier_name}`,
-          valor: data.total,
+          valor: valorTotalCompra,
           data_vencimento: data.due_date ?? data.invoice_date,
           data_competencia: data.invoice_date,
           plano_contas_id: planoContasId,

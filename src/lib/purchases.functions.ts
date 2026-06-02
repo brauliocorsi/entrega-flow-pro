@@ -315,7 +315,7 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
       }
 
       // 2) Products (match-or-create)
-      const produtos: Array<{ produto: { produto_id: string; quantidade: number; valor: number } }> = [];
+      const produtos: Array<{ produto: Record<string, unknown> }> = [];
       for (const it of data.items) {
         let pid = await findProductByName(it.description);
         if (!pid) {
@@ -324,8 +324,12 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         produtos.push({
           produto: {
             produto_id: pid,
+            nome_produto: it.description.slice(0, 200),
             quantidade: it.quantity,
-            valor: it.unit_price,
+            valor_custo: it.unit_price,
+            unidade: "UND",
+            possui_variacao: 0,
+            variacao_id: "",
           },
         });
       }
@@ -343,14 +347,11 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         );
       }
 
-      const codigo = Number(String(Date.now()).slice(-9));
       const compraBody: Record<string, unknown> = {
-        codigo,
         fornecedor_id: supplierId,
         situacao_id: situacaoId,
-        data: data.invoice_date,
-        numero_nota_fiscal: data.invoice_number,
-        valor_total: data.total,
+        data_emissao: data.invoice_date,
+        numero_nfe: data.invoice_number || undefined,
         produtos,
         observacoes: data.notes ?? undefined,
       };

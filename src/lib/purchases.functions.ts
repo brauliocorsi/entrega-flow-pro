@@ -361,10 +361,8 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
       const valorImpostos = Number(Math.max(data.total - valorProdutos, 0).toFixed(2));
       const compraBody: Record<string, unknown> = {
         tipo: "produto",
-        codigo,
         fornecedor_id: numericId(supplierId),
         situacao_id: numericId(situacaoId),
-        data: data.invoice_date,
         data_emissao: data.invoice_date,
         numero_nfe: data.invoice_number || undefined,
         valor_produtos: valorProdutos,

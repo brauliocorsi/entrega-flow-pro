@@ -559,6 +559,8 @@ function RouteDetail() {
         <FleetEditor route={r} />
       </Card>
 
+      {canForecast && <ForecastHistoryCard routeId={r.id} />}
+
       {(() => {
         const activeDeliveries = deliveries.filter(
           (dd: any) => !["cancelado", "reagendado"].includes(dd.status),

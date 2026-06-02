@@ -54,6 +54,7 @@ export function computeForecastForDelivery(d: any): ForecastItem {
     order_number: String(d?.order_number ?? ""),
     customer_name: String(d?.customer_name ?? ""),
     total_value: Number(d?.total_value ?? 0),
+    products_value: productsValue,
     services_value: servicesValue,
     forecast_value: forecastValue,
     payment_notes: paymentNotes,

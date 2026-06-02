@@ -16,6 +16,7 @@ export interface ForecastItem {
   order_number: string;
   customer_name: string;
   total_value: number;
+  products_value: number;
   services_value: number;
   forecast_value: number;
   payment_notes: string[];
@@ -26,6 +27,9 @@ export function computeForecastForDelivery(d: any): ForecastItem {
   const items: any[] = Array.isArray(payload.items) ? payload.items : [];
   const servicesValue = items
     .filter((i) => i?.kind && i.kind !== "produto")
+    .reduce((acc, i) => acc + Number(i?.total ?? 0), 0);
+  const productsValue = items
+    .filter((i) => !i?.kind || i.kind === "produto")
     .reduce((acc, i) => acc + Number(i?.total ?? 0), 0);
 
   const pagamentos: any[] = Array.isArray(payload.pagamentos)
@@ -50,6 +54,7 @@ export function computeForecastForDelivery(d: any): ForecastItem {
     order_number: String(d?.order_number ?? ""),
     customer_name: String(d?.customer_name ?? ""),
     total_value: Number(d?.total_value ?? 0),
+    products_value: productsValue,
     services_value: servicesValue,
     forecast_value: forecastValue,
     payment_notes: paymentNotes,

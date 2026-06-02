@@ -80,14 +80,16 @@ export async function downloadForecastPdf(f: RouteForecast) {
   // ---------- TABLE ----------
   const startY = infoY + infoH + 20;
 
+  const totalProducts = f.items.reduce((a, i) => a + (i.products_value ?? 0), 0);
+
   autoTable(doc, {
     startY,
     margin: { left: margin, right: margin },
-    head: [["#Encomenda", "Cliente", "Total", "Serviços", "Previsto (Entrega)"]],
+    head: [["#Encomenda", "Cliente", "Total Produto", "Total Serviços", "Total a Receber"]],
     body: f.items.map((it) => [
       it.order_number,
       it.customer_name,
-      formatEUR(it.total_value),
+      formatEUR(it.products_value ?? 0),
       formatEUR(it.services_value),
       formatEUR(it.forecast_value),
     ]),
@@ -110,14 +112,14 @@ export async function downloadForecastPdf(f: RouteForecast) {
     columnStyles: {
       0: { cellWidth: 80, fontStyle: "bold" },
       1: { cellWidth: "auto" },
-      2: { halign: "right", cellWidth: 70 },
-      3: { halign: "right", cellWidth: 70 },
+      2: { halign: "right", cellWidth: 80 },
+      3: { halign: "right", cellWidth: 80 },
       4: { halign: "right", cellWidth: 90, fontStyle: "bold", textColor: accent },
     },
     foot: [[
       `${f.total_orders} encomenda(s)`,
       "TOTAIS",
-      formatEUR(f.total_gross),
+      formatEUR(totalProducts),
       formatEUR(f.total_services),
       formatEUR(f.total_forecast),
     ]],

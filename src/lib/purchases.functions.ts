@@ -87,7 +87,10 @@ async function gcGetFirstId(path: string, key: string): Promise<string | null> {
     const { base, headers } = gcCreds();
     const res = await gcFetch(`${base}${path}`, headers);
     const arr: any[] = Array.isArray(res.json?.data) ? res.json.data : Array.isArray(res.json) ? res.json : [];
-    const first = arr[0]?.[key] ?? arr[0];
+    const row = arr[0];
+    const first =
+      row?.[key] ??
+      (row && typeof row === "object" && Object.keys(row).length === 1 ? Object.values(row)[0] : row);
     return first?.id ? String(first.id) : null;
   } catch {
     return null;
@@ -140,6 +143,10 @@ function slugCode(name: string): string {
     .toUpperCase()
     .slice(0, 20);
   return `${base || "PROD"}-${Date.now().toString(36).slice(-5).toUpperCase()}`;
+}
+
+function numericId(value: string): number | string {
+  return /^\d+$/.test(value) ? Number(value) : value;
 }
 
 async function createProduct(name: string, cost: number): Promise<string> {

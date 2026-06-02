@@ -51,7 +51,6 @@ export function downloadForecastPdf(f: RouteForecast) {
     footStyles: { fillColor: [241, 245, 249], textColor: 15, fontStyle: "bold" },
   });
 
-  // @ts-expect-error autoTable adiciona lastAutoTable
   const endY = (doc as any).lastAutoTable?.finalY ?? startY + 50;
 
   doc.setFontSize(12);

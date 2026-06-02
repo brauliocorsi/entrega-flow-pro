@@ -39,7 +39,11 @@ import {
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2, Wallet, Download } from "lucide-react";
+import { generateRouteForecast, listRouteForecasts } from "@/lib/forecasts.functions";
+import { downloadForecastPdf } from "@/lib/forecast-pdf";
+import { formatDateTimePT } from "@/lib/format";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Stop = {
   id: string;

@@ -512,6 +512,7 @@ function RouteDetail() {
           </div>
           <div className="flex gap-2">
             {canForecast && <ForecastButton routeId={r.id} />}
+            {canForecast && <ForecastHistoryButton routeId={r.id} />}
             {!isClosed && (
               <Link to="/agendar" search={{ routeId: r.id }}>
                 <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Agendar entrega</Button>

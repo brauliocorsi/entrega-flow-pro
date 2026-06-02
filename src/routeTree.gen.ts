@@ -23,6 +23,7 @@ import { Route as AuthenticatedAdminUtilizadoresRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminTemplatesRouteImport } from './routes/_authenticated.admin.templates'
 import { Route as AuthenticatedAdminTaxasRouteImport } from './routes/_authenticated.admin.taxas'
 import { Route as AuthenticatedAdminOtimizacaoRouteImport } from './routes/_authenticated.admin.otimizacao'
+import { Route as AuthenticatedAdminExportarRouteImport } from './routes/_authenticated.admin.exportar'
 import { Route as AuthenticatedAdminEquipaRouteImport } from './routes/_authenticated.admin.equipa'
 import { Route as ApiPublicCronGenerateRoutesRouteImport } from './routes/api/public/cron/generate-routes'
 import { Route as AuthenticatedRotasIdFecharRouteImport } from './routes/_authenticated.rotas.$id.fechar'
@@ -103,6 +104,12 @@ const AuthenticatedAdminOtimizacaoRoute =
     path: '/admin/otimizacao',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminExportarRoute =
+  AuthenticatedAdminExportarRouteImport.update({
+    id: '/admin/exportar',
+    path: '/admin/exportar',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminEquipaRoute =
   AuthenticatedAdminEquipaRouteImport.update({
     id: '/admin/equipa',
@@ -129,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/conferencia': typeof AuthenticatedConferenciaRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
   '/admin/equipa': typeof AuthenticatedAdminEquipaRoute
+  '/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
   '/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
@@ -147,6 +155,7 @@ export interface FileRoutesByTo {
   '/conferencia': typeof AuthenticatedConferenciaRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
   '/admin/equipa': typeof AuthenticatedAdminEquipaRoute
+  '/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
   '/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
@@ -167,6 +176,7 @@ export interface FileRoutesById {
   '/_authenticated/conferencia': typeof AuthenticatedConferenciaRoute
   '/_authenticated/rotas': typeof AuthenticatedRotasRouteWithChildren
   '/_authenticated/admin/equipa': typeof AuthenticatedAdminEquipaRoute
+  '/_authenticated/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/_authenticated/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
   '/_authenticated/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/_authenticated/admin/templates': typeof AuthenticatedAdminTemplatesRoute
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/conferencia'
     | '/rotas'
     | '/admin/equipa'
+    | '/admin/exportar'
     | '/admin/otimizacao'
     | '/admin/taxas'
     | '/admin/templates'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/conferencia'
     | '/rotas'
     | '/admin/equipa'
+    | '/admin/exportar'
     | '/admin/otimizacao'
     | '/admin/taxas'
     | '/admin/templates'
@@ -224,6 +236,7 @@ export interface FileRouteTypes {
     | '/_authenticated/conferencia'
     | '/_authenticated/rotas'
     | '/_authenticated/admin/equipa'
+    | '/_authenticated/admin/exportar'
     | '/_authenticated/admin/otimizacao'
     | '/_authenticated/admin/taxas'
     | '/_authenticated/admin/templates'
@@ -343,6 +356,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminOtimizacaoRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/exportar': {
+      id: '/_authenticated/admin/exportar'
+      path: '/admin/exportar'
+      fullPath: '/admin/exportar'
+      preLoaderRoute: typeof AuthenticatedAdminExportarRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/equipa': {
       id: '/_authenticated/admin/equipa'
       path: '/admin/equipa'
@@ -394,6 +414,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedConferenciaRoute: typeof AuthenticatedConferenciaRoute
   AuthenticatedRotasRoute: typeof AuthenticatedRotasRouteWithChildren
   AuthenticatedAdminEquipaRoute: typeof AuthenticatedAdminEquipaRoute
+  AuthenticatedAdminExportarRoute: typeof AuthenticatedAdminExportarRoute
   AuthenticatedAdminOtimizacaoRoute: typeof AuthenticatedAdminOtimizacaoRoute
   AuthenticatedAdminTaxasRoute: typeof AuthenticatedAdminTaxasRoute
   AuthenticatedAdminTemplatesRoute: typeof AuthenticatedAdminTemplatesRoute
@@ -408,6 +429,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedConferenciaRoute: AuthenticatedConferenciaRoute,
   AuthenticatedRotasRoute: AuthenticatedRotasRouteWithChildren,
   AuthenticatedAdminEquipaRoute: AuthenticatedAdminEquipaRoute,
+  AuthenticatedAdminExportarRoute: AuthenticatedAdminExportarRoute,
   AuthenticatedAdminOtimizacaoRoute: AuthenticatedAdminOtimizacaoRoute,
   AuthenticatedAdminTaxasRoute: AuthenticatedAdminTaxasRoute,
   AuthenticatedAdminTemplatesRoute: AuthenticatedAdminTemplatesRoute,

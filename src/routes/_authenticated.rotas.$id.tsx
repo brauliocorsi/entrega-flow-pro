@@ -467,6 +467,8 @@ export const Route = createFileRoute("/_authenticated/rotas/$id")({
 
 function RouteDetail() {
   const { id } = useParams({ from: "/_authenticated/rotas/$id" });
+  const { role } = useAuth();
+  const canForecast = role === "admin" || role === "logistico";
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectStop = (next: string | null) => {
     setSelectedId(next);

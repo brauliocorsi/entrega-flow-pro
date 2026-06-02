@@ -53,6 +53,57 @@ export type Database = {
         }
         Relationships: []
       }
+      imported_purchases: {
+        Row: {
+          created_at: string
+          created_by: string
+          error_message: string | null
+          extracted_payload: Json | null
+          final_payload: Json | null
+          gestaoclick_invoice_number: string | null
+          gestaoclick_purchase_id: string | null
+          id: string
+          image_path: string | null
+          status: string
+          supplier_document: string | null
+          supplier_name: string | null
+          total_value: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          error_message?: string | null
+          extracted_payload?: Json | null
+          final_payload?: Json | null
+          gestaoclick_invoice_number?: string | null
+          gestaoclick_purchase_id?: string | null
+          id?: string
+          image_path?: string | null
+          status?: string
+          supplier_document?: string | null
+          supplier_name?: string | null
+          total_value?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          error_message?: string | null
+          extracted_payload?: Json | null
+          final_payload?: Json | null
+          gestaoclick_invoice_number?: string | null
+          gestaoclick_purchase_id?: string | null
+          id?: string
+          image_path?: string | null
+          status?: string
+          supplier_document?: string | null
+          supplier_name?: string | null
+          total_value?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

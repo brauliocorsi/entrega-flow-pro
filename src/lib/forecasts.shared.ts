@@ -16,6 +16,7 @@ export interface ForecastItem {
   order_number: string;
   customer_name: string;
   total_value: number;
+  products_value: number;
   services_value: number;
   forecast_value: number;
   payment_notes: string[];

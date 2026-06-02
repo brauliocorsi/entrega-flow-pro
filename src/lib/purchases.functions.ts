@@ -57,13 +57,40 @@ async function gcPost(path: string, body: unknown) {
     body: JSON.stringify(body),
   });
   const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`GestãoClick POST ${path} ${res.status}: ${text.slice(0, 300)}`);
-  }
+  let json: any = null;
   try {
-    return text ? JSON.parse(text) : null;
+    json = text ? JSON.parse(text) : null;
   } catch {
-    throw new Error(`GestãoClick devolveu resposta inválida em ${path}`);
+    throw new Error(
+      `GestãoClick ${path} ${res.status}: resposta não-JSON — ${text.slice(0, 400)}`,
+    );
+  }
+  const apiError =
+    json &&
+    (json.code === 400 ||
+      json.code === 401 ||
+      json.code === 422 ||
+      json.status === "error" ||
+      json.error);
+  if (!res.ok || apiError) {
+    const detail =
+      json?.message ||
+      json?.error ||
+      (json ? JSON.stringify(json).slice(0, 400) : text.slice(0, 400));
+    throw new Error(`GestãoClick ${path} ${res.status}: ${detail}`);
+  }
+  return json;
+}
+
+async function gcGetFirstId(path: string, key: string): Promise<string | null> {
+  try {
+    const { base, headers } = gcCreds();
+    const res = await gcFetch(`${base}${path}`, headers);
+    const arr: any[] = Array.isArray(res.json?.data) ? res.json.data : Array.isArray(res.json) ? res.json : [];
+    const first = arr[0]?.[key] ?? arr[0];
+    return first?.id ? String(first.id) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -104,11 +131,23 @@ async function findProductByName(name: string): Promise<string | null> {
   }
 }
 
+function slugCode(name: string): string {
+  const base = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toUpperCase()
+    .slice(0, 20);
+  return `${base || "PROD"}-${Date.now().toString(36).slice(-5).toUpperCase()}`;
+}
+
 async function createProduct(name: string, cost: number): Promise<string> {
   const body = {
     nome: name,
-    valor_venda: cost,
+    codigo_interno: slugCode(name),
     valor_custo: cost,
+    valor_venda: cost,
     movimenta_estoque: 1,
   };
   const res = await gcPost("/api/produtos", body);

@@ -337,7 +337,7 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
             supplier_name: data.supplier_name,
             supplier_document: data.supplier_document,
             total_value: data.total,
-            final_payload: data as unknown as Record<string, unknown>,
+            final_payload: data as unknown as never,
           })
           .eq("id", data.importedPurchaseId);
       } else {
@@ -350,9 +350,10 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
           supplier_name: data.supplier_name,
           supplier_document: data.supplier_document,
           total_value: data.total,
-          final_payload: data as unknown as Record<string, unknown>,
+          final_payload: data as unknown as never,
         });
       }
+
 
       return { ok: true, compraId, warning: contaWarning };
     } catch (e) {
@@ -384,8 +385,9 @@ export const saveExtractionDraft = createServerFn({ method: "POST" })
         created_by: context.userId,
         status: "rascunho",
         image_path: data.imagePath,
-        extracted_payload: data.extracted as Record<string, unknown>,
+        extracted_payload: data.extracted as never,
       })
+
       .select("id")
       .single();
     if (error) throw new Error(error.message);

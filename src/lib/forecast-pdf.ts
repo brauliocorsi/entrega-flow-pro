@@ -1,9 +1,11 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { formatDatePT, formatDateTimePT, formatEUR } from "./format";
 import type { RouteForecast } from "./forecasts.functions";
 
-export function downloadForecastPdf(f: RouteForecast) {
+export async function downloadForecastPdf(f: RouteForecast) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const r = f.route_snapshot ?? {};
   const pageW = doc.internal.pageSize.getWidth();

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { computeForecastForDelivery, type ForecastItem } from "./forecasts.shared";
+import { fetchOrderDtoFromGestaoClick } from "./gestaoclick-core.server";
 
 async function assertAdminOrLogistico(supabase: any, userId: string) {
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
@@ -25,6 +26,21 @@ export interface RouteForecast {
   created_at: string;
 }
 
+// Processa em lotes para não saturar a API do GestãoClick
+async function inBatches<T, R>(
+  arr: T[],
+  size: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    const chunk = arr.slice(i, i + size);
+    const res = await Promise.all(chunk.map(fn));
+    out.push(...res);
+  }
+  return out;
+}
+
 export const generateRouteForecast = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ routeId: z.string().uuid() }).parse(d))
@@ -39,14 +55,50 @@ export const generateRouteForecast = createServerFn({ method: "POST" })
       .maybeSingle();
     if (routeErr || !route) throw new Error("Rota não encontrada.");
 
-    const { data: deliveries, error: delErr } = await supabase
+    const { data: deliveriesRaw, error: delErr } = await supabase
       .from("scheduled_deliveries")
-      .select("id, order_number, customer_name, total_value, remaining_value, order_payload, status")
+      .select("id, order_number, customer_name, total_value, paid_value, remaining_value, order_payload, status")
       .eq("route_id", data.routeId)
       .not("status", "in", "(cancelado,reagendado)");
     if (delErr) throw new Error(delErr.message);
 
-    const items: ForecastItem[] = (deliveries ?? []).map(computeForecastForDelivery);
+    const deliveries = deliveriesRaw ?? [];
+
+    // ---- Sincronizar valores frescos do GestãoClick (em lotes de 4) ----
+    const syncErrors: { order_number: string; error: string }[] = [];
+    let syncedCount = 0;
+
+    const refreshed = await inBatches(deliveries, 4, async (d: any) => {
+      const { dto, error } = await fetchOrderDtoFromGestaoClick(d.order_number);
+      if (!dto) {
+        if (error) syncErrors.push({ order_number: d.order_number, error });
+        return d; // mantém valores antigos
+      }
+      // Atualiza BD com valores frescos do GC
+      const paid = Math.max(dto.total_value - dto.remaining_value, 0);
+      const { error: updErr } = await supabase
+        .from("scheduled_deliveries")
+        .update({
+          order_payload: dto as any,
+          total_value: dto.total_value,
+          paid_value: paid,
+        })
+        .eq("id", d.id);
+      if (updErr) {
+        syncErrors.push({ order_number: d.order_number, error: updErr.message });
+        return d;
+      }
+      syncedCount += 1;
+      return {
+        ...d,
+        order_payload: dto,
+        total_value: dto.total_value,
+        paid_value: paid,
+        remaining_value: dto.remaining_value,
+      };
+    });
+
+    const items: ForecastItem[] = refreshed.map(computeForecastForDelivery);
 
     const total_gross = items.reduce((a, i) => a + i.total_value, 0);
     const total_services = items.reduce((a, i) => a + i.services_value, 0);
@@ -59,6 +111,13 @@ export const generateRouteForecast = createServerFn({ method: "POST" })
       .maybeSingle();
     const generated_by_name = profile?.display_name ?? profile?.email ?? null;
 
+    const route_snapshot = {
+      ...route,
+      synced_count: syncedCount,
+      sync_errors: syncErrors,
+      synced_at: new Date().toISOString(),
+    };
+
     const { data: inserted, error: insErr } = await supabase
       .from("route_payment_forecasts")
       .insert({
@@ -70,7 +129,7 @@ export const generateRouteForecast = createServerFn({ method: "POST" })
         total_services,
         total_forecast,
         items: items as any,
-        route_snapshot: route as any,
+        route_snapshot: route_snapshot as any,
       })
       .select("*")
       .single();

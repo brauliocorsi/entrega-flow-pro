@@ -429,21 +429,27 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
       const valorImpostos = roundMoney(Math.max(Number(data.total) - valorProdutos, 0));
       const valorTotalCompra = Number((valorProdutos + valorImpostos).toFixed(2));
       const codigoCompra = Number(String(Date.now()).slice(-6));
-      const pagamentos =
-        data.finance.mode === "paga"
-          ? [
-              {
-                pagamento: {
-                  data_vencimento: data.due_date ?? data.invoice_date,
-                  valor: valorTotalCompra,
-                  forma_pagamento_id: formaPagamentoId ? numericId(formaPagamentoId) : undefined,
-                  plano_contas_id: planoContasId ? numericId(planoContasId) : undefined,
-                  observacao: `Fatura ${data.invoice_number}`,
-                  liquidado: "pg",
-                },
-              },
-            ]
-          : undefined;
+      const formaPagamentoResolvedId = await findFormaPagamentoByName(
+        paymentMethodCandidates(data.finance.mode, data.finance.payment_method),
+      );
+      const formaPagamentoFinalId = formaPagamentoResolvedId ?? formaPagamentoId;
+      const vencimento =
+        data.due_date ?? (data.finance.mode === "em_aberto" ? addDaysISO(data.invoice_date, 30) : data.invoice_date);
+      const pagamentos = [
+        {
+          pagamento: {
+            data_vencimento: vencimento,
+            valor: valorTotalCompra,
+            forma_pagamento_id: formaPagamentoFinalId ? numericId(formaPagamentoFinalId) : undefined,
+            plano_contas_id: planoContasId ? numericId(planoContasId) : undefined,
+            observacao: `Fatura ${data.invoice_number}`,
+            liquidado: data.finance.mode === "paga" ? "pg" : "ab",
+            ...(data.finance.mode === "paga"
+              ? { data_pagamento: data.finance.payment_date ?? data.invoice_date }
+              : {}),
+          },
+        },
+      ];
       const compraBody: Record<string, unknown> = {
         codigo: codigoCompra,
         fornecedor_id: numericId(supplierId),

@@ -91,8 +91,23 @@ function AgendarPage() {
   async function handleConfirm() {
     if (!orderData?.order || !selectedRouteId) return;
     setLoading(true);
+    const tid = toast.loading("A confirmar valores no GestãoClick…");
     try {
-      const o = orderData.order;
+      // Re-fetch fresh values from GestãoClick to garantir que o agendamento
+      // usa o valor mais atual da venda (pagamentos COD incluídos).
+      const fresh = await fetchOrderFn({ data: { orderNumber: orderData.order.order_number } });
+      toast.dismiss(tid);
+      if (fresh.error || !fresh.order) {
+        toast.error(fresh.error ?? "Não foi possível confirmar valores");
+        return;
+      }
+      if (fresh.existingActiveDelivery) {
+        toast.error("Esta encomenda já está agendada noutra rota");
+        setOrderData(fresh);
+        return;
+      }
+      const o = fresh.order;
+      setOrderData(fresh);
       const res = await scheduleFn({
         data: {
           route_id: selectedRouteId,
@@ -112,6 +127,7 @@ function AgendarPage() {
           rescheduled_from_id: orderData.previousUnfinished?.id ?? null,
           order_payload: {
             items: o.items ?? [],
+            pagamentos: o.pagamentos ?? [],
             has_assembly: o.has_assembly ?? false,
             has_delivery_service: o.has_delivery_service ?? false,
             observations: o.observations ?? null,
@@ -130,6 +146,7 @@ function AgendarPage() {
       }
       navigate({ to: "/rotas/$id", params: { id: selectedRouteId } });
     } catch (e) {
+      toast.dismiss(tid);
       toast.error(e instanceof Error ? e.message : "Erro");
     } finally {
       setLoading(false);

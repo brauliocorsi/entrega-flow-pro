@@ -146,6 +146,52 @@ async function findProductByName(name: string): Promise<string | null> {
   }
 }
 
+async function findFormaPagamentoByName(candidates: string[]): Promise<string | null> {
+  if (candidates.length === 0) return null;
+  try {
+    const { base, headers } = gcCreds();
+    const res = await gcFetch(`${base}/api/formas_pagamentos`, headers);
+    const arr: any[] = Array.isArray(res.json?.data) ? res.json.data : Array.isArray(res.json) ? res.json : [];
+    const norm = (s: string) =>
+      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const wanted = candidates.map(norm);
+    for (const row of arr) {
+      const fp = row?.forma_pagamento ?? row;
+      const name = norm(String(fp?.nome ?? ""));
+      if (wanted.some((w) => name === w || name.includes(w))) {
+        return fp?.id ? String(fp.id) : null;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function paymentMethodCandidates(mode: "paga" | "em_aberto", method: string | null): string[] {
+  if (mode === "em_aberto") return ["pagar na entrega", "pagamento na entrega", "a prazo", "entrega"];
+  switch ((method ?? "").toLowerCase()) {
+    case "transferencia":
+      return ["transferencia", "transferência", "transferencia bancaria"];
+    case "multibanco":
+      return ["multibanco", "mb"];
+    case "mbway":
+      return ["mb way", "mbway"];
+    case "dinheiro":
+      return ["dinheiro", "numerario", "numerário"];
+    case "cartao":
+      return ["cartao", "cartão", "cartao credito", "cartao debito"];
+    default:
+      return method ? [method] : [];
+  }
+}
+
 function slugCode(name: string): string {
   const base = name
     .normalize("NFD")

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatEUR, formatDatePT } from "@/lib/format";
 import { Camera, FileText } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/compras")({
+export const Route = createFileRoute("/_authenticated/compras/")({
   component: ComprasListPage,
 });
 

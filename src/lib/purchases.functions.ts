@@ -354,7 +354,6 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         );
       }
 
-      const codigo = Number(String(Date.now()).slice(-9));
       const valorProdutos = Number(
         data.items.reduce((sum, item) => sum + Number(item.total || 0), 0).toFixed(2),
       );

@@ -146,6 +146,52 @@ async function findProductByName(name: string): Promise<string | null> {
   }
 }
 
+async function findFormaPagamentoByName(candidates: string[]): Promise<string | null> {
+  if (candidates.length === 0) return null;
+  try {
+    const { base, headers } = gcCreds();
+    const res = await gcFetch(`${base}/api/formas_pagamentos`, headers);
+    const arr: any[] = Array.isArray(res.json?.data) ? res.json.data : Array.isArray(res.json) ? res.json : [];
+    const norm = (s: string) =>
+      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const wanted = candidates.map(norm);
+    for (const row of arr) {
+      const fp = row?.forma_pagamento ?? row;
+      const name = norm(String(fp?.nome ?? ""));
+      if (wanted.some((w) => name === w || name.includes(w))) {
+        return fp?.id ? String(fp.id) : null;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function paymentMethodCandidates(mode: "paga" | "em_aberto", method: string | null): string[] {
+  if (mode === "em_aberto") return ["pagar na entrega", "pagamento na entrega", "a prazo", "entrega"];
+  switch ((method ?? "").toLowerCase()) {
+    case "transferencia":
+      return ["transferencia", "transferência", "transferencia bancaria"];
+    case "multibanco":
+      return ["multibanco", "mb"];
+    case "mbway":
+      return ["mb way", "mbway"];
+    case "dinheiro":
+      return ["dinheiro", "numerario", "numerário"];
+    case "cartao":
+      return ["cartao", "cartão", "cartao credito", "cartao debito"];
+    default:
+      return method ? [method] : [];
+  }
+}
+
 function slugCode(name: string): string {
   const base = name
     .normalize("NFD")
@@ -383,21 +429,27 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
       const valorImpostos = roundMoney(Math.max(Number(data.total) - valorProdutos, 0));
       const valorTotalCompra = Number((valorProdutos + valorImpostos).toFixed(2));
       const codigoCompra = Number(String(Date.now()).slice(-6));
-      const pagamentos =
-        data.finance.mode === "paga"
-          ? [
-              {
-                pagamento: {
-                  data_vencimento: data.due_date ?? data.invoice_date,
-                  valor: valorTotalCompra,
-                  forma_pagamento_id: formaPagamentoId ? numericId(formaPagamentoId) : undefined,
-                  plano_contas_id: planoContasId ? numericId(planoContasId) : undefined,
-                  observacao: `Fatura ${data.invoice_number}`,
-                  liquidado: "pg",
-                },
-              },
-            ]
-          : undefined;
+      const formaPagamentoResolvedId = await findFormaPagamentoByName(
+        paymentMethodCandidates(data.finance.mode, data.finance.payment_method),
+      );
+      const formaPagamentoFinalId = formaPagamentoResolvedId ?? formaPagamentoId;
+      const vencimento =
+        data.due_date ?? (data.finance.mode === "em_aberto" ? addDaysISO(data.invoice_date, 30) : data.invoice_date);
+      const pagamentos = [
+        {
+          pagamento: {
+            data_vencimento: vencimento,
+            valor: valorTotalCompra,
+            forma_pagamento_id: formaPagamentoFinalId ? numericId(formaPagamentoFinalId) : undefined,
+            plano_contas_id: planoContasId ? numericId(planoContasId) : undefined,
+            observacao: `Fatura ${data.invoice_number}`,
+            liquidado: data.finance.mode === "paga" ? "pg" : "ab",
+            ...(data.finance.mode === "paga"
+              ? { data_pagamento: data.finance.payment_date ?? data.invoice_date }
+              : {}),
+          },
+        },
+      ];
       const compraBody: Record<string, unknown> = {
         codigo: codigoCompra,
         fornecedor_id: numericId(supplierId),

@@ -330,9 +330,24 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         });
       }
 
-      // 3) Purchase
+      // 3) Purchase — required fields: codigo, fornecedor_id, situacao_id, data
+      const [situacaoId, planoContasId, formaPagamentoId, contaBancariaId] = await Promise.all([
+        gcGetFirstId("/api/situacoes_compras", "situacao"),
+        gcGetFirstId("/api/planos_contas", "plano_conta"),
+        gcGetFirstId("/api/formas_pagamentos", "forma_pagamento"),
+        gcGetFirstId("/api/contas_bancarias", "conta_bancaria"),
+      ]);
+      if (!situacaoId) {
+        throw new Error(
+          "GestãoClick: nenhuma 'situação de compra' encontrada. Cria uma em GestãoClick → Compras → Situações.",
+        );
+      }
+
+      const codigo = Number(String(Date.now()).slice(-9));
       const compraBody: Record<string, unknown> = {
+        codigo,
         fornecedor_id: supplierId,
+        situacao_id: situacaoId,
         data: data.invoice_date,
         numero_nota_fiscal: data.invoice_number,
         valor_total: data.total,
@@ -344,24 +359,32 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         compraRes?.data?.id ?? compraRes?.id ?? compraRes?.compra?.id ?? "",
       );
 
-      // 4) Account payable
-      const contaBody: Record<string, unknown> = {
-        fornecedor_id: supplierId,
-        descricao: `Fatura ${data.invoice_number} — ${data.supplier_name}`,
-        valor: data.total,
-        data_vencimento: data.due_date ?? data.invoice_date,
-        numero_documento: data.invoice_number,
-        situacao: data.finance.mode === "paga" ? 1 : 0, // 1=paga, 0=em aberto (heurística comum)
-      };
-      if (data.finance.mode === "paga") {
-        contaBody.data_pagamento = data.finance.payment_date ?? data.invoice_date;
-      }
-      if (compraId) contaBody.compra_id = compraId;
+      // 4) Account payable → /api/pagamentos
       let contaWarning: string | null = null;
-      try {
-        await gcPost("/api/contas_pagar", contaBody);
-      } catch (e) {
-        contaWarning = e instanceof Error ? e.message : "Falha ao criar conta a pagar";
+      if (!planoContasId || !formaPagamentoId || !contaBancariaId) {
+        contaWarning =
+          "Lançamento financeiro não criado: configura em GestãoClick um Plano de contas, Forma de pagamento e Conta bancária padrão.";
+      } else {
+        const pagamentoBody: Record<string, unknown> = {
+          fornecedor_id: supplierId,
+          descricao: `Fatura ${data.invoice_number} — ${data.supplier_name}`,
+          valor: data.total,
+          data_vencimento: data.due_date ?? data.invoice_date,
+          data_competencia: data.invoice_date,
+          plano_contas_id: planoContasId,
+          forma_pagamento_id: formaPagamentoId,
+          conta_bancaria_id: contaBancariaId,
+          numero_documento: data.invoice_number,
+        };
+        if (data.finance.mode === "paga") {
+          pagamentoBody.data_pagamento = data.finance.payment_date ?? data.invoice_date;
+          pagamentoBody.liquidado = "pg";
+        }
+        try {
+          await gcPost("/api/pagamentos", pagamentoBody);
+        } catch (e) {
+          contaWarning = e instanceof Error ? e.message : "Falha ao criar pagamento";
+        }
       }
 
       // 5) Persist local record

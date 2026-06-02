@@ -330,18 +330,18 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         }
         produtos.push({
           produto: {
-            produto_id: pid,
+            id: numericId(pid),
             nome_produto: it.description.slice(0, 200),
+            detalhes: "",
             quantidade: it.quantity,
             valor_custo: it.unit_price,
-            unidade: "UND",
-            possui_variacao: 0,
-            variacao_id: "",
+            valor_total: it.total,
+            unidade: "UN",
           },
         });
       }
 
-      // 3) Purchase — required fields: codigo, fornecedor_id, situacao_id, data
+      // 3) Purchase — format aligned with GestãoClick purchases payload
       const [situacaoId, planoContasId, formaPagamentoId, contaBancariaId] = await Promise.all([
         gcGetFirstId("/api/situacoes_compras", "situacao"),
         gcGetFirstId("/api/planos_contas", "plano_conta"),
@@ -354,13 +354,32 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         );
       }
 
+      const codigo = Number(String(Date.now()).slice(-9));
+      const valorProdutos = Number(
+        data.items.reduce((sum, item) => sum + Number(item.total || 0), 0).toFixed(2),
+      );
+      const valorImpostos = Number(Math.max(data.total - valorProdutos, 0).toFixed(2));
       const compraBody: Record<string, unknown> = {
-        fornecedor_id: supplierId,
-        situacao_id: situacaoId,
+        tipo: "produto",
+        codigo,
+        fornecedor_id: numericId(supplierId),
+        situacao_id: numericId(situacaoId),
+        data: data.invoice_date,
         data_emissao: data.invoice_date,
         numero_nfe: data.invoice_number || undefined,
+        valor_produtos: valorProdutos,
+        valor_impostos: valorImpostos,
+        valor_frete: 0,
+        pagar_frete: 1,
+        valor_total: data.total,
+        condicao_pagamento: "a_vista",
+        forma_pagamento_id: formaPagamentoId ? numericId(formaPagamentoId) : undefined,
+        numero_parcelas: 1,
+        data_primeira_parcela: data.due_date ?? data.invoice_date,
+        plano_contas_id: planoContasId ? numericId(planoContasId) : undefined,
         produtos,
-        observacoes: data.notes ?? undefined,
+        observacoes: `Fatura ${data.invoice_number}`,
+        observacoes_interna: data.notes ?? undefined,
       };
       const compraRes = await gcPost("/api/compras", compraBody);
       const compraId = String(

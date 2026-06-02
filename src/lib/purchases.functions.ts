@@ -87,7 +87,10 @@ async function gcGetFirstId(path: string, key: string): Promise<string | null> {
     const { base, headers } = gcCreds();
     const res = await gcFetch(`${base}${path}`, headers);
     const arr: any[] = Array.isArray(res.json?.data) ? res.json.data : Array.isArray(res.json) ? res.json : [];
-    const first = arr[0]?.[key] ?? arr[0];
+    const row = arr[0];
+    const first =
+      row?.[key] ??
+      (row && typeof row === "object" && Object.keys(row).length === 1 ? Object.values(row)[0] : row);
     return first?.id ? String(first.id) : null;
   } catch {
     return null;
@@ -140,6 +143,10 @@ function slugCode(name: string): string {
     .toUpperCase()
     .slice(0, 20);
   return `${base || "PROD"}-${Date.now().toString(36).slice(-5).toUpperCase()}`;
+}
+
+function numericId(value: string): number | string {
+  return /^\d+$/.test(value) ? Number(value) : value;
 }
 
 async function createProduct(name: string, cost: number): Promise<string> {
@@ -315,7 +322,7 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
       }
 
       // 2) Products (match-or-create)
-      const produtos: Array<{ produto: { produto_id: string; quantidade: number; valor: number } }> = [];
+      const produtos: Array<{ produto: Record<string, unknown> }> = [];
       for (const it of data.items) {
         let pid = await findProductByName(it.description);
         if (!pid) {
@@ -323,14 +330,18 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         }
         produtos.push({
           produto: {
-            produto_id: pid,
+            id: numericId(pid),
+            nome_produto: it.description.slice(0, 200),
+            detalhes: "",
             quantidade: it.quantity,
-            valor: it.unit_price,
+            valor_custo: it.unit_price,
+            valor_total: it.total,
+            unidade: "UN",
           },
         });
       }
 
-      // 3) Purchase — required fields: codigo, fornecedor_id, situacao_id, data
+      // 3) Purchase — format aligned with GestãoClick purchases payload
       const [situacaoId, planoContasId, formaPagamentoId, contaBancariaId] = await Promise.all([
         gcGetFirstId("/api/situacoes_compras", "situacao"),
         gcGetFirstId("/api/planos_contas", "plano_conta"),
@@ -343,16 +354,29 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         );
       }
 
-      const codigo = Number(String(Date.now()).slice(-9));
+      const valorProdutos = Number(
+        data.items.reduce((sum, item) => sum + Number(item.total || 0), 0).toFixed(2),
+      );
+      const valorImpostos = Number(Math.max(data.total - valorProdutos, 0).toFixed(2));
       const compraBody: Record<string, unknown> = {
-        codigo,
-        fornecedor_id: supplierId,
-        situacao_id: situacaoId,
-        data: data.invoice_date,
-        numero_nota_fiscal: data.invoice_number,
+        tipo: "produto",
+        fornecedor_id: numericId(supplierId),
+        situacao_id: numericId(situacaoId),
+        data_emissao: data.invoice_date,
+        numero_nfe: data.invoice_number || undefined,
+        valor_produtos: valorProdutos,
+        valor_impostos: valorImpostos,
+        valor_frete: 0,
+        pagar_frete: 1,
         valor_total: data.total,
+        condicao_pagamento: "a_vista",
+        forma_pagamento_id: formaPagamentoId ? numericId(formaPagamentoId) : undefined,
+        numero_parcelas: 1,
+        data_primeira_parcela: data.due_date ?? data.invoice_date,
+        plano_contas_id: planoContasId ? numericId(planoContasId) : undefined,
         produtos,
-        observacoes: data.notes ?? undefined,
+        observacoes: `Fatura ${data.invoice_number}`,
+        observacoes_interna: data.notes ?? undefined,
       };
       const compraRes = await gcPost("/api/compras", compraBody);
       const compraId = String(

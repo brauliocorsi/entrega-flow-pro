@@ -309,6 +309,7 @@ export const refreshDeliveryPayload = createServerFn({ method: "POST" })
     const o = res.order;
     const payload = {
       items: o.items ?? [],
+      pagamentos: o.pagamentos ?? [],
       has_assembly: o.has_assembly ?? false,
       has_delivery_service: o.has_delivery_service ?? false,
       observations: o.observations ?? null,

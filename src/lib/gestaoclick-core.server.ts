@@ -35,6 +35,7 @@ export interface OrderDTO {
   has_assembly: boolean;
   has_delivery_service: boolean;
   observations: string | null;
+  pagamentos: any[];
 }
 
 function detectKind(desc: string): OrderItemDTO["kind"] {
@@ -154,6 +155,7 @@ export function normalizeOrder(
     has_assembly: hasAssembly,
     has_delivery_service: hasDeliveryService,
     observations: obsText,
+    pagamentos,
   };
 }
 

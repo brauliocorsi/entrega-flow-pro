@@ -39,7 +39,7 @@ import {
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2, Wallet, Download } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2, Wallet, Download, History as HistoryIcon } from "lucide-react";
 import { generateRouteForecast, listRouteForecasts } from "@/lib/forecasts.functions";
 import { downloadForecastPdf } from "@/lib/forecast-pdf";
 import { formatDateTimePT } from "@/lib/format";
@@ -512,6 +512,7 @@ function RouteDetail() {
           </div>
           <div className="flex gap-2">
             {canForecast && <ForecastButton routeId={r.id} />}
+            {canForecast && <ForecastHistoryButton routeId={r.id} />}
             {!isClosed && (
               <Link to="/agendar" search={{ routeId: r.id }}>
                 <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Agendar entrega</Button>
@@ -559,7 +560,7 @@ function RouteDetail() {
         <FleetEditor route={r} />
       </Card>
 
-      {canForecast && <ForecastHistoryCard routeId={r.id} />}
+      
 
       {(() => {
         const activeDeliveries = deliveries.filter(
@@ -1255,44 +1256,100 @@ function ForecastButton({ routeId }: { routeId: string }) {
 }
 
 
-function ForecastHistoryCard({ routeId }: { routeId: string }) {
+function ForecastHistoryButton({ routeId }: { routeId: string }) {
+  const [open, setOpen] = useState(false);
   const listFn = useServerFn(listRouteForecasts);
   const { data: forecasts } = useQuery({
     queryKey: ["route-forecasts", routeId],
     queryFn: () => listFn({ data: { routeId } }),
+    enabled: open,
   });
   const list = forecasts ?? [];
-  if (list.length === 0) return null;
   return (
-    <Card className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Wallet className="h-4 w-4 text-muted-foreground" />
-        <h2 className="font-semibold">Histórico de previsões</h2>
-        <Badge variant="secondary">{list.length}</Badge>
-      </div>
-      <ul className="divide-y">
-        {list.map((f: any) => (
-          <li key={f.id} className="py-2 flex items-center justify-between gap-3 flex-wrap">
-            <div className="min-w-0">
-              <div className="text-sm font-medium">
-                {formatDateTimePT(f.created_at)} · {f.generated_by_name ?? "—"}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {f.total_orders} encomenda(s) · Total previsto{" "}
-                <span className="font-semibold text-foreground">{formatEUR(f.total_forecast)}</span>
-              </div>
-            </div>
+    <>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
             <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => downloadForecastPdf(f)}
-              className="gap-1"
+              size="icon"
+              variant="outline"
+              onClick={() => setOpen(true)}
+              aria-label="Histórico de previsões"
             >
-              <Download className="h-4 w-4" /> PDF
+              <HistoryIcon className="h-4 w-4" />
             </Button>
-          </li>
-        ))}
-      </ul>
-    </Card>
+          </TooltipTrigger>
+          <TooltipContent>Histórico de previsões</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="h-4 w-4" /> Histórico de previsões
+            </DialogTitle>
+            <DialogDescription>
+              Lançamentos previstos para esta rota. Clica em PDF para extrair o documento.
+            </DialogDescription>
+          </DialogHeader>
+          {list.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">
+              Ainda não foi gerada nenhuma previsão para esta rota.
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {list.map((f: any) => {
+                const items: any[] = Array.isArray(f.items) ? f.items : [];
+                return (
+                  <li key={f.id} className="py-3 space-y-2">
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium">
+                          {formatDateTimePT(f.created_at)} · {f.generated_by_name ?? "—"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {f.total_orders} encomenda(s) · Total previsto{" "}
+                          <span className="font-semibold text-foreground">
+                            {formatEUR(f.total_forecast)}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => downloadForecastPdf(f)}
+                        className="gap-1"
+                      >
+                        <Download className="h-4 w-4" /> PDF
+                      </Button>
+                    </div>
+                    {items.length > 0 && (
+                      <div className="rounded-md border bg-muted/30 divide-y">
+                        {items.map((it: any) => (
+                          <div
+                            key={it.delivery_id}
+                            className="px-3 py-1.5 text-xs flex items-center justify-between gap-2"
+                          >
+                            <div className="min-w-0 truncate">
+                              <span className="font-medium text-foreground">
+                                #{it.order_number}
+                              </span>{" "}
+                              · {it.customer_name}
+                            </div>
+                            <div className="tabular-nums font-medium">
+                              {formatEUR(Number(it.forecast_value ?? 0))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -76,7 +76,7 @@ export const generateRouteForecast = createServerFn({ method: "POST" })
       .single();
     if (insErr || !inserted) throw new Error(insErr?.message ?? "Falha ao guardar previsão.");
 
-    return inserted as RouteForecast;
+    return inserted as unknown as RouteForecast;
   });
 
 export const listRouteForecasts = createServerFn({ method: "GET" })
@@ -90,7 +90,7 @@ export const listRouteForecasts = createServerFn({ method: "GET" })
       .eq("route_id", data.routeId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return (rows ?? []) as RouteForecast[];
+    return (rows ?? []) as unknown as RouteForecast[];
   });
 
 export const getRouteForecast = createServerFn({ method: "GET" })
@@ -104,5 +104,5 @@ export const getRouteForecast = createServerFn({ method: "GET" })
       .eq("id", data.id)
       .maybeSingle();
     if (error || !row) throw new Error(error?.message ?? "Previsão não encontrada.");
-    return row as RouteForecast;
+    return row as unknown as RouteForecast;
   });

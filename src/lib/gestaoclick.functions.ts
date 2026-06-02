@@ -166,6 +166,7 @@ function normalizeOrder(
     has_assembly: hasAssembly,
     has_delivery_service: hasDeliveryService,
     observations: obsText,
+    pagamentos,
   };
 }
 

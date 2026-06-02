@@ -116,6 +116,11 @@ function AuthenticatedLayout() {
                   <DropdownMenuItem asChild>
                     <Link to="/admin/utilizadores"><Users className="h-4 w-4 mr-2" /> Utilizadores</Link>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Dados</DropdownMenuLabel>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin/exportar"><FileSpreadsheet className="h-4 w-4 mr-2" /> Exportar para Sheets</Link>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

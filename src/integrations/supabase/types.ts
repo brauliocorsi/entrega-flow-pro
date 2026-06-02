@@ -80,6 +80,48 @@ export type Database = {
         }
         Relationships: []
       }
+      route_payment_forecasts: {
+        Row: {
+          created_at: string
+          generated_by: string
+          generated_by_name: string | null
+          id: string
+          items: Json
+          route_id: string
+          route_snapshot: Json | null
+          total_forecast: number
+          total_gross: number
+          total_orders: number
+          total_services: number
+        }
+        Insert: {
+          created_at?: string
+          generated_by: string
+          generated_by_name?: string | null
+          id?: string
+          items?: Json
+          route_id: string
+          route_snapshot?: Json | null
+          total_forecast?: number
+          total_gross?: number
+          total_orders?: number
+          total_services?: number
+        }
+        Update: {
+          created_at?: string
+          generated_by?: string
+          generated_by_name?: string | null
+          id?: string
+          items?: Json
+          route_id?: string
+          route_snapshot?: Json | null
+          total_forecast?: number
+          total_gross?: number
+          total_orders?: number
+          total_services?: number
+        }
+        Relationships: []
+      }
       route_templates: {
         Row: {
           active: boolean

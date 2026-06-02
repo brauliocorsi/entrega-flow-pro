@@ -39,7 +39,11 @@ import {
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2, Wallet, Download } from "lucide-react";
+import { generateRouteForecast, listRouteForecasts } from "@/lib/forecasts.functions";
+import { downloadForecastPdf } from "@/lib/forecast-pdf";
+import { formatDateTimePT } from "@/lib/format";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Stop = {
   id: string;
@@ -463,6 +467,8 @@ export const Route = createFileRoute("/_authenticated/rotas/$id")({
 
 function RouteDetail() {
   const { id } = useParams({ from: "/_authenticated/rotas/$id" });
+  const { role } = useAuth();
+  const canForecast = role === "admin" || role === "logistico";
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectStop = (next: string | null) => {
     setSelectedId(next);
@@ -505,6 +511,7 @@ function RouteDetail() {
             <p className="text-xs text-muted-foreground mt-1">CP: {(r.zip_prefixes ?? []).join(", ") || "—"}</p>
           </div>
           <div className="flex gap-2">
+            {canForecast && <ForecastButton routeId={r.id} />}
             {!isClosed && (
               <Link to="/agendar" search={{ routeId: r.id }}>
                 <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Agendar entrega</Button>
@@ -551,6 +558,8 @@ function RouteDetail() {
         </div>
         <FleetEditor route={r} />
       </Card>
+
+      {canForecast && <ForecastHistoryCard routeId={r.id} />}
 
       {(() => {
         const activeDeliveries = deliveries.filter(
@@ -1188,4 +1197,78 @@ function FleetEditor({ route }: { route: any }) {
 
 function labelVehicle(v: { name: string; plate: string | null }) {
   return v.plate ? `${v.name} (${v.plate})` : v.name;
+}
+
+function ForecastButton({ routeId }: { routeId: string }) {
+  const qc = useQueryClient();
+  const generateFn = useServerFn(generateRouteForecast);
+  const generate = useMutation({
+    mutationFn: () => generateFn({ data: { routeId } }),
+    onSuccess: (f: any) => {
+      toast.success(`Previsão gerada: ${formatEUR(f.total_forecast)}`);
+      downloadForecastPdf(f);
+      qc.invalidateQueries({ queryKey: ["route-forecasts", routeId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao gerar previsão"),
+  });
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => generate.mutate()}
+            disabled={generate.isPending}
+            aria-label="Extrair previsão de recebimentos"
+          >
+            <Wallet className={`h-4 w-4 ${generate.isPending ? "animate-pulse" : ""}`} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Extrair previsão de recebimentos</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+function ForecastHistoryCard({ routeId }: { routeId: string }) {
+  const listFn = useServerFn(listRouteForecasts);
+  const { data: forecasts } = useQuery({
+    queryKey: ["route-forecasts", routeId],
+    queryFn: () => listFn({ data: { routeId } }),
+  });
+  const list = forecasts ?? [];
+  if (list.length === 0) return null;
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Wallet className="h-4 w-4 text-muted-foreground" />
+        <h2 className="font-semibold">Histórico de previsões</h2>
+        <Badge variant="secondary">{list.length}</Badge>
+      </div>
+      <ul className="divide-y">
+        {list.map((f: any) => (
+          <li key={f.id} className="py-2 flex items-center justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <div className="text-sm font-medium">
+                {formatDateTimePT(f.created_at)} · {f.generated_by_name ?? "—"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {f.total_orders} encomenda(s) · Total previsto{" "}
+                <span className="font-semibold text-foreground">{formatEUR(f.total_forecast)}</span>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => downloadForecastPdf(f)}
+              className="gap-1"
+            >
+              <Download className="h-4 w-4" /> PDF
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
 }

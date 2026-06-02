@@ -1,51 +1,62 @@
-## Objetivo
+# Módulo de Compras com OCR
 
-Garantir que a "Previsão de Recebimentos" usa sempre valores atualizados do GestãoClick. Ao clicar no botão, antes de gerar o PDF/registo, refazer uma consulta ao GestãoClick para cada encomenda da rota, atualizar a base de dados, e só depois calcular os totais previstos.
+Novo separador "Compras" onde se tira foto (ou faz upload) de uma fatura de fornecedor, a IA transcreve, o utilizador revê e o sistema cria a compra + lançamento financeiro no GestãoClick.
 
-## Comportamento
+## Fluxo do utilizador
 
-1. Utilizador (admin/logístico) clica no botão "Previsão de Recebimentos" na rota.
-2. O servidor:
-   - Lê todas as entregas ativas (não canceladas/reagendadas) da rota.
-   - Para cada entrega, refaz `fetchOrder` ao GestãoClick (`/api/vendas?codigo=...` + `/api/vendas/{id}`), obtendo `valor_total`, `pagamentos[]` e itens atualizados.
-   - Atualiza `scheduled_deliveries.order_payload`, `total_value` e `remaining_value` (o trigger `tg_compute_remaining` recalcula sozinho, mas escrevemos os valores frescos vindos do GC).
-   - Se uma encomenda falhar a sincronizar (erro GC, sem credenciais, 404), continua mas marca esse item com `sync_error` no snapshot — não bloqueia toda a previsão.
-3. Com os dados frescos, recalcula `items` via `computeForecastForDelivery` e insere em `route_payment_forecasts` exatamente como hoje.
-4. PDF é gerado normalmente (já é client-side dinâmico) e a entrada aparece no histórico.
+1. Menu → **Compras** → botão "Nova compra por foto".
+2. No mobile abre a câmara; no desktop aceita upload (JPG/PNG/PDF, até 10MB).
+3. Loading "A ler fatura…" — IA devolve dados estruturados + score de confiança.
+4. Ecrã de revisão:
+   - Fornecedor (nome, NIF), nº fatura, data, vencimento
+   - Linhas: descrição, qtd, preço unit., total, IVA, + match com produto do GestãoClick
+   - Totais (subtotal, IVA, total)
+   - Pergunta financeira: **"Já paga"** ou **"Conta a pagar"** (+ data vencimento + método)
+   - Se confiança ≥ 90% em todos os campos críticos e todos os produtos mapeados → botão "Confirmar e enviar". Caso contrário → campos marcados a amarelo, edição obrigatória.
+5. Confirmar → cria fornecedor (se novo), produtos novos (se não houver match), compra e movimento financeiro no GestãoClick. Mostra nº da compra criada.
 
-## UX
+## Arquitetura técnica
 
-- Botão fica em loading durante a sincronização (toast: "A sincronizar valores com o GestãoClick…").
-- Ao terminar:
-  - Sucesso: toast "Previsão gerada com X encomenda(s) atualizada(s)." + download do PDF.
-  - Sucesso parcial: toast warning "Y encomenda(s) não puderam ser sincronizadas — usados últimos valores conhecidos." e prossegue.
-- Invalida queries da rota (`scheduled_deliveries`, totais) para refletir os novos valores na tela imediatamente.
+### Frontend
+- `src/routes/_authenticated.compras.tsx` — listagem de compras importadas (histórico)
+- `src/routes/_authenticated.compras.nova.tsx` — captura/upload + revisão
+- Componente `<InvoiceCapture>` com `<input type="file" accept="image/*,application/pdf" capture="environment">` (câmara nativa no mobile, upload no desktop)
+- Item no menu lateral de `_authenticated.tsx`
 
-## Detalhes técnicos
+### Server Functions (`src/lib/purchases.functions.ts`)
+- `extractInvoiceFromImage({ fileBase64, mimeType })` — chama Lovable AI (`google/gemini-2.5-pro`, multimodal) com schema Zod estruturado: fornecedor, nº fatura, datas, linhas, totais, IVA, + `confidence` por campo
+- `matchProducts({ items })` — para cada linha procura produto no GestãoClick por nome aproximado; devolve `match | null`
+- `createPurchaseInGestaoClick({ payload })` — orquestra:
+  1. POST `/api/fornecedores` se NIF não existir
+  2. POST `/api/produtos` para cada produto sem match (com preço de custo da fatura)
+  3. POST `/api/compras` com itens, nº fatura, fornecedor
+  4. POST `/api/contas_pagar` (paga ou em aberto conforme escolha)
+- `listImportedPurchases()` — devolve histórico da tabela local
 
-- `src/lib/forecasts.functions.ts → generateRouteForecast`:
-  - Antes do `map(computeForecastForDelivery)`, percorrer `deliveries` e, para cada uma, chamar uma nova função interna `refreshDeliveryFromGestaoClick(supabase, delivery)` que:
-    - reusa a lógica de `fetchOrder` (extraída para um helper compartilhado em `src/lib/gestaoclick.server.ts` que retorna o DTO sem tocar em Supabase de scheduling), OU
-    - chama diretamente o GestãoClick com os mesmos headers (`access-token`, `secret-access-token`) e `normalizeOrder` — preferível para evitar passar pelo `requireSupabaseAuth` do `fetchOrder`.
-  - Após receber o DTO atualizado:
-    ```
-    UPDATE scheduled_deliveries
-    SET order_payload = <novo dto>,
-        total_value   = dto.total_value,
-        paid_value    = dto.total_value - dto.remaining_value
-    WHERE id = delivery.id
-    ```
-  - Em paralelo limitado (ex.: lotes de 5) para não estourar limites do GC.
-  - Adicionar campos `synced_count` e `sync_errors[]` no `route_snapshot` gravado em `route_payment_forecasts` para auditoria no histórico.
+### Lovable AI
+Usar `google/gemini-2.5-pro` (multimodal forte para OCR de faturas PT). Prompt pede JSON estruturado via `Output.object` com Zod. Não exige chave nova — usa `LOVABLE_API_KEY` já configurada.
 
-- `src/lib/gestaoclick.server.ts` (novo): mover o miolo do `fetchOrder` (chamadas HTTP + `normalizeOrder`) para um helper puro `fetchOrderDtoFromGestaoClick(orderNumber)` reutilizável. `fetchOrder` (server fn) passa a ser um wrapper fino.
+### GestãoClick — endpoints novos
+Estender `gestaoclick-core.server.ts` com helpers para `fornecedores`, `produtos` (criação), `compras`, `contas_pagar`. Reutiliza credenciais existentes (`GESTAOCLICK_API_KEY`, `GESTAOCLICK_EMAIL`, `GESTAOCLICK_BASE_URL`).
 
-- `src/routes/_authenticated.rotas.$id.tsx`:
-  - Texto do botão / tooltip: "Atualizar valores e extrair previsão".
-  - Após `mutate` bem-sucedido, `queryClient.invalidateQueries` para a query da rota e da lista de entregas.
+### Base de dados
+Tabela `imported_purchases` (histórico/auditoria local):
+- `id`, `created_at`, `created_by`
+- `image_url` (Supabase Storage bucket `invoice-scans`, privado, só admin/logístico)
+- `extracted_payload` jsonb (resposta da IA)
+- `final_payload` jsonb (depois da revisão)
+- `gestaoclick_purchase_id`, `gestaoclick_invoice_number`
+- `status` (pendente | enviada | erro), `error_message`
 
-## Fora do escopo
+RLS: admin + logístico podem criar/ver; vendedor não acede.
 
-- Não mexer na lógica de conferência, fechamento, otimização ou agendamento.
-- Não alterar tabelas existentes nem políticas RLS.
-- Não tocar no PDF (já está OK).
+## Pontos a confirmar contigo durante a implementação
+
+- Confirmar nomes exatos dos endpoints `/api/compras`, `/api/fornecedores`, `/api/contas_pagar` no painel GestãoClick (a documentação varia por conta). Se algum não existir/retornar 404, paro e peço esclarecimento.
+- Conta financeira padrão para lançar a despesa (caixa/banco) — necessário ID; podemos guardar como secret `GESTAOCLICK_DEFAULT_ACCOUNT_ID` ou escolher no ecrã de revisão.
+
+## Limites
+
+- Faturas muito borradas/manuscritas podem dar baixa confiança → cai sempre na revisão manual (é o objetivo do modo híbrido).
+- PDF multi-página: lê só a 1ª página nesta primeira versão.
+- Custo: cada extração consome créditos Lovable AI (faturas com muitas linhas usam mais tokens).

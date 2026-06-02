@@ -161,6 +161,10 @@ function numericId(value: string): number | string {
   return /^\d+$/.test(value) ? Number(value) : value;
 }
 
+function roundMoney(value: number): number {
+  return Number((Math.round((value + Number.EPSILON) * 100) / 100).toFixed(2));
+}
+
 async function createProduct(name: string, cost: number): Promise<string> {
   const body = {
     nome: name,
@@ -343,6 +347,7 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         if (!pid) {
           pid = await createProduct(it.description, it.unit_price);
         }
+        const lineTotal = roundMoney(Number(it.quantity) * Number(it.unit_price));
         produtos.push({
           produto: {
             id: numericId(pid),
@@ -350,7 +355,7 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
             detalhes: "",
             quantidade: it.quantity,
             valor_custo: it.unit_price,
-            valor_total: it.total,
+            valor_total: lineTotal,
             unidade: "UN",
           },
         });
@@ -369,10 +374,13 @@ export const createPurchaseInGestaoClick = createServerFn({ method: "POST" })
         );
       }
 
-      const valorProdutos = Number(
-        data.items.reduce((sum, item) => sum + Number(item.total || 0), 0).toFixed(2),
+      const valorProdutos = roundMoney(
+        data.items.reduce(
+          (sum, item) => sum + roundMoney(Number(item.quantity) * Number(item.unit_price)),
+          0,
+        ),
       );
-      const valorImpostos = Number(Math.max(data.total - valorProdutos, 0).toFixed(2));
+      const valorImpostos = roundMoney(Math.max(Number(data.total) - valorProdutos, 0));
       const valorTotalCompra = Number((valorProdutos + valorImpostos).toFixed(2));
       const codigoCompra = Number(String(Date.now()).slice(-6));
       const pagamentos =

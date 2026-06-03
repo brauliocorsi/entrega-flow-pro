@@ -36,6 +36,7 @@ export interface OrderDTO {
   has_delivery_service: boolean;
   observations: string | null;
   pagamentos: any[];
+  delivery_date: string | null;
 }
 
 export interface FetchOrderResult {
@@ -167,6 +168,7 @@ function normalizeOrder(
     has_delivery_service: hasDeliveryService,
     observations: obsText,
     pagamentos,
+    delivery_date: (p?.prazo_entrega ?? p?.data_entrega ?? null) || null,
   };
 }
 

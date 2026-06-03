@@ -77,3 +77,18 @@ export function pickRangesForDistrict<T extends { zip_start: string; zip_end: st
       return (Number(x.zip_end) - Number(x.zip_start)) - (Number(y.zip_end) - Number(y.zip_start));
     });
 }
+
+/** Resolve a cor de uma range. Se não tiver cor manual e for sub-zona (priority < 5), herda da macro (priority 5) que a contém. Caso contrário, cai no gradiente por valor. */
+export function resolveRangeColor<T extends { zip_start: string; zip_end: string; priority: number; active: boolean; color?: string | null; fee: number | string }>(
+  r: T,
+  all: T[],
+): string {
+  if (r.color && /^#[0-9a-fA-F]{6}$/.test(r.color)) return r.color;
+  if (r.priority < 5) {
+    const parent = all.find(
+      (m) => m.priority === 5 && m.active && m.zip_start <= r.zip_start && m.zip_end >= r.zip_end,
+    );
+    if (parent) return getRangeColor(parent);
+  }
+  return getRangeColor(r);
+}

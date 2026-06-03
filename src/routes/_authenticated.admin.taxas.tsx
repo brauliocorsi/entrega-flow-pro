@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatEUR } from "@/lib/format";
-import { getRangeColor } from "@/lib/zone-colors";
+import { resolveRangeColor } from "@/lib/zone-colors";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
@@ -187,7 +187,7 @@ function AdminFeesPage() {
                   <div key={r.id} className="p-2.5 flex items-center gap-2 text-sm">
                     <span
                       className="inline-block h-4 w-4 rounded shrink-0 border"
-                      style={{ background: getRangeColor(r) }}
+                      style={{ background: resolveRangeColor(r, items) }}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{r.label || `${r.zip_start}–${r.zip_end}`}</div>
@@ -215,7 +215,7 @@ function AdminFeesPage() {
                 <div className="min-w-0 flex items-center gap-3">
                   <span
                     className="inline-block h-5 w-5 rounded border shrink-0"
-                    style={{ background: getRangeColor(r) }}
+                    style={{ background: resolveRangeColor(r, items) }}
                   />
                   <div className="min-w-0">
                     <div className="font-medium flex items-center gap-2 flex-wrap">

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, GeoJSON, Tooltip } from "react-leaflet";
 import type { FeatureCollection, Feature } from "geojson";
 import "leaflet/dist/leaflet.css";
-import { getRangeColor, pickRangesForDistrict } from "@/lib/zone-colors";
+import { DISTRITO_TO_CP, getRangeColor, pickRangeForZip, pickRangesForDistrict } from "@/lib/zone-colors";
 import { formatEUR } from "@/lib/format";
 
 type Range = {
@@ -26,11 +26,13 @@ export function MapaZonas({ ranges }: { ranges: Range[] }) {
       .catch((e) => console.error("Falha ao carregar GeoJSON", e));
   }, []);
 
+  // Pinta sempre pela macro (priority 5) do CP4 representativo do distrito.
+  const macros = ranges.filter((r) => r.priority === 5);
   const styleFor = (f?: Feature) => {
     const distrito = f?.properties?.distrito as string | undefined;
-    const matches = distrito ? pickRangesForDistrict(distrito, ranges) : [];
-    const best = matches[0] ?? null;
-    const color = best ? getRangeColor(best) : "#cbd5e1";
+    const cp = distrito ? DISTRITO_TO_CP[distrito] : null;
+    const macro = cp ? pickRangeForZip(cp, macros) : null;
+    const color = macro ? getRangeColor(macro) : "#cbd5e1";
     return { color: "#1e293b", weight: 1, fillColor: color, fillOpacity: 0.65 };
   };
 

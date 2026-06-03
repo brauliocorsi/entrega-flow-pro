@@ -311,17 +311,75 @@ function AgendarPage() {
             </div>
           )}
 
-          {orderData?.existingActiveDelivery && (
-            <div className="border rounded-md p-4 bg-rose-50 border-rose-200 flex gap-3">
-              <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
-              <div className="text-sm">
-                <p className="font-medium text-rose-900">Encomenda já agendada</p>
-                <p className="text-rose-700 mt-1">
-                  Esta encomenda já está numa rota ({formatDatePT(orderData.existingActiveDelivery.routes?.route_date)} — {orderData.existingActiveDelivery.routes?.zone}). Cancela primeiro para reagendar.
-                </p>
-              </div>
-            </div>
-          )}
+          {(() => {
+            const existing = orderData?.existingActiveDelivery;
+            const gcStatus = String(orderData?.order?.status ?? "").toLowerCase();
+            const gcAgendada = /agendad/.test(gcStatus) && /entrega/.test(gcStatus);
+            const gcDate = orderData?.order?.delivery_date ?? null;
+            const existingDate = existing?.routes?.route_date as string | undefined;
+            const sameAsGc = gcAgendada && gcDate && existingDate && gcDate.slice(0, 10) === existingDate;
+
+            if (existing && sameAsGc) {
+              return (
+                <div className="border rounded-md p-4 bg-emerald-50 border-emerald-200 space-y-2">
+                  <div className="flex gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-emerald-900">Já agendada</p>
+                      <p className="text-emerald-700 mt-1">
+                        Esta encomenda já está agendada para {formatDatePT(existingDate!)} na rota <strong>{existing.routes?.zone}</strong>. Nenhuma alteração necessária.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => navigate({ to: "/rotas/$id", params: { id: existing.route_id } })}>
+                      Ver rota
+                    </Button>
+                    <label className="flex items-center gap-2 text-xs text-emerald-800 ml-2">
+                      <input type="checkbox" checked={confirmReschedule} onChange={(e) => setConfirmReschedule(e.target.checked)} />
+                      Quero alterar a data
+                    </label>
+                  </div>
+                </div>
+              );
+            }
+
+            if (existing) {
+              return (
+                <div className="border rounded-md p-4 bg-amber-50 border-amber-200 space-y-2">
+                  <div className="flex gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-amber-900">Encomenda já agendada</p>
+                      <p className="text-amber-700 mt-1">
+                        Existe entrega ativa em {formatDatePT(existingDate!)} ({existing.routes?.zone}). Ao continuar, será <strong>transferida</strong> para a rota escolhida.
+                      </p>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-amber-900">
+                    <input type="checkbox" checked={confirmReschedule} onChange={(e) => setConfirmReschedule(e.target.checked)} />
+                    Confirmo a alteração da data agendada
+                  </label>
+                </div>
+              );
+            }
+
+            if (gcAgendada && !existing) {
+              return (
+                <div className="border rounded-md p-4 bg-amber-50 border-amber-200 flex gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-900">Inconsistência detectada</p>
+                    <p className="text-amber-700 mt-1">
+                      O GestãoClick indica "Agendado Entrega"{gcDate ? ` para ${formatDatePT(gcDate)}` : ""}, mas não existe entrega registada no sistema. Continuar criará um novo agendamento.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+
+            return null;
+          })()}
 
           {orderData?.previousUnfinished && (
             <div className="border rounded-md p-4 bg-amber-50 border-amber-200 flex gap-3">
@@ -333,19 +391,30 @@ function AgendarPage() {
             </div>
           )}
 
-          <div className="flex justify-end">
-            <Button
-              disabled={!orderData?.order || !!orderData?.existingActiveDelivery}
-              onClick={() => {
-                if (orderData?.order?.has_assembly && minutes < 60) setMinutes(60);
-                setStep(2);
-              }}
-            >
-              Continuar <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
-        </Card>
-      )}
+          {(() => {
+            const existing = orderData?.existingActiveDelivery;
+            const gcStatus = String(orderData?.order?.status ?? "").toLowerCase();
+            const gcAgendada = /agendad/.test(gcStatus) && /entrega/.test(gcStatus);
+            const gcDate = orderData?.order?.delivery_date ?? null;
+            const existingDate = existing?.routes?.route_date as string | undefined;
+            const sameAsGc = gcAgendada && gcDate && existingDate && gcDate.slice(0, 10) === existingDate;
+            const needsConfirm = (existing && sameAsGc) || (existing && !sameAsGc);
+            const canContinue =
+              !!orderData?.order && (!needsConfirm || confirmReschedule);
+            return (
+              <div className="flex justify-end">
+                <Button
+                  disabled={!canContinue}
+                  onClick={() => {
+                    if (orderData?.order?.has_assembly && minutes < 60) setMinutes(60);
+                    setStep(2);
+                  }}
+                >
+                  Continuar <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            );
+          })()}
 
       {step === 2 && (
         <Card className="p-5 space-y-4">

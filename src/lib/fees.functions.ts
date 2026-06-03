@@ -29,6 +29,11 @@ export const upsertFeeRange = createServerFn({ method: "POST" })
         priority: z.number().int().min(0).max(1000).default(0),
         active: z.boolean().default(true),
         notes: z.string().max(500).nullable().optional(),
+        color: z
+          .string()
+          .regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida")
+          .nullable()
+          .optional(),
       })
       .refine((v) => v.zip_start <= v.zip_end, { message: "CP inicial deve ser menor ou igual ao final" })
       .parse(d),

@@ -101,13 +101,32 @@ function AgendarPage() {
         toast.error(fresh.error ?? "Não foi possível confirmar valores");
         return;
       }
-      if (fresh.existingActiveDelivery) {
-        toast.error("Esta encomenda já está agendada noutra rota");
+      const existing = fresh.existingActiveDelivery;
+      const freshDate = (existing?.routes?.route_date as string | undefined) ?? null;
+      const { data: routeRow } = await import("@/integrations/supabase/client").then((m) =>
+        m.supabase.from("routes").select("route_date").eq("id", selectedRouteId).maybeSingle(),
+      );
+      const newDate = routeRow?.route_date ?? null;
+      if (existing && freshDate && newDate && freshDate === newDate) {
+        toast.error(`Já está agendada para ${formatDatePT(freshDate)} nesta data. Nada a fazer.`);
         setOrderData(fresh);
         return;
       }
       const o = fresh.order;
       setOrderData(fresh);
+
+      // Se existe entrega ativa noutra data → transferir em vez de criar
+      if (existing?.id) {
+        const tr = await transferFn({ data: { id: existing.id, newRouteId: selectedRouteId } });
+        if (tr?.gestaoclick_synced) toast.success("Entrega transferida e sincronizada com GestãoClick");
+        else if (tr?.gestaoclick_error) {
+          toast.success("Entrega transferida");
+          toast.warning(`GestãoClick: ${tr.gestaoclick_error}`);
+        } else toast.success("Entrega transferida");
+        navigate({ to: "/rotas/$id", params: { id: selectedRouteId } });
+        return;
+      }
+
       const res = await scheduleFn({
         data: {
           route_id: selectedRouteId,

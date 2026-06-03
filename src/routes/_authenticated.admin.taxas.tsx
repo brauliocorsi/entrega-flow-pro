@@ -353,19 +353,29 @@ function AdminFeesPage() {
   );
 }
 
+function formatCPInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 7);
+  if (digits.length <= 4) return digits;
+  return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+}
+
 function CPValidator({ ranges }: { ranges: Range[] }) {
   const [cp, setCp] = useState("");
-  const clean = cp.replace(/\D/g, "").slice(0, 4);
-  const isValid = /^\d{4}$/.test(clean);
+  const digits = cp.replace(/\D/g, "");
+  const cp4 = digits.slice(0, 4);
+  const cp3 = digits.slice(4, 7);
+  const isCP4 = /^\d{4}$/.test(cp4);
+  const isCP7 = isCP4 && /^\d{3}$/.test(cp3);
+  const isValid = isCP4;
   const matches = isValid
     ? ranges
-        .filter((r) => r.active && r.zip_start <= clean && r.zip_end >= clean)
+        .filter((r) => r.active && r.zip_start <= cp4 && r.zip_end >= cp4)
         .slice()
         .sort((a, b) => a.priority - b.priority || (Number(a.zip_end) - Number(a.zip_start)) - (Number(b.zip_end) - Number(b.zip_start)))
     : [];
   const best = matches[0] ?? null;
   const distrito = isValid
-    ? Object.entries(DISTRITO_TO_CP).find(([, c]) => c.slice(0, 2) === clean.slice(0, 2))?.[0] ?? "—"
+    ? Object.entries(DISTRITO_TO_CP).find(([, c]) => c.slice(0, 2) === cp4.slice(0, 2))?.[0] ?? "—"
     : "—";
 
   return (
@@ -376,17 +386,20 @@ function CPValidator({ ranges }: { ranges: Range[] }) {
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Input
-          maxLength={4}
+          maxLength={8}
           value={cp}
-          onChange={(e) => setCp(e.target.value)}
-          placeholder="Ex: 4500"
-          className="w-32"
+          onChange={(e) => setCp(formatCPInput(e.target.value))}
+          placeholder="Ex: 4500 ou 4500-123"
+          className="w-40"
         />
+        {isCP7 && (
+          <Badge variant="outline" className="text-xs">CP4: {cp4} (de {cp4}-{cp3})</Badge>
+        )}
         {!isValid && cp.length > 0 && (
-          <span className="text-xs text-rose-600">CP4 inválido (4 dígitos)</span>
+          <span className="text-xs text-rose-600">CP inválido (usa 4 ou 7 dígitos)</span>
         )}
         {isValid && !best && (
-          <span className="text-xs text-amber-600">Sem zona configurada para {clean}</span>
+          <span className="text-xs text-amber-600">Sem zona configurada para {cp4}</span>
         )}
         {isValid && best && (
           <div className="flex items-center gap-2 flex-wrap">

@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatEUR } from "@/lib/format";
-import { getRangeColor, resolveRangeColor } from "@/lib/zone-colors";
+import { resolveRangeColor } from "@/lib/zone-colors";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 

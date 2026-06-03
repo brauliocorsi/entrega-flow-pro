@@ -29,41 +29,51 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-/** Distrito de Portugal → CP4 representativo (para escolher a taxa). */
 export const DISTRITO_TO_CP: Record<string, string> = {
-  Aveiro: "3800",
-  Beja: "7800",
-  Braga: "4700",
-  Bragança: "5300",
-  "Castelo Branco": "6000",
-  Coimbra: "3000",
-  Évora: "7000",
-  Faro: "8000",
-  Guarda: "6300",
-  Leiria: "2400",
-  Lisboa: "1500",
-  Portalegre: "7300",
-  Porto: "4100",
-  Santarém: "2000",
-  Setúbal: "2900",
-  "Viana do Castelo": "4900",
-  "Vila Real": "5000",
-  Viseu: "3500",
+  Aveiro: "3800", Beja: "7800", Braga: "4700", Bragança: "5300",
+  "Castelo Branco": "6000", Coimbra: "3000", Évora: "7000", Faro: "8000",
+  Guarda: "6300", Leiria: "2400", Lisboa: "1500", Portalegre: "7300",
+  Porto: "4100", Santarém: "2000", Setúbal: "2900",
+  "Viana do Castelo": "4900", "Vila Real": "5000", Viseu: "3500",
 };
 
-/** Dado um CP4 e a lista de intervalos, devolve o intervalo vencedor pela mesma regra do suggestDeliveryFee. */
+/** Faixa CP4 [início, fim] aproximada de cada distrito, alinhada com as macro zonas semeadas. */
+export const DISTRITO_TO_CP_RANGE: Record<string, [string, string]> = {
+  Aveiro: ["3500", "3999"], Beja: ["7500", "7999"], Braga: ["4500", "4999"],
+  Bragança: ["5500", "5999"], "Castelo Branco": ["6000", "6499"],
+  Coimbra: ["3000", "3499"], Évora: ["7000", "7499"], Faro: ["8000", "8999"],
+  Guarda: ["6500", "6999"], Leiria: ["2400", "2499"], Lisboa: ["1000", "1999"],
+  Portalegre: ["7300", "7399"], Porto: ["4000", "4499"],
+  Santarém: ["2000", "2499"], Setúbal: ["2500", "2999"],
+  "Viana do Castelo": ["4900", "4999"], "Vila Real": ["5000", "5499"],
+  Viseu: ["3500", "3999"],
+};
+
 export function pickRangeForZip<T extends { zip_start: string; zip_end: string; priority: number; active: boolean }>(
-  zip: string,
-  ranges: T[],
+  zip: string, ranges: T[],
 ): T | null {
   const matches = ranges
     .filter((r) => r.active && r.zip_start <= zip && r.zip_end >= zip)
     .slice()
     .sort((a, b) => {
       if (a.priority !== b.priority) return a.priority - b.priority;
-      const wa = Number(a.zip_end) - Number(a.zip_start);
-      const wb = Number(b.zip_end) - Number(b.zip_start);
-      return wa - wb;
+      return (Number(a.zip_end) - Number(a.zip_start)) - (Number(b.zip_end) - Number(b.zip_start));
     });
   return matches[0] ?? null;
+}
+
+/** Devolve todas as ranges activas que intersectam a faixa CP do distrito, ordenadas por prioridade (menor primeiro) e largura (menor primeiro). */
+export function pickRangesForDistrict<T extends { zip_start: string; zip_end: string; priority: number; active: boolean }>(
+  distrito: string, ranges: T[],
+): T[] {
+  const span = DISTRITO_TO_CP_RANGE[distrito];
+  if (!span) return [];
+  const [a, b] = span;
+  return ranges
+    .filter((r) => r.active && r.zip_start <= b && r.zip_end >= a)
+    .slice()
+    .sort((x, y) => {
+      if (x.priority !== y.priority) return x.priority - y.priority;
+      return (Number(x.zip_end) - Number(x.zip_start)) - (Number(y.zip_end) - Number(y.zip_start));
+    });
 }

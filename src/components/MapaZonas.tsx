@@ -28,15 +28,10 @@ export function MapaZonas({ ranges }: { ranges: Range[] }) {
 
   const styleFor = (f?: Feature) => {
     const distrito = f?.properties?.distrito as string | undefined;
-    const cp = distrito ? DISTRITO_TO_CP[distrito] : null;
-    const range = cp ? pickRangeForZip(cp, ranges) : null;
-    const color = range ? getRangeColor(range) : "#cbd5e1";
-    return {
-      color: "#1e293b",
-      weight: 1,
-      fillColor: color,
-      fillOpacity: 0.65,
-    };
+    const matches = distrito ? pickRangesForDistrict(distrito, ranges) : [];
+    const best = matches[0] ?? null;
+    const color = best ? getRangeColor(best) : "#cbd5e1";
+    return { color: "#1e293b", weight: 1, fillColor: color, fillOpacity: 0.65 };
   };
 
   return (
@@ -53,17 +48,21 @@ export function MapaZonas({ ranges }: { ranges: Range[] }) {
         />
         {geo && (
           <GeoJSON
-            key={ranges.map((r) => `${r.id}:${r.color}:${r.fee}`).join("|")}
+            key={ranges.map((r) => `${r.id}:${r.color}:${r.fee}:${r.priority}`).join("|")}
             data={geo}
             style={styleFor as any}
             onEachFeature={(feature, layer) => {
               const distrito = feature.properties?.distrito as string;
-              const cp = DISTRITO_TO_CP[distrito];
-              const range = cp ? pickRangeForZip(cp, ranges) : null;
-              const label = range
-                ? `${distrito} · ${range.label ?? `${range.zip_start}–${range.zip_end}`} · ${formatEUR(Number(range.fee))}`
-                : `${distrito} · (sem zona)`;
-              layer.bindTooltip(label, { sticky: true });
+              const matches = pickRangesForDistrict(distrito, ranges);
+              if (matches.length === 0) {
+                layer.bindTooltip(`${distrito} · (sem zona)`, { sticky: true });
+                return;
+              }
+              const lines = matches.map(
+                (r) =>
+                  `${r.label ?? `${r.zip_start}–${r.zip_end}`} (${r.zip_start}–${r.zip_end}) · ${formatEUR(Number(r.fee))}${r.priority < 5 ? ` · p${r.priority}` : ""}`,
+              );
+              layer.bindTooltip(`<strong>${distrito}</strong><br/>${lines.join("<br/>")}`, { sticky: true });
             }}
           />
         )}

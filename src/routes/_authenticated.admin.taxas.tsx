@@ -160,10 +160,17 @@ function AdminFeesPage() {
             <strong> menor número de prioridade</strong> (0 = topo); em empate, o intervalo mais pequeno.
           </p>
         </div>
-        <Button onClick={openNew}>
-          <Plus className="h-4 w-4 mr-1" /> Novo intervalo
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => handlePrintPDF(items)}>
+            <Printer className="h-4 w-4 mr-1" /> Descarregar PDF
+          </Button>
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4 mr-1" /> Novo intervalo
+          </Button>
+        </div>
       </div>
+
+      <CPValidator ranges={items} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="p-3 lg:col-span-2">

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, GeoJSON, Tooltip } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
 import type { FeatureCollection, Feature } from "geojson";
 import "leaflet/dist/leaflet.css";
-import { DISTRITO_TO_CP, getRangeColor, pickRangeForZip, pickRangesForDistrict } from "@/lib/zone-colors";
+import { DISTRITO_TO_CP, getRangeColor, pickRangeForZip, resolveRangeColor } from "@/lib/zone-colors";
 import { formatEUR } from "@/lib/format";
 
 type Range = {
@@ -26,7 +26,6 @@ export function MapaZonas({ ranges }: { ranges: Range[] }) {
       .catch((e) => console.error("Falha ao carregar GeoJSON", e));
   }, []);
 
-  // Pinta sempre pela macro (priority 5) do CP4 representativo do distrito.
   const macros = ranges.filter((r) => r.priority === 5);
   const styleFor = (f?: Feature) => {
     const distrito = f?.properties?.distrito as string | undefined;
@@ -55,16 +54,24 @@ export function MapaZonas({ ranges }: { ranges: Range[] }) {
             style={styleFor as any}
             onEachFeature={(feature, layer) => {
               const distrito = feature.properties?.distrito as string;
-              const matches = pickRangesForDistrict(distrito, ranges);
-              if (matches.length === 0) {
-                layer.bindTooltip(`${distrito} · (sem zona)`, { sticky: true });
+              const cp = DISTRITO_TO_CP[distrito];
+              const macro = cp ? pickRangeForZip(cp, macros) : null;
+              if (!macro) {
+                layer.bindTooltip(`<strong>${distrito}</strong><br/>(sem zona definida)`, { sticky: true });
                 return;
               }
-              const lines = matches.map(
-                (r) =>
-                  `${r.label ?? `${r.zip_start}–${r.zip_end}`} (${r.zip_start}–${r.zip_end}) · ${formatEUR(Number(r.fee))}${r.priority < 5 ? ` · p${r.priority}` : ""}`,
+              const macroColor = getRangeColor(macro);
+              const swatch = (c: string) => `<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};margin-right:6px;vertical-align:middle"></span>`;
+              const lines: string[] = [
+                `${swatch(macroColor)}${macro.label ?? `${macro.zip_start}–${macro.zip_end}`} · CP ${macro.zip_start}–${macro.zip_end} · ${formatEUR(Number(macro.fee))}`,
+              ];
+              const subs = ranges.filter(
+                (r) => r.active && r.priority < 5 && r.zip_start >= macro.zip_start && r.zip_end <= macro.zip_end,
               );
-              layer.bindTooltip(`<strong>${distrito}</strong><br/>${lines.join("<br/>")}`, { sticky: true });
+              for (const s of subs) {
+                lines.push(`${swatch(resolveRangeColor(s, ranges))}${s.label ?? `${s.zip_start}–${s.zip_end}`} · CP ${s.zip_start}–${s.zip_end} · ${formatEUR(Number(s.fee))} · p${s.priority}`);
+              }
+              layer.bindTooltip(`<strong>${distrito}</strong> (CP ${cp}xx)<br/>${lines.join("<br/>")}`, { sticky: true });
             }}
           />
         )}

@@ -12,9 +12,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatEUR } from "@/lib/format";
-import { resolveRangeColor } from "@/lib/zone-colors";
+import { resolveRangeColor, pickRangeForZip, DISTRITO_TO_CP } from "@/lib/zone-colors";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Printer, Search } from "lucide-react";
 
 // Leaflet só no cliente
 const MapaZonas = lazy(() => import("@/components/MapaZonas").then((m) => ({ default: m.MapaZonas })));
@@ -160,10 +160,17 @@ function AdminFeesPage() {
             <strong> menor número de prioridade</strong> (0 = topo); em empate, o intervalo mais pequeno.
           </p>
         </div>
-        <Button onClick={openNew}>
-          <Plus className="h-4 w-4 mr-1" /> Novo intervalo
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => handlePrintPDF(items)}>
+            <Printer className="h-4 w-4 mr-1" /> Descarregar PDF
+          </Button>
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4 mr-1" /> Novo intervalo
+          </Button>
+        </div>
       </div>
+
+      <CPValidator ranges={items} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="p-3 lg:col-span-2">
@@ -344,4 +351,118 @@ function AdminFeesPage() {
       </Dialog>
     </div>
   );
+}
+
+function CPValidator({ ranges }: { ranges: Range[] }) {
+  const [cp, setCp] = useState("");
+  const clean = cp.replace(/\D/g, "").slice(0, 4);
+  const isValid = /^\d{4}$/.test(clean);
+  const matches = isValid
+    ? ranges
+        .filter((r) => r.active && r.zip_start <= clean && r.zip_end >= clean)
+        .slice()
+        .sort((a, b) => a.priority - b.priority || (Number(a.zip_end) - Number(a.zip_start)) - (Number(b.zip_end) - Number(b.zip_start)))
+    : [];
+  const best = matches[0] ?? null;
+  const distrito = isValid
+    ? Object.entries(DISTRITO_TO_CP).find(([, c]) => c.slice(0, 2) === clean.slice(0, 2))?.[0] ?? "—"
+    : "—";
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Search className="h-4 w-4 text-muted-foreground" />
+        <div className="text-sm font-medium">Validar Código Postal</div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          maxLength={4}
+          value={cp}
+          onChange={(e) => setCp(e.target.value)}
+          placeholder="Ex: 4500"
+          className="w-32"
+        />
+        {!isValid && cp.length > 0 && (
+          <span className="text-xs text-rose-600">CP4 inválido (4 dígitos)</span>
+        )}
+        {isValid && !best && (
+          <span className="text-xs text-amber-600">Sem zona configurada para {clean}</span>
+        )}
+        {isValid && best && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className="inline-block h-4 w-4 rounded border"
+              style={{ background: resolveRangeColor(best, ranges) }}
+            />
+            <span className="text-sm font-medium">{best.label ?? `${best.zip_start}–${best.zip_end}`}</span>
+            <Badge variant="secondary">Distrito: {distrito}</Badge>
+            <Badge variant="outline">CP {best.zip_start}–{best.zip_end}</Badge>
+            <Badge variant="outline">Prio. {best.priority}</Badge>
+            <span className="text-base font-semibold tabular-nums">{formatEUR(best.fee)}</span>
+          </div>
+        )}
+      </div>
+      {isValid && matches.length > 1 && (
+        <div className="mt-3 text-xs text-muted-foreground">
+          Outras zonas que contêm este CP:{" "}
+          {matches.slice(1).map((r) => `${r.label ?? `${r.zip_start}–${r.zip_end}`} (${formatEUR(r.fee)} · p${r.priority})`).join(" · ")}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function handlePrintPDF(items: Range[]) {
+  const sorted = items.slice().sort((a, b) => a.zip_start.localeCompare(b.zip_start) || a.priority - b.priority);
+  const rows = sorted
+    .map((r) => {
+      const color = resolveRangeColor(r, items);
+      const frac = r.zip_start.slice(0, 2) === r.zip_end.slice(0, 2) ? `${r.zip_start.slice(0, 2)}xx` : `${r.zip_start.slice(0, 2)}xx–${r.zip_end.slice(0, 2)}xx`;
+      const dist = Object.entries(DISTRITO_TO_CP).find(([, c]) => c >= r.zip_start && c <= r.zip_end)?.[0] ?? "—";
+      return `<tr>
+        <td><span style="display:inline-block;width:18px;height:18px;border-radius:4px;background:${color};border:1px solid #cbd5e1"></span></td>
+        <td>${escapeHtml(r.label ?? `${r.zip_start}–${r.zip_end}`)}</td>
+        <td>${dist}</td>
+        <td style="text-align:center">${r.zip_start}</td>
+        <td style="text-align:center">${r.zip_end}</td>
+        <td style="text-align:center">${frac}</td>
+        <td style="text-align:center">${r.priority}</td>
+        <td style="text-align:right;font-weight:600">${formatEUR(r.fee)}</td>
+        <td>${escapeHtml(r.notes ?? "")}</td>
+      </tr>`;
+    })
+    .join("");
+  const html = `<!doctype html><html lang="pt"><head><meta charset="utf-8"/>
+    <title>Taxas de Entrega por Localização</title>
+    <style>
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:24px;color:#0f172a}
+      h1{font-size:20px;margin:0 0 4px}
+      .sub{color:#64748b;font-size:12px;margin-bottom:16px}
+      table{width:100%;border-collapse:collapse;font-size:11px}
+      th,td{border:1px solid #e2e8f0;padding:6px 8px;vertical-align:middle}
+      thead th{background:#0f172a;color:#fff;text-align:left}
+      tbody tr:nth-child(even){background:#f8fafc}
+      @media print{@page{size:A4 landscape;margin:12mm} body{padding:0}}
+    </style></head><body>
+    <h1>Taxas de Entrega por Localização</h1>
+    <div class="sub">Portugal Continental · Gerado em ${new Date().toLocaleString("pt-PT")} · Em sobreposição vence o de menor prioridade (0 = topo); em empate, o intervalo mais estreito.</div>
+    <table>
+      <thead><tr>
+        <th>Cor</th><th>Localização</th><th>Distrito</th><th>CP Inicial</th><th>CP Final</th><th>Fração CP4</th><th>Prio.</th><th>Taxa</th><th>Notas</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <script>window.onload=()=>{setTimeout(()=>window.print(),300)}</script>
+    </body></html>`;
+  const w = window.open("", "_blank");
+  if (!w) {
+    toast.error("Permite janelas pop-up para descarregar o PDF");
+    return;
+  }
+  w.document.write(html);
+  w.document.close();
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }

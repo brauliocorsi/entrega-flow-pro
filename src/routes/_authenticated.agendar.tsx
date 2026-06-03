@@ -56,15 +56,13 @@ function AgendarPage() {
 
   async function handleSearch() {
     setLoading(true);
+    setConfirmReschedule(false);
     try {
       const res = await fetchOrderFn({ data: { orderNumber } });
       setOrderData(res);
       if (res.error) {
         toast.error(res.error);
         return;
-      }
-      if (res.existingActiveDelivery) {
-        toast.error("Esta encomenda já está agendada noutra rota");
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro");

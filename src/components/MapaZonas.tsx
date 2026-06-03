@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, GeoJSON, Tooltip } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
 import type { FeatureCollection, Feature } from "geojson";
 import "leaflet/dist/leaflet.css";
-import { DISTRITO_TO_CP, getRangeColor, pickRangeForZip, pickRangesForDistrict } from "@/lib/zone-colors";
+import { DISTRITO_TO_CP, getRangeColor, pickRangeForZip, resolveRangeColor } from "@/lib/zone-colors";
 import { formatEUR } from "@/lib/format";
 
 type Range = {
@@ -26,7 +26,6 @@ export function MapaZonas({ ranges }: { ranges: Range[] }) {
       .catch((e) => console.error("Falha ao carregar GeoJSON", e));
   }, []);
 
-  // Pinta sempre pela macro (priority 5) do CP4 representativo do distrito.
   const macros = ranges.filter((r) => r.priority === 5);
   const styleFor = (f?: Feature) => {
     const distrito = f?.properties?.distrito as string | undefined;
@@ -55,16 +54,15 @@ export function MapaZonas({ ranges }: { ranges: Range[] }) {
             style={styleFor as any}
             onEachFeature={(feature, layer) => {
               const distrito = feature.properties?.distrito as string;
-              const matches = pickRangesForDistrict(distrito, ranges);
-              if (matches.length === 0) {
-                layer.bindTooltip(`${distrito} · (sem zona)`, { sticky: true });
+              const cp = DISTRITO_TO_CP[distrito];
+              const best = cp ? pickRangeForZip(cp, ranges) : null;
+              if (!best) {
+                layer.bindTooltip(`<strong>${distrito}</strong><br/>(sem zona definida)`, { sticky: true });
                 return;
               }
-              const lines = matches.map(
-                (r) =>
-                  `${r.label ?? `${r.zip_start}–${r.zip_end}`} (${r.zip_start}–${r.zip_end}) · ${formatEUR(Number(r.fee))}${r.priority < 5 ? ` · p${r.priority}` : ""}`,
-              );
-              layer.bindTooltip(`<strong>${distrito}</strong><br/>${lines.join("<br/>")}`, { sticky: true });
+              const color = resolveRangeColor(best, ranges);
+              const line = `<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${color};margin-right:6px;vertical-align:middle"></span>${best.label ?? `${best.zip_start}–${best.zip_end}`} · CP ${best.zip_start}–${best.zip_end} · ${formatEUR(Number(best.fee))}`;
+              layer.bindTooltip(`<strong>${distrito}</strong> (CP ${cp}xx)<br/>${line}`, { sticky: true });
             }}
           />
         )}

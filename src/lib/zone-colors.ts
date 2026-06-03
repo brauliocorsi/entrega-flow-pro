@@ -30,9 +30,9 @@ function hslToHex(h: number, s: number, l: number): string {
 }
 
 export const DISTRITO_TO_CP: Record<string, string> = {
-  Aveiro: "3800", Beja: "7800", Braga: "4700", Bragança: "5300",
+  Aveiro: "3800", Beja: "7800", Braga: "4700", Bragança: "5500",
   "Castelo Branco": "6000", Coimbra: "3000", Évora: "7000", Faro: "8000",
-  Guarda: "6300", Leiria: "2400", Lisboa: "1500", Portalegre: "7300",
+  Guarda: "6500", Leiria: "2400", Lisboa: "1100", Portalegre: "7300",
   Porto: "4100", Santarém: "2000", Setúbal: "2900",
   "Viana do Castelo": "4900", "Vila Real": "5000", Viseu: "3500",
 };

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listFeeRanges, upsertFeeRange, deleteFeeRange } from "@/lib/fees.functions";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,8 +12,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatEUR } from "@/lib/format";
+import { getRangeColor } from "@/lib/zone-colors";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+
+// Leaflet só no cliente
+const MapaZonas = lazy(() => import("@/components/MapaZonas").then((m) => ({ default: m.MapaZonas })));
 
 export const Route = createFileRoute("/_authenticated/admin/taxas")({
   head: () => ({ meta: [{ title: "Admin · Taxas de entrega — UP Agenda" }] }),
@@ -29,6 +33,7 @@ type Range = {
   priority: number;
   active: boolean;
   notes: string | null;
+  color: string | null;
 };
 
 const empty = {
@@ -39,6 +44,7 @@ const empty = {
   priority: 0,
   active: true,
   notes: "",
+  color: "" as string,
 };
 
 function AdminFeesPage() {
@@ -90,6 +96,7 @@ function AdminFeesPage() {
       priority: r.priority,
       active: r.active,
       notes: r.notes ?? "",
+      color: r.color ?? "",
     });
     setDialogOpen(true);
   }
@@ -101,6 +108,10 @@ function AdminFeesPage() {
     }
     if (form.zip_start > form.zip_end) {
       toast.error("CP inicial deve ser ≤ CP final");
+      return;
+    }
+    if (form.color && !/^#[0-9a-fA-F]{6}$/.test(form.color)) {
+      toast.error("Cor inválida (usa #RRGGBB ou deixa vazio)");
       return;
     }
     setBusy(true);
@@ -115,6 +126,7 @@ function AdminFeesPage() {
           priority: Number(form.priority),
           active: form.active,
           notes: form.notes || null,
+          color: form.color ? form.color.toLowerCase() : null,
         },
       });
       toast.success(editingId ? "Atualizado" : "Criado");
@@ -139,7 +151,7 @@ function AdminFeesPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
+    <div className="max-w-6xl mx-auto space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Taxas de entrega</h1>
@@ -153,6 +165,42 @@ function AdminFeesPage() {
         </Button>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="p-3 lg:col-span-2">
+          <Suspense fallback={<div className="h-[520px] flex items-center justify-center text-sm text-muted-foreground">A carregar mapa…</div>}>
+            <MapaZonas ranges={items} />
+          </Suspense>
+        </Card>
+
+        <Card className="p-0 overflow-hidden">
+          <div className="p-3 border-b font-medium text-sm">Legenda</div>
+          {items.length === 0 ? (
+            <div className="p-4 text-sm text-muted-foreground">Sem intervalos.</div>
+          ) : (
+            <div className="divide-y max-h-[520px] overflow-auto">
+              {items
+                .slice()
+                .sort((a, b) => a.zip_start.localeCompare(b.zip_start))
+                .map((r) => (
+                  <div key={r.id} className="p-2.5 flex items-center gap-2 text-sm">
+                    <span
+                      className="inline-block h-4 w-4 rounded shrink-0 border"
+                      style={{ background: getRangeColor(r) }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">{r.label || `${r.zip_start}–${r.zip_end}`}</div>
+                      <div className="text-xs text-muted-foreground">
+                        CP {r.zip_start}–{r.zip_end} · Prio. {r.priority}
+                      </div>
+                    </div>
+                    <div className="tabular-nums text-sm font-semibold">{formatEUR(r.fee)}</div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
       <Card className="p-0 overflow-hidden">
         {busy && items.length === 0 ? (
           <div className="p-6 text-sm text-muted-foreground">A carregar…</div>
@@ -162,15 +210,21 @@ function AdminFeesPage() {
           <div className="divide-y">
             {items.map((r) => (
               <div key={r.id} className="p-4 flex items-center justify-between gap-3 flex-wrap">
-                <div className="min-w-0">
-                  <div className="font-medium flex items-center gap-2 flex-wrap">
-                    {r.label || `${r.zip_start}–${r.zip_end}`}
-                    {!r.active && <Badge variant="outline">Inativo</Badge>}
-                    <Badge variant="secondary">Prio. {r.priority}</Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    CP {r.zip_start}–{r.zip_end}
-                    {r.notes ? ` · ${r.notes}` : ""}
+                <div className="min-w-0 flex items-center gap-3">
+                  <span
+                    className="inline-block h-5 w-5 rounded border shrink-0"
+                    style={{ background: getRangeColor(r) }}
+                  />
+                  <div className="min-w-0">
+                    <div className="font-medium flex items-center gap-2 flex-wrap">
+                      {r.label || `${r.zip_start}–${r.zip_end}`}
+                      {!r.active && <Badge variant="outline">Inativo</Badge>}
+                      <Badge variant="secondary">Prio. {r.priority}</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      CP {r.zip_start}–{r.zip_end}
+                      {r.notes ? ` · ${r.notes}` : ""}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -241,6 +295,26 @@ function AdminFeesPage() {
                   value={form.priority}
                   onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
                 />
+              </div>
+            </div>
+            <div>
+              <Label>Cor</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="color"
+                  className="h-10 w-16 p-1"
+                  value={form.color || "#3b82f6"}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                />
+                <Input
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  placeholder="#3b82f6 (vazio = automático por valor)"
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => setForm({ ...form, color: "" })}>
+                  Auto
+                </Button>
               </div>
             </div>
             <div>

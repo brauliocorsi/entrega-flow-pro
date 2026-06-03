@@ -31,7 +31,9 @@ function AgendarPage() {
   const navigate = useNavigate();
   const fetchOrderFn = useServerFn(fetchOrder);
   const scheduleFn = useServerFn(scheduleDelivery);
+  const transferFn = useServerFn(transferDeliveryToRoute);
   const listRoutesFn = useServerFn(listRoutes);
+  const [confirmReschedule, setConfirmReschedule] = useState(false);
 
   const [step, setStep] = useState(1);
   const [orderNumber, setOrderNumber] = useState("");

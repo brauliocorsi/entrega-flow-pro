@@ -5,7 +5,7 @@ import { useQuery, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
 import { fetchOrder, type FetchOrderResult } from "@/lib/gestaoclick.functions";
-import { scheduleDelivery } from "@/lib/deliveries.functions";
+import { scheduleDelivery, transferDeliveryToRoute } from "@/lib/deliveries.functions";
 import { listRoutes } from "@/lib/routes.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

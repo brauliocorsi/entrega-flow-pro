@@ -55,14 +55,23 @@ export function MapaZonas({ ranges }: { ranges: Range[] }) {
             onEachFeature={(feature, layer) => {
               const distrito = feature.properties?.distrito as string;
               const cp = DISTRITO_TO_CP[distrito];
-              const best = cp ? pickRangeForZip(cp, ranges) : null;
-              if (!best) {
+              const macro = cp ? pickRangeForZip(cp, macros) : null;
+              if (!macro) {
                 layer.bindTooltip(`<strong>${distrito}</strong><br/>(sem zona definida)`, { sticky: true });
                 return;
               }
-              const color = resolveRangeColor(best, ranges);
-              const line = `<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${color};margin-right:6px;vertical-align:middle"></span>${best.label ?? `${best.zip_start}–${best.zip_end}`} · CP ${best.zip_start}–${best.zip_end} · ${formatEUR(Number(best.fee))}`;
-              layer.bindTooltip(`<strong>${distrito}</strong> (CP ${cp}xx)<br/>${line}`, { sticky: true });
+              const macroColor = getRangeColor(macro);
+              const swatch = (c: string) => `<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};margin-right:6px;vertical-align:middle"></span>`;
+              const lines: string[] = [
+                `${swatch(macroColor)}${macro.label ?? `${macro.zip_start}–${macro.zip_end}`} · CP ${macro.zip_start}–${macro.zip_end} · ${formatEUR(Number(macro.fee))}`,
+              ];
+              const subs = ranges.filter(
+                (r) => r.active && r.priority < 5 && r.zip_start >= macro.zip_start && r.zip_end <= macro.zip_end,
+              );
+              for (const s of subs) {
+                lines.push(`${swatch(resolveRangeColor(s, ranges))}${s.label ?? `${s.zip_start}–${s.zip_end}`} · CP ${s.zip_start}–${s.zip_end} · ${formatEUR(Number(s.fee))} · p${s.priority}`);
+              }
+              layer.bindTooltip(`<strong>${distrito}</strong> (CP ${cp}xx)<br/>${lines.join("<br/>")}`, { sticky: true });
             }}
           />
         )}

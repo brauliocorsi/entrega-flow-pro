@@ -103,9 +103,11 @@ function AgendarPage() {
       }
       const existing = fresh.existingActiveDelivery;
       const freshDate = (existing?.routes?.route_date as string | undefined) ?? null;
-      const { data: routeRow } = await import("@/integrations/supabase/client").then((m) =>
-        m.supabase.from("routes").select("route_date").eq("id", selectedRouteId).maybeSingle(),
-      );
+      const { data: routeRow } = await supabase
+        .from("routes")
+        .select("route_date")
+        .eq("id", selectedRouteId)
+        .maybeSingle();
       const newDate = routeRow?.route_date ?? null;
       if (existing && freshDate && newDate && freshDate === newDate) {
         toast.error(`Já está agendada para ${formatDatePT(freshDate)} nesta data. Nada a fazer.`);

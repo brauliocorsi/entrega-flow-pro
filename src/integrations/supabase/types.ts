@@ -17,6 +17,7 @@ export type Database = {
       delivery_fee_ranges: {
         Row: {
           active: boolean
+          color: string | null
           created_at: string
           fee: number
           id: string
@@ -29,6 +30,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          color?: string | null
           created_at?: string
           fee?: number
           id?: string
@@ -41,6 +43,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          color?: string | null
           created_at?: string
           fee?: number
           id?: string

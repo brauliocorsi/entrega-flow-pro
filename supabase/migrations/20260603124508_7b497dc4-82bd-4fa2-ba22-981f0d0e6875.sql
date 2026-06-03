@@ -1,0 +1,1 @@
+ALTER TABLE public.delivery_fee_ranges ADD COLUMN IF NOT EXISTS color TEXT;

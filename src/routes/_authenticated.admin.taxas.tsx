@@ -167,9 +167,11 @@ function AdminFeesPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="p-3 lg:col-span-2">
-          <Suspense fallback={<div className="h-[520px] flex items-center justify-center text-sm text-muted-foreground">A carregar mapa…</div>}>
-            <MapaZonas ranges={items} />
-          </Suspense>
+          <ClientOnly fallback={<div className="h-[520px] flex items-center justify-center text-sm text-muted-foreground">A carregar mapa…</div>}>
+            <Suspense fallback={<div className="h-[520px] flex items-center justify-center text-sm text-muted-foreground">A carregar mapa…</div>}>
+              <MapaZonas ranges={items} />
+            </Suspense>
+          </ClientOnly>
         </Card>
 
         <Card className="p-0 overflow-hidden">

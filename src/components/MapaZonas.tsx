@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, GeoJSON, Tooltip } from "react-leaflet";
 import type { FeatureCollection, Feature } from "geojson";
 import "leaflet/dist/leaflet.css";
-import { DISTRITO_TO_CP, getRangeColor, pickRangeForZip } from "@/lib/zone-colors";
+import { getRangeColor, pickRangesForDistrict } from "@/lib/zone-colors";
 import { formatEUR } from "@/lib/format";
 
 type Range = {

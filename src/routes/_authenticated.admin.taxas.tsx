@@ -12,9 +12,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatEUR } from "@/lib/format";
-import { resolveRangeColor } from "@/lib/zone-colors";
+import { resolveRangeColor, pickRangeForZip, DISTRITO_TO_CP } from "@/lib/zone-colors";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Printer, Search } from "lucide-react";
 
 // Leaflet só no cliente
 const MapaZonas = lazy(() => import("@/components/MapaZonas").then((m) => ({ default: m.MapaZonas })));

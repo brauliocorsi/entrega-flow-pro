@@ -415,6 +415,10 @@ function AgendarPage() {
               </div>
             );
           })()}
+        </Card>
+      )}
+
+
 
       {step === 2 && (
         <Card className="p-5 space-y-4">

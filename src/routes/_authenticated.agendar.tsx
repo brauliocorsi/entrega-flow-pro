@@ -74,9 +74,13 @@ function AgendarPage() {
     }
   }
 
-  const compatibleRoutes = routes.filter((r: any) => {
+  const openRoutes = routes.filter((r: any) => {
     if (["fechada", "concluida", "cheia"].includes(r.status)) return false;
     if (Number(r.current_volume_m3) + volume > Number(r.max_capacity_m3) + 0.001) return false;
+    return true;
+  });
+
+  function matchesZip(r: any): boolean {
     const zip = zipPrefix(orderData?.order?.zip_code);
     const prefs: string[] = (r.zip_prefixes ?? []).filter(Boolean);
     if (prefs.length === 0 || !zip) return true;
@@ -89,7 +93,12 @@ function AgendarPage() {
       if (cpNum >= min && cpNum <= max) return true;
     }
     return false;
-  });
+  }
+
+  const compatibleRoutes = openRoutes.filter(matchesZip);
+  const otherRoutes = openRoutes.filter((r: any) => !matchesZip(r));
+  const selectedRoute = openRoutes.find((r: any) => r.id === selectedRouteId);
+  const selectedIsForced = selectedRoute ? !matchesZip(selectedRoute) : false;
 
   async function handleConfirm() {
     if (!orderData?.order || !selectedRouteId) return;

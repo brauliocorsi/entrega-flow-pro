@@ -24,6 +24,7 @@ import {
   User,
   Search,
   X,
+  Sun,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/rotas")({

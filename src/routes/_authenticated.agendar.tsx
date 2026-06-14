@@ -46,6 +46,8 @@ function AgendarPage() {
   const [notes, setNotes] = useState("");
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(search.routeId ?? null);
   const [obsOpen, setObsOpen] = useState(false);
+  const [showAllRoutes, setShowAllRoutes] = useState(false);
+  const [forceConfirm, setForceConfirm] = useState(false);
 
   const { data: routes = [] } = useQuery(
     queryOptions({

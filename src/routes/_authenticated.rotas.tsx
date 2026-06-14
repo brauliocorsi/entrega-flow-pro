@@ -24,6 +24,7 @@ import {
   User,
   Search,
   X,
+  Sun,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/rotas")({
@@ -229,40 +230,64 @@ function RoutesIndex() {
 }
 
 function ListView({ rows, codes }: { rows: any[]; codes: Map<string, string> }) {
-  const grouped = useMemo(() => {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayRows = rows.filter((r) => r.route_date === todayStr);
+  const futureRows = rows.filter((r) => r.route_date > todayStr);
+
+  const futureGrouped = useMemo(() => {
     const map = new Map<string, any[]>();
-    for (const r of rows) {
+    for (const r of futureRows) {
       const k = r.route_date;
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(r);
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [rows]);
+  }, [futureRows]);
 
   return (
-    <div className="space-y-5">
-      {grouped.map(([date, routes]) => {
-        const d = new Date(date + "T00:00:00");
-        return (
-          <div key={date}>
-            <div className="flex items-center gap-2 mb-2 px-1">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                {WEEKDAYS_PT[d.getDay()]} — {formatDatePT(date)}
-              </div>
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-[10px] text-muted-foreground">{routes.length} rota{routes.length > 1 ? "s" : ""}</span>
+    <div className="space-y-6">
+      {/* Rotas de hoje — destaque */}
+      {todayRows.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <Sun className="h-5 w-5 text-amber-500" />
+            <div className="text-sm uppercase tracking-wider text-amber-700 font-bold">
+              Hoje — {WEEKDAYS_PT[new Date(todayStr + "T00:00:00").getDay()]} {formatDatePT(todayStr)}
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {routes.map((r) => <RouteCard key={r.id} r={r} code={codes.get(r.id)} />)}
-            </div>
+            <div className="flex-1 h-px bg-amber-200" />
+            <span className="text-xs text-amber-700 font-medium">{todayRows.length} rota{todayRows.length > 1 ? "s" : ""}</span>
           </div>
-        );
-      })}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {todayRows.map((r) => <RouteCard key={r.id} r={r} code={codes.get(r.id)} highlight />)}
+          </div>
+        </div>
+      )}
+
+      {/* Rotas futuras */}
+      <div className="space-y-5">
+        {futureGrouped.map(([date, routes]) => {
+          const d = new Date(date + "T00:00:00");
+          return (
+            <div key={date}>
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                  {WEEKDAYS_PT[d.getDay()]} — {formatDatePT(date)}
+                </div>
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[10px] text-muted-foreground">{routes.length} rota{routes.length > 1 ? "s" : ""}</span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {routes.map((r) => <RouteCard key={r.id} r={r} code={codes.get(r.id)} />)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function RouteCard({ r, code }: { r: any; code?: string }) {
+function RouteCard({ r, code, highlight }: { r: any; code?: string; highlight?: boolean }) {
   const vol = Number(r.current_volume_m3);
   const cap = Number(r.max_capacity_m3);
   const pct = Math.min(100, (vol / cap) * 100);
@@ -271,7 +296,7 @@ function RouteCard({ r, code }: { r: any; code?: string }) {
 
   return (
     <Link to="/rotas/$id" params={{ id: r.id }} className="block h-full">
-      <Card className="p-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full border-l-4" style={{ borderLeftColor: color }}>
+      <Card className={`p-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full border-l-4 ${highlight ? "ring-2 ring-amber-200 shadow-md bg-amber-50/30" : ""}`} style={{ borderLeftColor: color }}>
         <div className="flex items-start justify-between mb-2 gap-2">
           <div className="min-w-0">
             <div className="font-semibold flex items-center gap-1.5 truncate">

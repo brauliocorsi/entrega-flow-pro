@@ -638,6 +638,15 @@ function AgendarPage() {
       {step === 4 && orderData?.order && (
         <Card className="p-5 space-y-4">
           <h3 className="font-semibold">Confirmar agendamento</h3>
+          {selectedIsForced && (
+            <div className="border rounded-md p-3 bg-amber-50 border-amber-200 flex gap-2 text-sm text-amber-900">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                Agendamento <strong>forçado</strong> em rota fora do CP do cliente
+                ({selectedRoute?.zone} · {formatDatePT(selectedRoute?.route_date)}).
+              </span>
+            </div>
+          )}
           <div className="text-sm space-y-1">
             <div><strong>{orderData.order.customer_name}</strong> — #{orderData.order.order_number}</div>
             <div className="text-muted-foreground">{orderData.order.address}</div>

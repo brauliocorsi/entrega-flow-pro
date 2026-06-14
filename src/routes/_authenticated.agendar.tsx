@@ -468,92 +468,170 @@ function AgendarPage() {
       {step === 3 && (
         <Card className="p-5 space-y-3">
           {(() => {
-            const sorted = [...compatibleRoutes].sort((a: any, b: any) =>
+            const sortedCompat = [...compatibleRoutes].sort((a: any, b: any) =>
               a.route_date.localeCompare(b.route_date),
             );
-            const bestId = sorted[0]?.id ?? null;
-            const dates = Array.from(new Set(sorted.map((r: any) => r.route_date)));
-            const grouped = dates.map((date) => ({
-              date,
-              routes: sorted.filter((r: any) => r.route_date === date),
-            }));
+            const bestId = sortedCompat[0]?.id ?? null;
+            const sortedOther = [...otherRoutes].sort((a: any, b: any) =>
+              a.route_date.localeCompare(b.route_date),
+            );
             const zip = zipPrefix(orderData?.order?.zip_code);
+
+            const renderRoute = (r: any, opts: { isBest?: boolean; forced?: boolean }) => {
+              const restante = Number(r.max_capacity_m3) - Number(r.current_volume_m3);
+              const pct = (Number(r.current_volume_m3) / Number(r.max_capacity_m3)) * 100;
+              return (
+                <div
+                  key={r.id}
+                  onClick={() => setSelectedRouteId(r.id)}
+                  className={`border rounded-md p-3 cursor-pointer transition-colors ${selectedRouteId === r.id ? "border-primary bg-primary/5" : "hover:bg-accent"} ${opts.forced ? "border-amber-300" : ""}`}
+                >
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="min-w-0">
+                      <div className="font-medium flex items-center gap-2 flex-wrap">
+                        {r.zone}
+                        <span className="text-xs text-muted-foreground font-normal">
+                          {formatDatePT(r.route_date)}
+                        </span>
+                        {opts.isBest && (
+                          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
+                            Recomendado
+                          </Badge>
+                        )}
+                        {opts.forced && (
+                          <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">
+                            <AlertCircle className="h-3 w-3 mr-1" /> Fora do CP
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {r.driver ?? "Sem motorista"} · {restante.toFixed(1)} m³ livres ({pct.toFixed(0)}% ocupado)
+                      </div>
+                    </div>
+                    <Badge className={ROUTE_STATUS_TONE[r.status]}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
+                  </div>
+                  <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`}
+                      style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            };
+
+            const datesCompat = Array.from(new Set(sortedCompat.map((r: any) => r.route_date)));
+            const groupedCompat = datesCompat.map((date) => ({
+              date,
+              routes: sortedCompat.filter((r: any) => r.route_date === date),
+            }));
+            const datesOther = Array.from(new Set(sortedOther.map((r: any) => r.route_date)));
+            const groupedOther = datesOther.map((date) => ({
+              date,
+              routes: sortedOther.filter((r: any) => r.route_date === date),
+            }));
+
             return (
               <>
                 <div className="flex items-start justify-between flex-wrap gap-2">
                   <div>
                     <p className="text-sm font-medium">
-                      {dates.length} data(s) disponível(is) · {compatibleRoutes.length} rota(s)
+                      Rotas ideais ({compatibleRoutes.length}){zip && ` · CP ${zip}`}
                     </p>
-                    {zip && (
-                      <p className="text-xs text-muted-foreground">Filtrado por CP {zip}</p>
-                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Compatíveis com o código postal do cliente
+                    </p>
                   </div>
                   {bestId && (
                     <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
-                      <Sparkles className="h-3 w-3 mr-1" /> Melhor data: {formatDatePT(sorted[0].route_date)}
+                      <Sparkles className="h-3 w-3 mr-1" /> Melhor: {formatDatePT(sortedCompat[0].route_date)}
                     </Badge>
                   )}
                 </div>
                 {compatibleRoutes.length === 0 && (
                   <p className="text-sm text-rose-600">
-                    Sem rotas compatíveis. Reduz o volume ou pede ao admin para abrir uma nova rota.
+                    Sem rotas ideais. Usa "Mostrar todas as rotas" abaixo para forçar uma rota fora do CP.
                   </p>
                 )}
-                <div className="space-y-3 max-h-[28rem] overflow-y-auto">
-                  {grouped.map(({ date, routes: dayRoutes }) => {
+                <div className="space-y-3 max-h-[24rem] overflow-y-auto">
+                  {groupedCompat.map(({ date, routes: dayRoutes }) => {
                     const d = new Date(date + "T00:00:00");
                     return (
                       <div key={date} className="space-y-1">
                         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-1">
                           {WEEKDAYS_PT[d.getDay()]}, {formatDatePT(date)}
                         </div>
-                        {dayRoutes.map((r: any) => {
-                          const restante = Number(r.max_capacity_m3) - Number(r.current_volume_m3);
-                          const pct = (Number(r.current_volume_m3) / Number(r.max_capacity_m3)) * 100;
-                          const isBest = r.id === bestId;
-                          return (
-                            <div
-                              key={r.id}
-                              onClick={() => setSelectedRouteId(r.id)}
-                              className={`border rounded-md p-3 cursor-pointer transition-colors ${selectedRouteId === r.id ? "border-primary bg-primary/5" : "hover:bg-accent"}`}
-                            >
-                              <div className="flex items-center justify-between flex-wrap gap-2">
-                                <div className="min-w-0">
-                                  <div className="font-medium flex items-center gap-2">
-                                    {r.zone}
-                                    {isBest && (
-                                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
-                                        Recomendado
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {r.driver ?? "Sem motorista"} · {restante.toFixed(1)} m³ livres ({pct.toFixed(0)}% ocupado)
-                                  </div>
-                                </div>
-                                <Badge className={ROUTE_STATUS_TONE[r.status]}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
-                              </div>
-                              <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full ${pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`}
-                                  style={{ width: `${Math.min(pct, 100)}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
+                        {dayRoutes.map((r: any) => renderRoute(r, { isBest: r.id === bestId }))}
                       </div>
                     );
                   })}
                 </div>
+
+                <div className="pt-2 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAllRoutes((v) => !v)}
+                  >
+                    {showAllRoutes ? "Esconder outras rotas" : `Mostrar todas as rotas (${otherRoutes.length})`}
+                  </Button>
+                </div>
+
+                {showAllRoutes && (
+                  <>
+                    <div className="border rounded-md p-3 bg-amber-50 border-amber-200 flex gap-2 text-xs text-amber-900">
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                      <span>
+                        Estas rotas <strong>não cobrem o CP</strong> do cliente. Selecionar
+                        força o agendamento — usa apenas em casos excecionais.
+                      </span>
+                    </div>
+                    <div className="space-y-3 max-h-[20rem] overflow-y-auto">
+                      {groupedOther.length === 0 && (
+                        <p className="text-xs text-muted-foreground">Sem outras rotas abertas.</p>
+                      )}
+                      {groupedOther.map(({ date, routes: dayRoutes }) => {
+                        const d = new Date(date + "T00:00:00");
+                        return (
+                          <div key={date} className="space-y-1">
+                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-1">
+                              {WEEKDAYS_PT[d.getDay()]}, {formatDatePT(date)}
+                            </div>
+                            {dayRoutes.map((r: any) => renderRoute(r, { forced: true }))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </>
             );
           })()}
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4 mr-1" /> Voltar</Button>
-            <Button disabled={!selectedRouteId} onClick={() => setStep(4)}>Continuar <ArrowRight className="h-4 w-4 ml-1" /></Button>
+            <Button
+              disabled={!selectedRouteId || (selectedIsForced && !forceConfirm)}
+              onClick={() => setStep(4)}
+            >
+              Continuar <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
           </div>
+          {selectedIsForced && (
+            <label className="flex items-start gap-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md p-2">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={forceConfirm}
+                onChange={(e) => setForceConfirm(e.target.checked)}
+              />
+              <span>
+                Confirmo que quero <strong>forçar</strong> o agendamento na rota{" "}
+                <strong>{selectedRoute?.zone}</strong> ({formatDatePT(selectedRoute?.route_date)}),
+                que não cobre o CP {zipPrefix(orderData?.order?.zip_code)} deste cliente.
+              </span>
+            </label>
+          )}
         </Card>
       )}
 

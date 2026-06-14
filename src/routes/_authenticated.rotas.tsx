@@ -287,7 +287,7 @@ function ListView({ rows, codes }: { rows: any[]; codes: Map<string, string> }) 
   );
 }
 
-function RouteCard({ r, code }: { r: any; code?: string }) {
+function RouteCard({ r, code, highlight }: { r: any; code?: string; highlight?: boolean }) {
   const vol = Number(r.current_volume_m3);
   const cap = Number(r.max_capacity_m3);
   const pct = Math.min(100, (vol / cap) * 100);
@@ -296,7 +296,7 @@ function RouteCard({ r, code }: { r: any; code?: string }) {
 
   return (
     <Link to="/rotas/$id" params={{ id: r.id }} className="block h-full">
-      <Card className="p-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full border-l-4" style={{ borderLeftColor: color }}>
+      <Card className={`p-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full border-l-4 ${highlight ? "ring-2 ring-amber-200 shadow-md bg-amber-50/30" : ""}`} style={{ borderLeftColor: color }}>
         <div className="flex items-start justify-between mb-2 gap-2">
           <div className="min-w-0">
             <div className="font-semibold flex items-center gap-1.5 truncate">

@@ -472,6 +472,168 @@ function AdminTemplatesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Generator dialog */}
+      <Dialog open={genOpen} onOpenChange={setGenOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Gerar rotas</DialogTitle>
+            <DialogDescription>
+              Escolhe quais templates, com que frequência e até que data queres gerar rotas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Templates ({genTemplates.size === 0 ? "todos ativos" : `${genTemplates.size} selecionados`})</Label>
+              <div className="max-h-48 overflow-y-auto border rounded-md p-2 space-y-1">
+                {items.filter((t) => t.active).map((t) => (
+                  <label key={t.id} className="flex items-center gap-2 text-sm cursor-pointer p-1 rounded hover:bg-muted">
+                    <Checkbox
+                      checked={genTemplates.has(t.id)}
+                      onCheckedChange={() => toggleInSet(genTemplates, t.id, setGenTemplates)}
+                    />
+                    <span className="flex-1">{t.name}</span>
+                    <Badge variant="secondary" className="text-xs">{WEEKDAYS_PT[t.weekday]}</Badge>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Frequência</Label>
+                <Select value={genFrequency} onValueChange={(v) => setGenFrequency(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Semanal (todas as semanas)</SelectItem>
+                    <SelectItem value="biweekly">Quinzenal (a cada 15 dias)</SelectItem>
+                    <SelectItem value="monthly">Mensal (1× por mês)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Data limite</Label>
+                <Input type="date" value={genEndDate} min={todayStr} onChange={(e) => setGenEndDate(e.target.value)} />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Para 1×/semana mantém Semanal. Para 2×/semana cria dois templates no mesmo dia ou em dias diferentes e gera ambos em Semanal.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGenOpen(false)}>Cancelar</Button>
+            <Button onClick={handleGenerate} disabled={generating}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${generating ? "animate-spin" : ""}`} />
+              Gerar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Single create dialog */}
+      <Dialog open={oneOpen} onOpenChange={setOneOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Abrir rota num dia específico</DialogTitle>
+            <DialogDescription>Cria uma rota individual a partir de um template numa data à escolha.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Template</Label>
+              <Select value={oneTemplateId} onValueChange={setOneTemplateId}>
+                <SelectTrigger><SelectValue placeholder="Escolher template…" /></SelectTrigger>
+                <SelectContent>
+                  {items.filter((t) => t.active).map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} · {WEEKDAYS_PT[t.weekday]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Data</Label>
+              <Input type="date" value={oneDate} min={todayStr} onChange={(e) => setOneDate(e.target.value)} />
+              <p className="text-xs text-muted-foreground">A data pode ser num dia da semana diferente do template — é um forçamento manual.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOneOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateOne} disabled={!oneTemplateId || !oneDate}>Criar rota</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk delete dialog */}
+      <Dialog open={delOpen} onOpenChange={setDelOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Eliminar rotas em massa</DialogTitle>
+            <DialogDescription>
+              Apenas rotas futuras sem entregas ativas serão eliminadas. As que tiverem entregas serão ignoradas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Dias da semana ({delWeekdays.size === 0 ? "todos" : delWeekdays.size})</Label>
+              <div className="flex flex-wrap gap-1">
+                {WEEKDAYS_PT.map((d, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => toggleInSet(delWeekdays, i, setDelWeekdays)}
+                    className={`px-3 py-1 text-xs rounded-md border ${delWeekdays.has(i) ? "bg-primary text-primary-foreground border-primary" : "bg-background"}`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Templates ({delTemplates.size === 0 ? "todos" : delTemplates.size})</Label>
+              <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                {items.map((t) => (
+                  <label key={t.id} className="flex items-center gap-2 text-sm cursor-pointer p-1 rounded hover:bg-muted">
+                    <Checkbox
+                      checked={delTemplates.has(t.id)}
+                      onCheckedChange={() => toggleInSet(delTemplates, t.id, setDelTemplates)}
+                    />
+                    <span className="flex-1">{t.name}</span>
+                    <Badge variant="secondary" className="text-xs">{WEEKDAYS_PT[t.weekday]}</Badge>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>De</Label>
+                <Input type="date" value={delFrom} onChange={(e) => { setDelFrom(e.target.value); setDelPreview(null); }} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Até (opcional)</Label>
+                <Input type="date" value={delTo} onChange={(e) => { setDelTo(e.target.value); setDelPreview(null); }} />
+              </div>
+            </div>
+            {delPreview && (
+              <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                <p>Encontradas <b>{delPreview.candidates}</b> rotas.</p>
+                <p className="text-emerald-700">Serão eliminadas: <b>{delPreview.willDelete}</b></p>
+                <p className="text-amber-700">Bloqueadas (têm entregas): <b>{delPreview.blocked}</b></p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDelOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={handleBulkDeletePreview}>Pré-visualizar</Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDeleteConfirm}
+              disabled={!delPreview || delPreview.willDelete === 0}
+            >
+              Eliminar {delPreview ? `(${delPreview.willDelete})` : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

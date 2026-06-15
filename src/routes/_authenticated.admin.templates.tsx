@@ -293,10 +293,23 @@ function AdminTemplatesPage() {
           <h1 className="text-2xl font-bold tracking-tight">Templates de Rotas</h1>
           <p className="text-sm text-muted-foreground">Define rotas recorrentes por dia da semana, zona e códigos postais.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleGenerate} disabled={generating}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${generating ? "animate-spin" : ""}`} />
-            Gerar próximas 4 semanas
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setOneOpen(true)}>
+            <CalendarIcon className="h-4 w-4 mr-2" /> Abrir rota num dia
+          </Button>
+          <Button variant="outline" onClick={() => setGenOpen(true)} disabled={generating}>
+            <Wand2 className={`h-4 w-4 mr-2 ${generating ? "animate-spin" : ""}`} />
+            Gerar rotas
+          </Button>
+          <Button
+            variant="outline"
+            className="text-red-600 hover:text-red-700"
+            onClick={() => {
+              setDelPreview(null);
+              setDelOpen(true);
+            }}
+          >
+            <Trash2 className="h-4 w-4 mr-2" /> Eliminar em massa
           </Button>
           <Button onClick={openNew}>
             <Plus className="h-4 w-4 mr-2" /> Novo template

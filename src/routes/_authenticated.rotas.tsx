@@ -38,7 +38,18 @@ import {
   X,
   Sun,
   Merge,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/rotas")({
   head: () => ({ meta: [{ title: "Rotas — UP Agenda" }] }),

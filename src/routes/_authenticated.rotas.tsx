@@ -432,7 +432,7 @@ function ListView({ rows, codes, isAdmin }: { rows: any[]; codes: Map<string, st
             <span className="text-xs text-amber-700 font-medium">{todayRows.length} rota{todayRows.length > 1 ? "s" : ""}</span>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {todayRows.map((r) => <RouteCard key={r.id} r={r} code={codes.get(r.id)} highlight />)}
+            {todayRows.map((r) => <RouteCard key={r.id} r={r} code={codes.get(r.id)} highlight isAdmin={isAdmin} />)}
           </div>
         </div>
       )}

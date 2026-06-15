@@ -403,7 +403,7 @@ function RoutesIndex() {
   );
 }
 
-function ListView({ rows, codes }: { rows: any[]; codes: Map<string, string> }) {
+function ListView({ rows, codes, isAdmin }: { rows: any[]; codes: Map<string, string>; isAdmin?: boolean }) {
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayRows = rows.filter((r) => r.route_date === todayStr);
   const futureRows = rows.filter((r) => r.route_date > todayStr);

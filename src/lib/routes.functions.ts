@@ -333,3 +333,48 @@ export const mergeRoutes = createServerFn({ method: "POST" })
       zone: mergedZone,
     };
   });
+
+/**
+ * Delete a single route. Admin only. Blocks deletion if there are active deliveries
+ * (status not in cancelado/reagendado). Routes already 'concluida' cannot be deleted.
+ */
+export const deleteRoute = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: roleData } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleData) throw new Error("Apenas administradores podem eliminar rotas");
+
+    const { data: route, error: rErr } = await context.supabase
+      .from("routes")
+      .select("id, status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (rErr) throw new Error(rErr.message);
+    if (!route) throw new Error("Rota não encontrada");
+    if (route.status === "concluida")
+      throw new Error("Rotas concluídas não podem ser eliminadas");
+
+    const { count, error: cErr } = await context.supabase
+      .from("scheduled_deliveries")
+      .select("id", { count: "exact", head: true })
+      .eq("route_id", data.id)
+      .not("status", "in", "(cancelado,reagendado)");
+    if (cErr) throw new Error(cErr.message);
+    if ((count ?? 0) > 0)
+      throw new Error(
+        `Rota tem ${count} entrega(s) ativas. Reagenda ou cancela antes de eliminar.`,
+      );
+
+    const { error: delErr } = await context.supabase
+      .from("routes")
+      .delete()
+      .eq("id", data.id);
+    if (delErr) throw new Error(delErr.message);
+    return { ok: true };
+  });

@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useRouter, useRouterState } from "@tanst
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { listRoutes, mergeRoutes } from "@/lib/routes.functions";
+import { listRoutes, mergeRoutes, deleteRoute } from "@/lib/routes.functions";
 import { listPendingReschedules } from "@/lib/deliveries.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";

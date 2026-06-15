@@ -451,7 +451,7 @@ function ListView({ rows, codes, isAdmin }: { rows: any[]; codes: Map<string, st
                 <span className="text-[10px] text-muted-foreground">{routes.length} rota{routes.length > 1 ? "s" : ""}</span>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {routes.map((r) => <RouteCard key={r.id} r={r} code={codes.get(r.id)} />)}
+                {routes.map((r) => <RouteCard key={r.id} r={r} code={codes.get(r.id)} isAdmin={isAdmin} />)}
               </div>
             </div>
           );

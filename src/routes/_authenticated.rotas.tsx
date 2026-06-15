@@ -395,7 +395,7 @@ function RoutesIndex() {
           </p>
         </Card>
       ) : view === "lista" ? (
-        <ListView rows={filtered} codes={codes} />
+        <ListView rows={filtered} codes={codes} isAdmin={isAdmin} />
       ) : (
         <CalendarView rows={filtered} codes={codes} />
       )}

@@ -461,63 +461,125 @@ function ListView({ rows, codes, isAdmin }: { rows: any[]; codes: Map<string, st
   );
 }
 
-function RouteCard({ r, code, highlight }: { r: any; code?: string; highlight?: boolean }) {
+function RouteCard({ r, code, highlight, isAdmin }: { r: any; code?: string; highlight?: boolean; isAdmin?: boolean }) {
   const vol = Number(r.current_volume_m3);
   const cap = Number(r.max_capacity_m3);
   const pct = Math.min(100, (vol / cap) * 100);
   const hasAssembly = (r.assembly_count ?? 0) > 0;
   const color = r.color ?? "#3b82f6";
+  const router = useRouter();
+  const deleteFn = useServerFn(deleteRoute);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const activeCount = Number(r.deliveries_count ?? 0);
+  const isLocked = r.status === "concluida";
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await deleteFn({ data: { id: r.id } });
+      toast.success("Rota eliminada");
+      setConfirmOpen(false);
+      router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro a eliminar");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
-    <Link to="/rotas/$id" params={{ id: r.id }} className="block h-full">
-      <Card className={`p-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full border-l-4 ${highlight ? "ring-2 ring-amber-200 shadow-md bg-amber-50/30" : ""}`} style={{ borderLeftColor: color }}>
-        <div className="flex items-start justify-between mb-2 gap-2">
-          <div className="min-w-0">
-            <div className="font-semibold flex items-center gap-1.5 truncate">
-              <MapPin className="h-4 w-4 shrink-0" style={{ color }} /> {r.zone}
+    <div className="relative h-full group">
+      <Link to="/rotas/$id" params={{ id: r.id }} className="block h-full">
+        <Card className={`p-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full border-l-4 ${highlight ? "ring-2 ring-amber-200 shadow-md bg-amber-50/30" : ""}`} style={{ borderLeftColor: color }}>
+          <div className="flex items-start justify-between mb-2 gap-2">
+            <div className="min-w-0">
+              <div className="font-semibold flex items-center gap-1.5 truncate">
+                <MapPin className="h-4 w-4 shrink-0" style={{ color }} /> {r.zone}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                {code && (
+                  <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 tracking-wide">
+                    {code}
+                  </span>
+                )}
+                {r.driver && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <User className="h-3 w-3" /> {r.driver}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              {code && (
-                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 tracking-wide">
-                  {code}
-                </span>
-              )}
-              {r.driver && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <User className="h-3 w-3" /> {r.driver}
-                </span>
-              )}
+            <Badge className={`${ROUTE_STATUS_TONE[r.status]} shrink-0`}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
+          </div>
+
+          <div className="mt-3 rounded-lg border bg-muted/40 p-2.5 grid grid-cols-3 gap-2">
+            <Stat icon={<Package className="h-3.5 w-3.5" />} label="Entregas" value={String(r.deliveries_count ?? 0)} />
+            <Stat icon={<Box className="h-3.5 w-3.5" />} label="Cubicagem" value={`${vol.toFixed(1)}m³`} />
+            <Stat icon={<Clock className="h-3.5 w-3.5" />} label="Tempo" value={formatMinutes(r.total_minutes ?? 0)} />
+          </div>
+
+          <div className="mt-3 space-y-1">
+            <div className="flex justify-between text-[11px]">
+              <span className="text-muted-foreground">Ocupação</span>
+              <span className="font-medium">{vol.toFixed(1)} / {cap.toFixed(1)} m³</span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className={`h-full ${pct >= 100 ? "bg-rose-500" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
             </div>
           </div>
-          <Badge className={`${ROUTE_STATUS_TONE[r.status]} shrink-0`}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
-        </div>
 
-        {/* Inner stats card */}
-        <div className="mt-3 rounded-lg border bg-muted/40 p-2.5 grid grid-cols-3 gap-2">
-          <Stat icon={<Package className="h-3.5 w-3.5" />} label="Entregas" value={String(r.deliveries_count ?? 0)} />
-          <Stat icon={<Box className="h-3.5 w-3.5" />} label="Cubicagem" value={`${vol.toFixed(1)}m³`} />
-          <Stat icon={<Clock className="h-3.5 w-3.5" />} label="Tempo" value={formatMinutes(r.total_minutes ?? 0)} />
-        </div>
+          {hasAssembly && (
+            <div className="mt-3 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200">
+              <Wrench className="h-3 w-3" /> {r.assembly_count} montagem{r.assembly_count > 1 ? "s" : ""}
+            </div>
+          )}
+        </Card>
+      </Link>
 
-        {/* Capacity bar */}
-        <div className="mt-3 space-y-1">
-          <div className="flex justify-between text-[11px]">
-            <span className="text-muted-foreground">Ocupação</span>
-            <span className="font-medium">{vol.toFixed(1)} / {cap.toFixed(1)} m³</span>
-          </div>
-          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-            <div className={`h-full ${pct >= 100 ? "bg-rose-500" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
-          </div>
-        </div>
+      {isAdmin && !isLocked && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setConfirmOpen(true);
+          }}
+          className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-background/80 backdrop-blur border opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition"
+          aria-label="Eliminar rota"
+          title="Eliminar rota"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
 
-        {/* Assembly badge */}
-        {hasAssembly && (
-          <div className="mt-3 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-800 border border-violet-200">
-            <Wrench className="h-3 w-3" /> {r.assembly_count} montagem{r.assembly_count > 1 ? "s" : ""}
-          </div>
-        )}
-      </Card>
-    </Link>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar rota?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {activeCount > 0 ? (
+                <span className="text-rose-700">
+                  Esta rota tem <strong>{activeCount}</strong> entrega(s) ativas. Reagenda ou cancela essas entregas antes de eliminar.
+                </span>
+              ) : (
+                <>Vais eliminar <strong>{r.zone}</strong> de {formatDatePT(r.route_date)}. Esta acção não pode ser revertida.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting || activeCount > 0}
+              className="bg-rose-600 hover:bg-rose-700"
+            >
+              {deleting ? "A eliminar…" : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
 

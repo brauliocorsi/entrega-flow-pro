@@ -1,20 +1,29 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { listTemplates, upsertTemplate, deleteTemplate, generateRoutes } from "@/lib/templates.functions";
+import {
+  listTemplates,
+  upsertTemplate,
+  deleteTemplate,
+  generateRoutes,
+  createRouteForDate,
+  bulkDeleteRoutes,
+} from "@/lib/templates.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { WEEKDAYS_PT } from "@/lib/constants";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Calendar as CalendarIcon, Wand2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/admin/templates")({
   head: () => ({ meta: [{ title: "Admin · Templates de Rotas — UP Agenda" }] }),

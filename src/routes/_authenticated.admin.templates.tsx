@@ -63,6 +63,8 @@ function AdminTemplatesPage() {
   const fnUpsert = useServerFn(upsertTemplate);
   const fnDelete = useServerFn(deleteTemplate);
   const fnGenerate = useServerFn(generateRoutes);
+  const fnCreateOne = useServerFn(createRouteForDate);
+  const fnBulkDelete = useServerFn(bulkDeleteRoutes);
 
   const [items, setItems] = useState<Template[]>([]);
   const [busy, setBusy] = useState(false);
@@ -71,6 +73,33 @@ function AdminTemplatesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...empty });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const fourWeeksStr = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 28);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  // Generator dialog
+  const [genOpen, setGenOpen] = useState(false);
+  const [genTemplates, setGenTemplates] = useState<Set<string>>(new Set());
+  const [genFrequency, setGenFrequency] = useState<"weekly" | "biweekly" | "monthly">("weekly");
+  const [genEndDate, setGenEndDate] = useState<string>(fourWeeksStr);
+
+  // Single create
+  const [oneOpen, setOneOpen] = useState(false);
+  const [oneTemplateId, setOneTemplateId] = useState<string>("");
+  const [oneDate, setOneDate] = useState<string>(todayStr);
+
+  // Bulk delete
+  const [delOpen, setDelOpen] = useState(false);
+  const [delWeekdays, setDelWeekdays] = useState<Set<number>>(new Set());
+  const [delTemplates, setDelTemplates] = useState<Set<string>>(new Set());
+  const [delFrom, setDelFrom] = useState<string>(todayStr);
+  const [delTo, setDelTo] = useState<string>("");
+  const [delPreview, setDelPreview] = useState<{ candidates: number; willDelete: number; blocked: number } | null>(null);
+
 
   async function refresh() {
     setBusy(true);

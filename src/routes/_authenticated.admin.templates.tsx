@@ -212,14 +212,78 @@ function AdminTemplatesPage() {
   async function handleGenerate() {
     setGenerating(true);
     try {
-      const res = await fnGenerate({ data: { weeks: 4 } });
-      toast.success(`Rotas geradas: ${res.created} criadas, ${res.skipped} já existiam`);
+      const res = await fnGenerate({
+        data: {
+          weeks: 4,
+          templateIds: genTemplates.size > 0 ? Array.from(genTemplates) : undefined,
+          frequency: genFrequency,
+          endDate: genEndDate || undefined,
+        },
+      });
+      toast.success(`Rotas: ${res.created} criadas, ${res.skipped} já existiam`);
+      setGenOpen(false);
       router.invalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro");
     } finally {
       setGenerating(false);
     }
+  }
+
+  async function handleCreateOne() {
+    if (!oneTemplateId || !oneDate) return;
+    try {
+      await fnCreateOne({ data: { templateId: oneTemplateId, date: oneDate } });
+      toast.success("Rota criada");
+      setOneOpen(false);
+      router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro");
+    }
+  }
+
+  async function handleBulkDeletePreview() {
+    try {
+      const res = await fnBulkDelete({
+        data: {
+          weekdays: delWeekdays.size > 0 ? Array.from(delWeekdays) : undefined,
+          templateIds: delTemplates.size > 0 ? Array.from(delTemplates) : undefined,
+          from: delFrom || undefined,
+          to: delTo || undefined,
+          dryRun: true,
+        },
+      });
+      setDelPreview({ candidates: res.candidates, willDelete: res.willDelete ?? 0, blocked: res.blocked });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro");
+    }
+  }
+
+  async function handleBulkDeleteConfirm() {
+    try {
+      const res = await fnBulkDelete({
+        data: {
+          weekdays: delWeekdays.size > 0 ? Array.from(delWeekdays) : undefined,
+          templateIds: delTemplates.size > 0 ? Array.from(delTemplates) : undefined,
+          from: delFrom || undefined,
+          to: delTo || undefined,
+          dryRun: false,
+        },
+      });
+      toast.success(`Eliminadas ${res.deleted} rotas. ${res.blocked} bloqueadas por terem entregas.`);
+      setDelOpen(false);
+      setDelPreview(null);
+      router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro");
+    }
+  }
+
+  function toggleInSet<T>(setVal: Set<T>, item: T, setter: (s: Set<T>) => void) {
+    const next = new Set(setVal);
+    if (next.has(item)) next.delete(item);
+    else next.add(item);
+    setter(next);
   }
 
   return (

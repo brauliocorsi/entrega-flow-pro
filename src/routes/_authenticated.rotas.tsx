@@ -1,14 +1,26 @@
-import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { listRoutes } from "@/lib/routes.functions";
+import { listRoutes, mergeRoutes } from "@/lib/routes.functions";
 import { listPendingReschedules } from "@/lib/deliveries.functions";
+import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT } from "@/lib/constants";
 import { formatDatePT } from "@/lib/format";
 import {
@@ -25,6 +37,7 @@ import {
   Search,
   X,
   Sun,
+  Merge,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/rotas")({
@@ -85,11 +98,22 @@ function RoutesPage() {
 function RoutesIndex() {
   const listFn = useServerFn(listRoutes);
   const pendingFn = useServerFn(listPendingReschedules);
+  const mergeFn = useServerFn(mergeRoutes);
+  const router = useRouter();
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [view, setView] = useState<"lista" | "calendario">("lista");
   const [search, setSearch] = useState("");
   const [zoneFilter, setZoneFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
+  // Merge dialog state
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeDate, setMergeDate] = useState<string>("");
+  const [mergeSelected, setMergeSelected] = useState<Set<string>>(new Set());
+  const [mergeTargetId, setMergeTargetId] = useState<string>("");
+  const [merging, setMerging] = useState(false);
 
   const { data: rows = [], isLoading } = useQuery(
     queryOptions({
@@ -112,6 +136,60 @@ function RoutesIndex() {
     for (const r of rows) if (r.zone) set.add(r.zone);
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [rows]);
+
+  const mergeDates = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const map = new Map<string, number>();
+    for (const r of rows) {
+      if (!r.route_date || r.route_date < today) continue;
+      if (["fechada", "concluida"].includes(r.status)) continue;
+      map.set(r.route_date, (map.get(r.route_date) ?? 0) + 1);
+    }
+    return Array.from(map.entries())
+      .filter(([, n]) => n >= 2)
+      .map(([d]) => d)
+      .sort();
+  }, [rows]);
+
+  const mergeRoutesOnDate = useMemo(
+    () =>
+      rows.filter(
+        (r: any) =>
+          r.route_date === mergeDate && !["fechada", "concluida"].includes(r.status),
+      ),
+    [rows, mergeDate],
+  );
+
+  function toggleMergePick(id: string) {
+    const next = new Set(mergeSelected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setMergeSelected(next);
+    if (mergeTargetId && !next.has(mergeTargetId)) setMergeTargetId("");
+  }
+
+  function openMerge() {
+    setMergeDate(mergeDates[0] ?? "");
+    setMergeSelected(new Set());
+    setMergeTargetId("");
+    setMergeOpen(true);
+  }
+
+  async function handleMerge() {
+    if (mergeSelected.size < 2 || !mergeTargetId) return;
+    setMerging(true);
+    try {
+      const sourceIds = Array.from(mergeSelected).filter((id) => id !== mergeTargetId);
+      const res = await mergeFn({ data: { targetId: mergeTargetId, sourceIds } });
+      toast.success(`${res.removed} rota(s) mescladas em "${res.zone}"`);
+      setMergeOpen(false);
+      router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setMerging(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -162,6 +240,17 @@ function RoutesIndex() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openMerge}
+              disabled={mergeDates.length === 0}
+              title={mergeDates.length === 0 ? "Sem datas com 2+ rotas abertas" : "Mesclar rotas da mesma data"}
+            >
+              <Merge className="h-4 w-4 mr-1" /> Mesclar rotas
+            </Button>
+          )}
           <Button variant={view === "lista" ? "default" : "outline"} size="sm" onClick={() => setView("lista")}>
             <List className="h-4 w-4 mr-1" /> Lista
           </Button>
@@ -170,6 +259,80 @@ function RoutesIndex() {
           </Button>
         </div>
       </div>
+
+      <Dialog open={mergeOpen} onOpenChange={setMergeOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Mesclar rotas</DialogTitle>
+            <DialogDescription>
+              Junta várias rotas da mesma data numa só. As entregas são transferidas, os códigos postais e a capacidade são somados, e as rotas de origem são eliminadas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Data</Label>
+              <Select value={mergeDate} onValueChange={(v) => { setMergeDate(v); setMergeSelected(new Set()); setMergeTargetId(""); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolher data" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mergeDates.map((d) => (
+                    <SelectItem key={d} value={d}>{formatDatePT(d)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {mergeDate && (
+              <div className="space-y-2">
+                <Label>Rotas a mesclar (mínimo 2) e rota destino</Label>
+                <div className="rounded-md border divide-y max-h-72 overflow-auto">
+                  {mergeRoutesOnDate.map((r: any) => {
+                    const checked = mergeSelected.has(r.id);
+                    return (
+                      <div key={r.id} className="flex items-center gap-3 p-2.5">
+                        <Checkbox checked={checked} onCheckedChange={() => toggleMergePick(r.id)} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate flex items-center gap-1.5">
+                            <span className="h-2.5 w-2.5 rounded-full" style={{ background: r.color ?? "#3b82f6" }} />
+                            {r.zone}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            CP {(r.zip_prefixes ?? []).join(", ") || "—"} · {Number(r.current_volume_m3 ?? 0).toFixed(1)}/{Number(r.max_capacity_m3).toFixed(0)} m³ · {r.deliveries_count ?? 0} entr.
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <input
+                            type="radio"
+                            name="merge-target"
+                            disabled={!checked}
+                            checked={mergeTargetId === r.id}
+                            onChange={() => setMergeTargetId(r.id)}
+                          />
+                          <span className={checked ? "" : "text-muted-foreground"}>Destino</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  A rota destino mantém-se. As restantes são eliminadas após mover as entregas.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMergeOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={handleMerge}
+              disabled={merging || mergeSelected.size < 2 || !mergeTargetId}
+            >
+              {merging ? "A mesclar…" : `Mesclar ${mergeSelected.size} rota${mergeSelected.size === 1 ? "" : "s"}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Filtros avançados */}
       <Card className="p-3">

@@ -232,3 +232,104 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
         : [],
     };
   });
+
+/**
+ * Merge several routes (same date) into one target route.
+ * - Moves all deliveries from source routes into the target.
+ * - Unions zip_prefixes; sums max_capacity_m3 and max_minutes.
+ * - Concatenates zone label (e.g. "Porto Norte + Porto Sul").
+ * - Deletes the source routes.
+ */
+export const mergeRoutes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        targetId: z.string().uuid(),
+        sourceIds: z.array(z.string().uuid()).min(1).max(10),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: roleData } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleData) throw new Error("Apenas administradores podem mesclar rotas");
+
+    if (data.sourceIds.includes(data.targetId))
+      throw new Error("A rota destino não pode estar nas rotas a mesclar");
+
+    const allIds = [data.targetId, ...data.sourceIds];
+    const { data: routes, error } = await context.supabase
+      .from("routes")
+      .select("*")
+      .in("id", allIds);
+    if (error) throw new Error(error.message);
+    if (!routes || routes.length !== allIds.length)
+      throw new Error("Uma ou mais rotas não foram encontradas");
+
+    const target = routes.find((r: any) => r.id === data.targetId)!;
+    const sources = routes.filter((r: any) => r.id !== data.targetId);
+
+    const sameDate = sources.every((r: any) => r.route_date === target.route_date);
+    if (!sameDate) throw new Error("Só é possível mesclar rotas da mesma data");
+
+    const lockedStatuses = ["fechada", "concluida"];
+    if (lockedStatuses.includes(target.status))
+      throw new Error("A rota destino está fechada ou concluída");
+    if (sources.some((r: any) => lockedStatuses.includes(r.status)))
+      throw new Error("Uma das rotas a mesclar está fechada ou concluída");
+
+    // Move deliveries
+    const sourceIds = sources.map((r: any) => r.id);
+    const { error: updErr } = await context.supabase
+      .from("scheduled_deliveries")
+      .update({ route_id: target.id })
+      .in("route_id", sourceIds);
+    if (updErr) throw new Error(updErr.message);
+
+    // Merge fields
+    const prefixSet = new Set<string>([
+      ...(target.zip_prefixes ?? []),
+      ...sources.flatMap((r: any) => r.zip_prefixes ?? []),
+    ]);
+    const zoneNames = [target.zone, ...sources.map((r: any) => r.zone)].filter(Boolean);
+    const uniqueZones = Array.from(new Set(zoneNames));
+    const mergedZone = uniqueZones.join(" + ");
+    const mergedCap = routes.reduce(
+      (a: number, r: any) => a + Number(r.max_capacity_m3 ?? 0),
+      0,
+    );
+    const mergedMin = routes.reduce(
+      (a: number, r: any) => a + Number(r.max_minutes ?? 0),
+      0,
+    );
+
+    const { error: patchErr } = await context.supabase
+      .from("routes")
+      .update({
+        zone: mergedZone,
+        zip_prefixes: Array.from(prefixSet).sort(),
+        max_capacity_m3: mergedCap,
+        max_minutes: mergedMin,
+      })
+      .eq("id", target.id);
+    if (patchErr) throw new Error(patchErr.message);
+
+    // Delete sources (now empty of deliveries)
+    const { error: delErr } = await context.supabase
+      .from("routes")
+      .delete()
+      .in("id", sourceIds);
+    if (delErr) throw new Error(delErr.message);
+
+    return {
+      ok: true,
+      mergedInto: target.id,
+      removed: sourceIds.length,
+      zone: mergedZone,
+    };
+  });

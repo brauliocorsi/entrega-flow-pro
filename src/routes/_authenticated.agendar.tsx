@@ -64,6 +64,36 @@ function AgendarPage() {
     }),
   );
 
+  const availableQuery = useQuery({
+    queryKey: ["gestaoclick", "available", availSituations.join(","), availQuery],
+    queryFn: () =>
+      listAvailableFn({
+        data: { situations: availSituations, query: availQuery || undefined, limit: 50 },
+      }),
+    enabled: tab === "disponiveis" && step === 1,
+    staleTime: 30_000,
+  });
+
+  async function handleScheduleFromList(orderNum: string) {
+    setLoadingRow(orderNum);
+    try {
+      setOrderNumber(orderNum);
+      const res = await fetchOrderFn({ data: { orderNumber: orderNum } });
+      setOrderData(res);
+      if (res.error || !res.order) {
+        toast.error(res.error ?? "Não foi possível carregar a venda");
+        return;
+      }
+      if (res.order.has_assembly && minutes < 60) setMinutes(60);
+      setTab("numero");
+      setStep(3);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setLoadingRow(null);
+    }
+  }
+
   async function handleSearch() {
     setLoading(true);
     setConfirmReschedule(false);

@@ -84,12 +84,25 @@ function AgendarPage() {
     const zip = zipPrefix(orderData?.order?.zip_code);
     const prefs: string[] = (r.zip_prefixes ?? []).filter(Boolean);
     if (prefs.length === 0 || !zip) return true;
-    if (prefs.some((p) => zip.startsWith(p))) return true;
+    const cpNum = Number(zip);
+    // Cada token pode ser: prefixo ("4"), CP4 exacto ("4150"), ou intervalo "a-b" (ex.: "1000-1999")
+    for (const p of prefs) {
+      const m = /^(\d{1,4})-(\d{1,4})$/.exec(p);
+      if (m) {
+        const a = Number(m[1]);
+        const b = Number(m[2]);
+        const lo = Math.min(a, b);
+        const hi = Math.max(a, b);
+        if (Number.isFinite(cpNum) && cpNum >= lo && cpNum <= hi) return true;
+        continue;
+      }
+      if (zip.startsWith(p)) return true;
+    }
+    // Compat. antiga: 2 prefixos CP4 soltos = intervalo
     const nums = prefs.filter((p) => /^\d{4}$/.test(p)).map(Number);
     if (nums.length >= 2) {
       const min = Math.min(...nums);
       const max = Math.max(...nums);
-      const cpNum = Number(zip);
       if (cpNum >= min && cpNum <= max) return true;
     }
     return false;

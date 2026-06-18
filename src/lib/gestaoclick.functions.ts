@@ -398,3 +398,193 @@ export const fetchOrder = createServerFn({ method: "POST" })
       };
     }
   });
+
+export interface AvailableOrderDTO {
+  internal_id: string;
+  order_number: string;
+  customer_name: string;
+  city: string | null;
+  zip_code: string | null;
+  total_value: number;
+  situation: string;
+  date: string | null;
+  alreadyScheduled: boolean;
+  scheduledRouteId: string | null;
+  scheduledRouteDate: string | null;
+}
+
+export interface ListAvailableOrdersResult {
+  orders: AvailableOrderDTO[];
+  error: string | null;
+}
+
+const DEFAULT_AVAILABLE_SITUATIONS = [
+  "Disponível para entrega",
+  "Disponível para levantamento",
+];
+
+export const listAvailableOrders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        situations: z.array(z.string().min(1).max(80)).max(10).optional(),
+        query: z.string().max(80).optional(),
+        limit: z.number().int().min(1).max(200).default(50),
+      })
+      .default({})
+      .parse(d ?? {}),
+  )
+  .handler(async ({ data, context }): Promise<ListAvailableOrdersResult> => {
+    const baseUrl = process.env.GESTAOCLICK_BASE_URL;
+    const apiKey = process.env.GESTAOCLICK_API_KEY;
+    const email = process.env.GESTAOCLICK_EMAIL;
+    if (!baseUrl || !apiKey || !email) {
+      return { orders: [], error: "Credenciais GestãoClick em falta" };
+    }
+    const base = normalizeBaseUrl(baseUrl);
+    const headers = {
+      "access-token": apiKey,
+      "secret-access-token": email,
+      Accept: "application/json",
+    };
+    const wanted = (data.situations && data.situations.length > 0
+      ? data.situations
+      : DEFAULT_AVAILABLE_SITUATIONS
+    ).map((s) => s.toLowerCase().trim());
+
+    try {
+      // Resolver situacao_id por nome
+      const sitRes = await gcFetch(`${base}/api/situacoes_vendas`, headers);
+      const sitArr: any[] = Array.isArray(sitRes.json?.data)
+        ? sitRes.json.data
+        : Array.isArray(sitRes.json)
+          ? sitRes.json
+          : [];
+      const matched: Array<{ id: string; nome: string }> = [];
+      for (const w of sitArr) {
+        const s = w?.situacao ?? w;
+        const name = String(s?.nome ?? s?.descricao ?? "").toLowerCase().trim();
+        if (!name) continue;
+        if (wanted.some((wl) => name === wl || name.includes(wl) || wl.includes(name))) {
+          matched.push({ id: String(s?.id ?? ""), nome: String(s?.nome ?? s?.descricao ?? "") });
+        }
+      }
+      if (matched.length === 0) {
+        return {
+          orders: [],
+          error: `Nenhuma situação no GestãoClick corresponde a: ${(data.situations ?? DEFAULT_AVAILABLE_SITUATIONS).join(", ")}`,
+        };
+      }
+
+      // Listar vendas por cada situação
+      const all: AvailableOrderDTO[] = [];
+      for (const sit of matched) {
+        let page = 1;
+        let collected = 0;
+        while (collected < data.limit && page <= 10) {
+          const url = `${base}/api/vendas?situacao_id=${encodeURIComponent(sit.id)}&pagina=${page}`;
+          const res = await gcFetch(url, headers);
+          const arr: any[] = Array.isArray(res.json?.data)
+            ? res.json.data
+            : Array.isArray(res.json)
+              ? res.json
+              : [];
+          if (arr.length === 0) break;
+          for (const wrap of arr) {
+            const v = wrap?.venda ?? wrap ?? {};
+            // Filtrar em memória: alguns ambientes ignoram situacao_id
+            const sitNome = String(v?.nome_situacao ?? v?.situacao ?? "").toLowerCase();
+            if (sitNome && !wanted.some((wl) => sitNome.includes(wl) || wl.includes(sitNome))) {
+              continue;
+            }
+            const endNode = Array.isArray(v?.enderecos)
+              ? v.enderecos[0]?.endereco ?? {}
+              : {};
+            const code = String(v?.codigo ?? v?.numero ?? v?.id ?? "");
+            const cliente = String(v?.nome_cliente ?? v?.cliente?.nome ?? "—");
+            const cidade = String(endNode?.nome_cidade ?? endNode?.cidade ?? "") || null;
+            const cep = String(endNode?.cep ?? endNode?.codigo_postal ?? "") || null;
+            all.push({
+              internal_id: String(v?.id ?? ""),
+              order_number: code,
+              customer_name: cliente,
+              city: cidade,
+              zip_code: cep,
+              total_value: Number(v?.valor_total ?? v?.total ?? 0),
+              situation: sit.nome,
+              date: v?.data ?? v?.data_venda ?? v?.cadastrado_em ?? null,
+              alreadyScheduled: false,
+              scheduledRouteId: null,
+              scheduledRouteDate: null,
+            });
+            collected += 1;
+            if (collected >= data.limit) break;
+          }
+          // Heurística de paginação
+          if (arr.length < 20) break;
+          page += 1;
+        }
+      }
+
+      // Deduplicar por order_number
+      const map = new Map<string, AvailableOrderDTO>();
+      for (const o of all) {
+        if (!map.has(o.order_number)) map.set(o.order_number, o);
+      }
+      let list = Array.from(map.values());
+
+      // Filtro de pesquisa local
+      if (data.query) {
+        const q = data.query.toLowerCase();
+        list = list.filter(
+          (o) =>
+            o.order_number.toLowerCase().includes(q) ||
+            o.customer_name.toLowerCase().includes(q) ||
+            (o.city ?? "").toLowerCase().includes(q),
+        );
+      }
+
+      // Cruzar com scheduled_deliveries activas
+      const codes = list.map((o) => o.order_number);
+      if (codes.length > 0) {
+        const { data: scheduled } = await context.supabase
+          .from("scheduled_deliveries")
+          .select("order_number, route_id, status, routes:route_id(route_date)")
+          .in("order_number", codes)
+          .in("status", ["agendado", "confirmado"]);
+        const sm = new Map<string, { route_id: string; route_date: string | null }>();
+        for (const s of scheduled ?? []) {
+          sm.set(String(s.order_number), {
+            route_id: String(s.route_id),
+            route_date: (s as any).routes?.route_date ?? null,
+          });
+        }
+        list = list.map((o) => {
+          const sx = sm.get(o.order_number);
+          if (!sx) return o;
+          return {
+            ...o,
+            alreadyScheduled: true,
+            scheduledRouteId: sx.route_id,
+            scheduledRouteDate: sx.route_date,
+          };
+        });
+      }
+
+      // Ordenar: não agendados primeiro, depois por data desc
+      list.sort((a, b) => {
+        if (a.alreadyScheduled !== b.alreadyScheduled) return a.alreadyScheduled ? 1 : -1;
+        const da = a.date ? Date.parse(a.date) : 0;
+        const db = b.date ? Date.parse(b.date) : 0;
+        return db - da;
+      });
+
+      return { orders: list, error: null };
+    } catch (e) {
+      return {
+        orders: [],
+        error: e instanceof Error ? e.message : "Falha ao listar vendas",
+      };
+    }
+  });

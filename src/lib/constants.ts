@@ -41,3 +41,9 @@ export const ROUTE_STATUS_TONE: Record<string, string> = {
   fechada: "bg-slate-200 text-slate-700 border-slate-300",
   concluida: "bg-sky-100 text-sky-800 border-sky-200",
 };
+
+/** Situações do GestãoClick que aparecem na aba "Disponíveis para agendamento". */
+export const AVAILABLE_SITUATIONS = [
+  "Disponível para entrega",
+  "Disponível para levantamento",
+];

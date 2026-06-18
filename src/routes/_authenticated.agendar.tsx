@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
-import { fetchOrder, type FetchOrderResult } from "@/lib/gestaoclick.functions";
+import { fetchOrder, listAvailableOrders, type FetchOrderResult } from "@/lib/gestaoclick.functions";
 import { scheduleDelivery, transferDeliveryToRoute } from "@/lib/deliveries.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { listRoutes } from "@/lib/routes.functions";
@@ -16,9 +16,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { formatEUR, formatDatePT, zipPrefix } from "@/lib/format";
-import { DELIVERY_TYPE_LABEL, ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT } from "@/lib/constants";
-import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { DELIVERY_TYPE_LABEL, ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT, AVAILABLE_SITUATIONS } from "@/lib/constants";
+import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText, ChevronDown, ChevronUp, RefreshCw, CalendarClock } from "lucide-react";
 
 const searchSchema = z.object({ routeId: z.string().optional() });
 
@@ -34,6 +36,11 @@ function AgendarPage() {
   const scheduleFn = useServerFn(scheduleDelivery);
   const transferFn = useServerFn(transferDeliveryToRoute);
   const listRoutesFn = useServerFn(listRoutes);
+  const listAvailableFn = useServerFn(listAvailableOrders);
+  const [tab, setTab] = useState<"numero" | "disponiveis">("numero");
+  const [availQuery, setAvailQuery] = useState("");
+  const [availSituations, setAvailSituations] = useState<string[]>(AVAILABLE_SITUATIONS);
+  const [loadingRow, setLoadingRow] = useState<string | null>(null);
   const [confirmReschedule, setConfirmReschedule] = useState(false);
 
   const [step, setStep] = useState(1);
@@ -56,6 +63,36 @@ function AgendarPage() {
       enabled: step >= 3,
     }),
   );
+
+  const availableQuery = useQuery({
+    queryKey: ["gestaoclick", "available", availSituations.join(","), availQuery],
+    queryFn: () =>
+      listAvailableFn({
+        data: { situations: availSituations, query: availQuery || undefined, limit: 50 },
+      }),
+    enabled: tab === "disponiveis" && step === 1,
+    staleTime: 30_000,
+  });
+
+  async function handleScheduleFromList(orderNum: string) {
+    setLoadingRow(orderNum);
+    try {
+      setOrderNumber(orderNum);
+      const res = await fetchOrderFn({ data: { orderNumber: orderNum } });
+      setOrderData(res);
+      if (res.error || !res.order) {
+        toast.error(res.error ?? "Não foi possível carregar a venda");
+        return;
+      }
+      if (res.order.has_assembly && minutes < 60) setMinutes(60);
+      setTab("numero");
+      setStep(3);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setLoadingRow(null);
+    }
+  }
 
   async function handleSearch() {
     setLoading(true);
@@ -212,6 +249,118 @@ function AgendarPage() {
       </div>
 
       {step === 1 && (
+        <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="space-y-4">
+          <TabsList className="grid grid-cols-2 w-full">
+            <TabsTrigger value="numero">Por número</TabsTrigger>
+            <TabsTrigger value="disponiveis">Disponíveis no GestãoClick</TabsTrigger>
+          </TabsList>
+          <TabsContent value="disponiveis" className="m-0">
+            <Card className="p-5 space-y-3">
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[180px]">
+                  <Label htmlFor="aq">Pesquisar</Label>
+                  <Input
+                    id="aq"
+                    value={availQuery}
+                    onChange={(e) => setAvailQuery(e.target.value)}
+                    placeholder="Código, cliente ou cidade"
+                  />
+                </div>
+                <div className="flex items-end gap-2 flex-wrap">
+                  {AVAILABLE_SITUATIONS.map((s) => {
+                    const on = availSituations.includes(s);
+                    return (
+                      <Button
+                        key={s}
+                        size="sm"
+                        variant={on ? "default" : "outline"}
+                        onClick={() =>
+                          setAvailSituations((cur) =>
+                            cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s],
+                          )
+                        }
+                      >
+                        {s}
+                      </Button>
+                    );
+                  })}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => availableQuery.refetch()}
+                    disabled={availableQuery.isFetching}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${availableQuery.isFetching ? "animate-spin" : ""}`} />
+                  </Button>
+                </div>
+              </div>
+
+              {availableQuery.data?.error && (
+                <div className="border rounded-md p-3 bg-rose-50 border-rose-200 text-sm text-rose-800 flex gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{availableQuery.data.error}</span>
+                </div>
+              )}
+
+              <div className="rounded-md border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead className="hidden md:table-cell">Cidade / CP</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="hidden sm:table-cell">Situação</TableHead>
+                      <TableHead className="hidden md:table-cell">Data</TableHead>
+                      <TableHead className="text-right">Acções</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {availableQuery.isLoading && (
+                      <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">A carregar…</TableCell></TableRow>
+                    )}
+                    {!availableQuery.isLoading && (availableQuery.data?.orders.length ?? 0) === 0 && (
+                      <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">Sem vendas disponíveis.</TableCell></TableRow>
+                    )}
+                    {availableQuery.data?.orders.map((o) => (
+                      <TableRow key={o.order_number} className={o.alreadyScheduled ? "opacity-60" : ""}>
+                        <TableCell className="font-mono text-xs">{o.order_number}</TableCell>
+                        <TableCell className="font-medium">{o.customer_name}</TableCell>
+                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                          {[o.city, o.zip_code].filter(Boolean).join(" · ") || "—"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{formatEUR(o.total_value)}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant="outline" className="text-[10px]">{o.situation}</Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                          {o.date ? formatDatePT(o.date) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {o.alreadyScheduled ? (
+                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                              <CalendarClock className="h-3 w-3 mr-1" />
+                              {o.scheduledRouteDate ? formatDatePT(o.scheduledRouteDate) : "Agendado"}
+                            </Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              disabled={loadingRow === o.order_number}
+                              onClick={() => handleScheduleFromList(o.order_number)}
+                            >
+                              {loadingRow === o.order_number ? "…" : "Agendar"}
+                              <ArrowRight className="h-3 w-3 ml-1" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          </TabsContent>
+          <TabsContent value="numero" className="m-0">
         <Card className="p-5 space-y-4">
           <div>
             <Label htmlFor="order">Número da encomenda (GestãoClick)</Label>
@@ -440,6 +589,8 @@ function AgendarPage() {
             );
           })()}
         </Card>
+          </TabsContent>
+        </Tabs>
       )}
 
 

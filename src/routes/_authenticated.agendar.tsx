@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
 import { toast } from "sonner";
-import { fetchOrder, type FetchOrderResult } from "@/lib/gestaoclick.functions";
+import { fetchOrder, listAvailableOrders, type FetchOrderResult } from "@/lib/gestaoclick.functions";
 import { scheduleDelivery, transferDeliveryToRoute } from "@/lib/deliveries.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { listRoutes } from "@/lib/routes.functions";
@@ -16,9 +16,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { formatEUR, formatDatePT, zipPrefix } from "@/lib/format";
-import { DELIVERY_TYPE_LABEL, ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT } from "@/lib/constants";
-import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { DELIVERY_TYPE_LABEL, ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT, AVAILABLE_SITUATIONS } from "@/lib/constants";
+import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText, ChevronDown, ChevronUp, RefreshCw, CalendarClock } from "lucide-react";
 
 const searchSchema = z.object({ routeId: z.string().optional() });
 

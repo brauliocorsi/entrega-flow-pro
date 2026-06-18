@@ -589,6 +589,8 @@ function AgendarPage() {
             );
           })()}
         </Card>
+          </TabsContent>
+        </Tabs>
       )}
 
 

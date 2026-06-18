@@ -7,7 +7,16 @@ const TemplateInput = z.object({
   name: z.string().min(1).max(100),
   weekday: z.number().int().min(0).max(6),
   zone: z.string().min(1).max(100),
-  zip_prefixes: z.array(z.string().min(1).max(8)).max(50),
+  // Aceita prefixos ("4000"), CPs exactos ("4150-123") e intervalos ("1000-1999").
+  zip_prefixes: z
+    .array(
+      z
+        .string()
+        .min(1)
+        .max(16)
+        .regex(/^[0-9]{1,4}(-[0-9]{1,4})?$/, "Use prefixo (4000), CP4 ou intervalo (1000-1999)"),
+    )
+    .max(50),
   max_capacity_m3: z.number().min(1).max(200),
   max_minutes: z.number().int().min(1).max(1440).default(480),
   default_driver: z.string().max(100).nullable().optional(),

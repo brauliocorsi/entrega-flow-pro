@@ -36,6 +36,11 @@ function AgendarPage() {
   const scheduleFn = useServerFn(scheduleDelivery);
   const transferFn = useServerFn(transferDeliveryToRoute);
   const listRoutesFn = useServerFn(listRoutes);
+  const listAvailableFn = useServerFn(listAvailableOrders);
+  const [tab, setTab] = useState<"numero" | "disponiveis">("numero");
+  const [availQuery, setAvailQuery] = useState("");
+  const [availSituations, setAvailSituations] = useState<string[]>(AVAILABLE_SITUATIONS);
+  const [loadingRow, setLoadingRow] = useState<string | null>(null);
   const [confirmReschedule, setConfirmReschedule] = useState(false);
 
   const [step, setStep] = useState(1);

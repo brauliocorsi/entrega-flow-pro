@@ -426,13 +426,16 @@ function AdminTemplatesPage() {
               <Input value={form.zone} onChange={(e) => setForm({ ...form, zone: e.target.value })} placeholder="Porto / Grande Porto" />
             </div>
             <div className="space-y-1.5">
-              <Label>Prefixos de Código Postal</Label>
+              <Label>Códigos Postais / Intervalos</Label>
               <Input
                 value={form.zip_prefixes}
                 onChange={(e) => setForm({ ...form, zip_prefixes: e.target.value })}
-                placeholder="4000, 4100, 4200"
+                placeholder="1000-1999, 2400-2499, 4100"
               />
-              <p className="text-xs text-muted-foreground">Separar por vírgula. Ex.: 4000, 4100</p>
+              <p className="text-xs text-muted-foreground">
+                Combina várias zonas na mesma rota. Aceita prefixos (<code>4100</code>), CP4 exactos e
+                intervalos (<code>1000-1999</code>). Separar por vírgula. Ex.: Lisboa + Leiria = <code>1000-1999, 2400-2499</code>.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label>Cor do template</Label>

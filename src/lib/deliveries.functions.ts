@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { updateGestaoClickVendaSchedule, fetchOrder } from "./gestaoclick.functions";
+import { checkCorridor, type CorridorStop } from "./corridor.shared";
 
 const ScheduleInput = z.object({
   route_id: z.string().uuid(),
@@ -20,6 +21,7 @@ const ScheduleInput = z.object({
   notes: z.string().max(1000).nullable().optional(),
   rescheduled_from_id: z.string().uuid().nullable().optional(),
   order_payload: z.any().nullable().optional(),
+  override_corridor: z.boolean().optional().default(false),
 });
 
 export const scheduleDelivery = createServerFn({ method: "POST" })

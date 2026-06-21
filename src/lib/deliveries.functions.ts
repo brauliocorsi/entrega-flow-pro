@@ -341,7 +341,7 @@ export const closeRoute = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     for (const o of data.outcomes) {
       // entregue → status entregue; restantes mantêm-se como histórico mas marcam outcome
-      const status = o.outcome === "entregue" ? "entregue" : "entregue";
+      const status = o.outcome === "entregue" ? "entregue" : "reagendado";
       const { error } = await context.supabase
         .from("scheduled_deliveries")
         .update({

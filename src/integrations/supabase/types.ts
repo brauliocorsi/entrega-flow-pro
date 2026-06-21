@@ -134,6 +134,41 @@ export type Database = {
         }
         Relationships: []
       }
+      route_corridor_stops: {
+        Row: {
+          city_label: string
+          created_at: string
+          id: string
+          sequence: number
+          template_id: string
+          zip_prefix: string
+        }
+        Insert: {
+          city_label: string
+          created_at?: string
+          id?: string
+          sequence: number
+          template_id: string
+          zip_prefix: string
+        }
+        Update: {
+          city_label?: string
+          created_at?: string
+          id?: string
+          sequence?: number
+          template_id?: string
+          zip_prefix?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_corridor_stops_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "route_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       route_payment_forecasts: {
         Row: {
           created_at: string
@@ -228,6 +263,7 @@ export type Database = {
         Row: {
           assistant: string | null
           color: string
+          corridor: Json
           created_at: string
           current_volume_m3: number
           deliveries_count: number
@@ -247,6 +283,7 @@ export type Database = {
         Insert: {
           assistant?: string | null
           color?: string
+          corridor?: Json
           created_at?: string
           current_volume_m3?: number
           deliveries_count?: number
@@ -266,6 +303,7 @@ export type Database = {
         Update: {
           assistant?: string | null
           color?: string
+          corridor?: Json
           created_at?: string
           current_volume_m3?: number
           deliveries_count?: number

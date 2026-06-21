@@ -160,6 +160,24 @@ export async function generateRoutesShared(supabase: any, weeks: number, opts: G
   let created = 0;
   let skipped = 0;
 
+  // Pre-fetch corridor stops per template (snapshot copied into routes.corridor)
+  const corridorByTemplate = new Map<string, Array<{ zip_prefix: string; city_label: string; sequence: number }>>();
+  for (const t of templates) {
+    const { data: stops } = await supabase
+      .from("route_corridor_stops")
+      .select("zip_prefix, city_label, sequence")
+      .eq("template_id", t.id)
+      .order("sequence", { ascending: true });
+    corridorByTemplate.set(
+      t.id,
+      (stops ?? []).map((s: any) => ({
+        zip_prefix: s.zip_prefix,
+        city_label: s.city_label,
+        sequence: s.sequence,
+      })),
+    );
+  }
+
   for (let d = new Date(today); d <= end; d.setDate(d.getDate() + 1)) {
     const wd = d.getDay();
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -195,6 +213,7 @@ export async function generateRoutesShared(supabase: any, weeks: number, opts: G
         max_capacity_m3: t.max_capacity_m3,
         max_minutes: t.max_minutes ?? 480,
         color: t.color ?? "#3b82f6",
+        corridor: corridorByTemplate.get(t.id) ?? [],
       });
       if (!insErr) {
         created++;

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { updateGestaoClickVendaSchedule, fetchOrder } from "./gestaoclick.functions";
+import { checkCorridor, type CorridorStop } from "./corridor.shared";
 
 const ScheduleInput = z.object({
   route_id: z.string().uuid(),
@@ -20,6 +21,7 @@ const ScheduleInput = z.object({
   notes: z.string().max(1000).nullable().optional(),
   rescheduled_from_id: z.string().uuid().nullable().optional(),
   order_payload: z.any().nullable().optional(),
+  override_corridor: z.boolean().optional().default(false),
 });
 
 export const scheduleDelivery = createServerFn({ method: "POST" })
@@ -38,11 +40,70 @@ export const scheduleDelivery = createServerFn({ method: "POST" })
     // capacity check
     const { data: route } = await context.supabase
       .from("routes")
-      .select("id, max_capacity_m3, current_volume_m3, status")
+      .select("id, max_capacity_m3, current_volume_m3, status, corridor")
       .eq("id", data.route_id)
       .maybeSingle();
     if (!route) throw new Error("Rota não encontrada");
     if (["fechada", "concluida"].includes(route.status)) throw new Error("Esta rota já está fechada");
+
+    // ===== Validação de corredor (antes da capacidade) =====
+    const corridor = (route.corridor as unknown as CorridorStop[] | null) ?? [];
+    if (corridor.length > 0 && data.zip_code) {
+      // Lê as entregas já agendadas/confirmadas desta rota para reconstruir
+      // o array de sequences ocupadas no corredor.
+      const { data: scheduled } = await context.supabase
+        .from("scheduled_deliveries")
+        .select("zip_code")
+        .eq("route_id", data.route_id)
+        .in("status", ["agendado", "confirmado"]);
+
+      const scheduledSequences: number[] = [];
+      for (const s of scheduled ?? []) {
+        if (!s.zip_code) continue;
+        const digits = s.zip_code.replace(/\s/g, "").slice(0, 4);
+        // Match contra o corredor: prefixo mais longo ganha.
+        let best: CorridorStop | undefined;
+        for (const stop of corridor) {
+          if (digits.startsWith(stop.zip_prefix)) {
+            if (!best || stop.zip_prefix.length > best.zip_prefix.length) best = stop;
+          }
+        }
+        if (best) scheduledSequences.push(best.sequence);
+      }
+
+      const result = checkCorridor({
+        zipCode: data.zip_code,
+        corridor,
+        scheduledSequences,
+        bigJumpThreshold: 3,
+      });
+
+      if (result.level === "blocked") {
+        throw new Error(result.reason);
+      }
+      if (result.level === "needs_approval") {
+        // Só admin / logística podem confirmar grandes desvios.
+        const { data: roles } = await context.supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", context.userId);
+        const isPrivileged = (roles ?? []).some(
+          (r) => r.role === "admin" || r.role === "logistico",
+        );
+        if (!isPrivileged) {
+          throw new Error(
+            `Esta entrega obriga a um desvio grande no corredor e precisa de aprovação de logística. Reason: ${result.reason}`,
+          );
+        }
+        if (!data.override_corridor) {
+          throw new Error(
+            `Esta entrega precisa de confirmação explícita (override_corridor) por sair do corredor. Reason: ${result.reason}`,
+          );
+        }
+      }
+      // "warn" e "ok": seguir normalmente.
+    }
+
     if (Number(route.current_volume_m3) + data.volume_m3 > Number(route.max_capacity_m3) + 0.001) {
       throw new Error(
         `Capacidade insuficiente. Restam ${(Number(route.max_capacity_m3) - Number(route.current_volume_m3)).toFixed(2)} m³`,

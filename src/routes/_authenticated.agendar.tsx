@@ -84,6 +84,21 @@ function AgendarPage() {
         toast.error(res.error ?? "Não foi possível carregar a venda");
         return;
       }
+      const zip = zipPrefix(res.order.zip_code);
+      if (!zip) {
+        toast.error(
+          "Esta venda não tem código postal válido no GestãoClick. Corrige a morada do cliente antes de agendar.",
+        );
+        setTab("numero");
+        setStep(2);
+        return;
+      }
+      if (!res.order.address || res.order.address === "—") {
+        toast.error("Esta venda não tem morada no GestãoClick. Corrige antes de agendar.");
+        setTab("numero");
+        setStep(2);
+        return;
+      }
       if (res.order.has_assembly && minutes < 60) setMinutes(60);
       setTab("numero");
       setStep(3);

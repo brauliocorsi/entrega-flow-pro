@@ -342,7 +342,9 @@ function AgendarPage() {
                         <TableCell className="font-mono text-xs">{o.order_number}</TableCell>
                         <TableCell className="font-medium">{o.customer_name}</TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                          {[o.city, o.zip_code].filter(Boolean).join(" · ") || "—"}
+                          {[o.city, o.zip_code].filter(Boolean).join(" · ") || (
+                            <span className="text-destructive">Sem CP</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{formatEUR(o.total_value)}</TableCell>
                         <TableCell className="hidden sm:table-cell">
@@ -356,6 +358,10 @@ function AgendarPage() {
                             <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
                               <CalendarClock className="h-3 w-3 mr-1" />
                               {o.scheduledRouteDate ? formatDatePT(o.scheduledRouteDate) : "Agendado"}
+                            </Badge>
+                          ) : !o.zip_code ? (
+                            <Badge variant="outline" className="text-destructive border-destructive/40 text-[10px]">
+                              CP em falta
                             </Badge>
                           ) : (
                             <Button

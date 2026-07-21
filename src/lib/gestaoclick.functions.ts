@@ -121,18 +121,31 @@ function normalizeOrder(
     (obsText ? /montagem|montar|instala/i.test(obsText) : false);
   const hasDeliveryService = items.some((i) => i.kind === "entrega") || frete > 0;
 
-  // Heurística para extrair CP português ("4715-105") de qualquer campo de morada
+  // Heurística para extrair CP português ("4715-105") e localidade de qualquer campo de morada
   const allAddrStr = [
     endNode?.logradouro,
     endNode?.numero,
     endNode?.complemento,
     endNode?.bairro,
     endNode?.nome_cidade,
+    endNode?.cidade,
+    endNode?.localidade,
+    endNode?.cep,
+    endNode?.codigo_postal,
   ]
     .filter(Boolean)
+    .map((s) => String(s))
     .join(" ");
   const cpMatch = allAddrStr.match(/\b(\d{4}-\d{3})\b/);
-  const zipCode = String(endNode?.cep ?? endNode?.codigo_postal ?? "") || (cpMatch ? cpMatch[1] : null);
+  const zipCode = String(endNode?.cep ?? endNode?.codigo_postal ?? "").trim() || (cpMatch ? cpMatch[1] : null);
+  let cityFromNodes = String(
+    endNode?.nome_cidade ?? endNode?.cidade ?? endNode?.localidade ?? "",
+  ).trim();
+  if (!cityFromNodes && cpMatch) {
+    const after = allAddrStr.slice(allAddrStr.indexOf(cpMatch[1]) + cpMatch[1].length);
+    const loc = after.replace(/^[\s,\-–]+/, "").split(/[,\-–\n]/)[0].trim();
+    if (loc) cityFromNodes = loc;
+  }
 
   const customerName = String(
     cliente?.nome ?? cliente?.razao_social ?? p?.nome_cliente ?? "—",
@@ -154,7 +167,7 @@ function normalizeOrder(
     address_complement: String(endNode?.complemento ?? "") || null,
     neighborhood: String(endNode?.bairro ?? "") || null,
     zip_code: zipCode,
-    city: String(endNode?.nome_cidade ?? endNode?.cidade ?? endNode?.localidade ?? "") || null,
+    city: cityFromNodes || null,
     state: String(endNode?.estado ?? endNode?.uf ?? "") || null,
     phone: String(cliente?.telefone ?? cliente?.phone ?? "") || null,
     mobile: String(cliente?.celular ?? cliente?.telemovel ?? "") || null,
@@ -503,8 +516,36 @@ export const listAvailableOrders = createServerFn({ method: "POST" })
               : {};
             const code = String(v?.codigo ?? v?.numero ?? v?.id ?? "");
             const cliente = String(v?.nome_cliente ?? v?.cliente?.nome ?? "—");
-            const cidade = String(endNode?.nome_cidade ?? endNode?.cidade ?? "") || null;
-            const cep = String(endNode?.cep ?? endNode?.codigo_postal ?? "") || null;
+            // Junta todos os campos de morada para extrair CP e localidade se não vierem separados
+            const addrBlob = [
+              endNode?.logradouro,
+              endNode?.numero,
+              endNode?.complemento,
+              endNode?.bairro,
+              endNode?.nome_cidade,
+              endNode?.cidade,
+              endNode?.localidade,
+              endNode?.cep,
+              endNode?.codigo_postal,
+            ]
+              .filter(Boolean)
+              .map((s) => String(s))
+              .join(" ");
+            const cpMatch = addrBlob.match(/\b(\d{4}-\d{3})\b/);
+            let cep = String(endNode?.cep ?? endNode?.codigo_postal ?? "").trim() || null;
+            if (!cep && cpMatch) cep = cpMatch[1];
+            let cidade =
+              String(endNode?.nome_cidade ?? endNode?.cidade ?? endNode?.localidade ?? "").trim() ||
+              null;
+            if (!cidade && cpMatch) {
+              // texto imediatamente a seguir ao CP costuma ser a localidade
+              const after = addrBlob.slice(addrBlob.indexOf(cpMatch[1]) + cpMatch[1].length);
+              const loc = after
+                .replace(/^[\s,\-–]+/, "")
+                .split(/[,\-–\n]/)[0]
+                .trim();
+              if (loc) cidade = loc;
+            }
             all.push({
               internal_id: String(v?.id ?? ""),
               order_number: code,

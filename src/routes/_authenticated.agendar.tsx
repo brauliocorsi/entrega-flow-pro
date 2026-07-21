@@ -1083,6 +1083,182 @@ function AgendarPage() {
       <div className="text-center">
         <Link to="/rotas" className="text-xs text-muted-foreground hover:text-foreground">Cancelar e voltar</Link>
       </div>
+
+      <Dialog open={bulkOpen} onOpenChange={(v) => !bulkLoading && setBulkOpen(v)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Agendar {selected.size} encomendas em massa</DialogTitle>
+            <DialogDescription>
+              Todas as encomendas serão agendadas na mesma rota. Volume e tempo aplicam-se a <em>cada</em> encomenda.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-md border max-h-40 overflow-y-auto divide-y">
+              {selectedOrders.map((o) => {
+                const k = cp2(o.zip_code);
+                const cl = k ? clusterByCp2.get(k) : undefined;
+                return (
+                  <div key={o.order_number} className="px-3 py-2 text-sm flex items-center gap-2">
+                    {cl && <span className={`inline-block h-2.5 w-2.5 rounded-full ${cl.dot}`} />}
+                    <span className="font-mono text-xs">{o.order_number}</span>
+                    <span className="flex-1 truncate">{o.customer_name}</span>
+                    <span className="text-xs text-muted-foreground">{o.city ?? ""} {o.zip_code ?? ""}</span>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => toggleSelected(o.order_number)}
+                      disabled={bulkLoading}
+                      aria-label="Remover"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Volume por encomenda (m³)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={bulkVolumePer}
+                  onChange={(e) => setBulkVolumePer(Number(e.target.value))}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Tempo por encomenda (min)</Label>
+                <Input
+                  type="number"
+                  min="5"
+                  value={bulkMinutesPer}
+                  onChange={(e) => setBulkMinutesPer(Number(e.target.value))}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Totais: <strong>{(bulkVolumePer * selected.size).toFixed(2)} m³</strong> ·{" "}
+              <strong>{bulkMinutesPer * selected.size} min</strong>
+            </p>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label>Rota</Label>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setBulkShowAll((v) => !v)}
+                  disabled={bulkLoading}
+                >
+                  {bulkShowAll ? "Só compatíveis" : "Mostrar todas"}
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {(() => {
+                  const openR = (routes as any[]).filter(
+                    (r) =>
+                      !["fechada", "concluida", "cheia"].includes(r.status) &&
+                      Number(r.current_volume_m3) + bulkVolumePer * selected.size <=
+                        Number(r.max_capacity_m3) + 0.001,
+                  );
+                  const list = openR
+                    .map((r) => ({
+                      r,
+                      matchAll: bulkRouteMatches(r, "all"),
+                      matchAny: bulkRouteMatches(r, "any"),
+                    }))
+                    .filter((x) => (bulkShowAll ? true : x.matchAny))
+                    .sort((a, b) => {
+                      const s = Number(b.matchAll) - Number(a.matchAll) || Number(b.matchAny) - Number(a.matchAny);
+                      if (s !== 0) return s;
+                      return String(a.r.route_date).localeCompare(String(b.r.route_date));
+                    });
+                  if (list.length === 0)
+                    return <p className="text-xs text-muted-foreground">Sem rotas disponíveis.</p>;
+                  return list.map(({ r, matchAll, matchAny }) => {
+                    const restante = Number(r.max_capacity_m3) - Number(r.current_volume_m3);
+                    return (
+                      <div
+                        key={r.id}
+                        onClick={() => setBulkRouteId(r.id)}
+                        className={`border rounded-md p-2 cursor-pointer transition-colors ${
+                          bulkRouteId === r.id ? "border-primary bg-primary/5" : "hover:bg-accent"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm flex items-center gap-2 flex-wrap">
+                              {r.zone}
+                              <span className="text-xs text-muted-foreground font-normal">
+                                {formatDatePT(r.route_date)}
+                              </span>
+                              {matchAll ? (
+                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
+                                  <Sparkles className="h-3 w-3 mr-0.5" /> Cobre todos os CPs
+                                </Badge>
+                              ) : matchAny ? (
+                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">
+                                  Cobre alguns
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-rose-100 text-rose-800 border-rose-200 text-[10px]">
+                                  Fora do CP
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {restante.toFixed(1)} m³ livres
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+            {bulkRouteId && !bulkRouteMatches((routes as any[]).find((r) => r.id === bulkRouteId), "all") && (
+              <label className="flex items-start gap-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md p-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={bulkForce}
+                  onChange={(e) => setBulkForce(e.target.checked)}
+                />
+                <span>
+                  Confirmo <strong>forçar</strong> agendamento em rota que não cobre todos os CPs selecionados.
+                </span>
+              </label>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkLoading}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleBulkConfirm}
+              disabled={
+                bulkLoading ||
+                !bulkRouteId ||
+                selected.size < 2 ||
+                (bulkRouteId != null &&
+                  !bulkRouteMatches((routes as any[]).find((r) => r.id === bulkRouteId), "all") &&
+                  !bulkForce)
+              }
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1" />
+              {bulkLoading ? "A agendar…" : `Agendar ${selected.size}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

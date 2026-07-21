@@ -278,7 +278,7 @@ function AgendarPage() {
                     id="aq"
                     value={availQuery}
                     onChange={(e) => setAvailQuery(e.target.value)}
-                    placeholder="Código, cliente, cidade ou CP (ex.: 4620)"
+                    placeholder="Código, cliente, cidade, CP (4620) ou intervalo (4000-4999)"
                   />
                 </div>
                 <div className="flex items-end gap-2 flex-wrap">

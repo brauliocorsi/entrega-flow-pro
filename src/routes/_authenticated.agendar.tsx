@@ -102,6 +102,132 @@ function AgendarPage() {
     staleTime: 30_000,
   });
 
+  // Cluster colors by CP2 prefix (first 2 digits) — same color = geograficamente próximos.
+  const availableOrders = availableQuery.data?.orders ?? [];
+  const clusterByCp2 = (() => {
+    const map = new Map<string, (typeof CLUSTER_COLORS)[number]>();
+    let idx = 0;
+    for (const o of availableOrders) {
+      const k = cp2(o.zip_code);
+      if (!k) continue;
+      if (!map.has(k)) {
+        map.set(k, CLUSTER_COLORS[idx % CLUSTER_COLORS.length]);
+        idx++;
+      }
+    }
+    return map;
+  })();
+  const selectedCp2 = new Set(
+    Array.from(selected)
+      .map((n) => availableOrders.find((o) => o.order_number === n))
+      .map((o) => cp2(o?.zip_code))
+      .filter((v): v is string => !!v),
+  );
+  const selectedOrders = availableOrders.filter((o) => selected.has(o.order_number));
+
+  function toggleSelected(orderNum: string) {
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(orderNum)) next.delete(orderNum);
+      else next.add(orderNum);
+      return next;
+    });
+  }
+
+  function bulkRouteMatches(r: any, mode: "all" | "any"): boolean {
+    const prefs: string[] = (r.zip_prefixes ?? []).filter(Boolean);
+    if (prefs.length === 0) return true;
+    const testZip = (zip: string) => {
+      const cpNum = Number(zip);
+      for (const p of prefs) {
+        const m = /^(\d{1,4})-(\d{1,4})$/.exec(p);
+        if (m) {
+          const lo = Math.min(Number(m[1]), Number(m[2]));
+          const hi = Math.max(Number(m[1]), Number(m[2]));
+          if (Number.isFinite(cpNum) && cpNum >= lo && cpNum <= hi) return true;
+          continue;
+        }
+        if (zip.startsWith(p)) return true;
+      }
+      const nums = prefs.filter((p) => /^\d{4}$/.test(p)).map(Number);
+      if (nums.length >= 2) {
+        const min = Math.min(...nums);
+        const max = Math.max(...nums);
+        if (cpNum >= min && cpNum <= max) return true;
+      }
+      return false;
+    };
+    const zips = selectedOrders
+      .map((o) => zipPrefix(o.zip_code))
+      .filter((z): z is string => !!z);
+    if (zips.length === 0) return true;
+    return mode === "all" ? zips.every(testZip) : zips.some(testZip);
+  }
+
+  async function handleBulkConfirm() {
+    if (!bulkRouteId || selected.size === 0) return;
+    setBulkLoading(true);
+    let ok = 0;
+    const errors: string[] = [];
+    for (const on of Array.from(selected)) {
+      try {
+        const res = await fetchOrderFn({ data: { orderNumber: on } });
+        const o = res.order;
+        if (!o) throw new Error(res.error ?? "Sem dados");
+        const zip = zipPrefix(o.zip_code);
+        if (!zip) throw new Error("Sem CP");
+        if (!o.address || o.address === "—") throw new Error("Sem morada");
+        const vol = bulkVolumePer;
+        const min = o.has_assembly && bulkMinutesPer < 60 ? 60 : bulkMinutesPer;
+        if (res.existingActiveDelivery?.id) {
+          await transferFn({ data: { id: res.existingActiveDelivery.id, newRouteId: bulkRouteId } });
+        } else {
+          await scheduleFn({
+            data: {
+              route_id: bulkRouteId,
+              order_number: o.order_number,
+              gestaoclick_id: o.internal_id ?? null,
+              customer_name: o.customer_name,
+              address: o.address,
+              zip_code: o.zip_code,
+              city: o.city,
+              phone: o.phone,
+              total_value: o.total_value,
+              paid_value: o.paid_value,
+              volume_m3: vol,
+              delivery_type: "entrega",
+              estimated_minutes: min,
+              notes: null,
+              rescheduled_from_id: null,
+              order_payload: {
+                items: o.items ?? [],
+                pagamentos: o.pagamentos ?? [],
+                has_assembly: o.has_assembly ?? false,
+                has_delivery_service: o.has_delivery_service ?? false,
+                observations: o.observations ?? null,
+                status: o.status ?? null,
+                date: o.date ?? null,
+              },
+              override_corridor: bulkForce,
+            },
+          });
+        }
+        ok++;
+      } catch (e) {
+        errors.push(`${on}: ${e instanceof Error ? e.message : "erro"}`);
+      }
+    }
+    setBulkLoading(false);
+    const targetRoute = bulkRouteId;
+    if (ok > 0) toast.success(`${ok} entrega(s) agendada(s) em massa`);
+    if (errors.length > 0) toast.error(`Falhas: ${errors.slice(0, 3).join(" · ")}${errors.length > 3 ? "…" : ""}`);
+    setBulkOpen(false);
+    setSelected(new Set());
+    availableQuery.refetch();
+    if (ok > 0 && targetRoute) navigate({ to: "/rotas/$id", params: { id: targetRoute } });
+  }
+
+
   async function handleScheduleFromList(orderNum: string) {
     setLoadingRow(orderNum);
     try {

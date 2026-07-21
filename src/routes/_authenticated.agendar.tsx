@@ -18,9 +18,27 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { formatEUR, formatDatePT, zipPrefix } from "@/lib/format";
 import { DELIVERY_TYPE_LABEL, ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT, AVAILABLE_SITUATIONS } from "@/lib/constants";
-import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText, ChevronDown, ChevronUp, RefreshCw, CalendarClock } from "lucide-react";
+import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText, ChevronDown, ChevronUp, RefreshCw, CalendarClock, Users, X } from "lucide-react";
+
+const CLUSTER_COLORS = [
+  { dot: "bg-blue-500", ring: "ring-blue-300", badge: "bg-blue-100 text-blue-800 border-blue-200" },
+  { dot: "bg-emerald-500", ring: "ring-emerald-300", badge: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  { dot: "bg-amber-500", ring: "ring-amber-300", badge: "bg-amber-100 text-amber-800 border-amber-200" },
+  { dot: "bg-rose-500", ring: "ring-rose-300", badge: "bg-rose-100 text-rose-800 border-rose-200" },
+  { dot: "bg-violet-500", ring: "ring-violet-300", badge: "bg-violet-100 text-violet-800 border-violet-200" },
+  { dot: "bg-cyan-500", ring: "ring-cyan-300", badge: "bg-cyan-100 text-cyan-800 border-cyan-200" },
+  { dot: "bg-orange-500", ring: "ring-orange-300", badge: "bg-orange-100 text-orange-800 border-orange-200" },
+  { dot: "bg-teal-500", ring: "ring-teal-300", badge: "bg-teal-100 text-teal-800 border-teal-200" },
+  { dot: "bg-fuchsia-500", ring: "ring-fuchsia-300", badge: "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200" },
+];
+const cp2 = (zip?: string | null) => {
+  const p = zipPrefix(zip);
+  return p ? p.slice(0, 2) : null;
+};
 
 const searchSchema = z.object({ routeId: z.string().optional() });
 
@@ -56,11 +74,21 @@ function AgendarPage() {
   const [showAllRoutes, setShowAllRoutes] = useState(false);
   const [forceConfirm, setForceConfirm] = useState(false);
 
+  // Bulk scheduling state
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkRouteId, setBulkRouteId] = useState<string | null>(null);
+  const [bulkVolumePer, setBulkVolumePer] = useState(2);
+  const [bulkMinutesPer, setBulkMinutesPer] = useState(30);
+  const [bulkForce, setBulkForce] = useState(false);
+  const [bulkShowAll, setBulkShowAll] = useState(false);
+
   const { data: routes = [] } = useQuery(
     queryOptions({
       queryKey: ["routes", "list"],
       queryFn: () => listRoutesFn({ data: {} }),
-      enabled: step >= 3,
+      enabled: step >= 3 || bulkOpen,
     }),
   );
 
@@ -73,6 +101,132 @@ function AgendarPage() {
     enabled: tab === "disponiveis" && step === 1,
     staleTime: 30_000,
   });
+
+  // Cluster colors by CP2 prefix (first 2 digits) — same color = geograficamente próximos.
+  const availableOrders = availableQuery.data?.orders ?? [];
+  const clusterByCp2 = (() => {
+    const map = new Map<string, (typeof CLUSTER_COLORS)[number]>();
+    let idx = 0;
+    for (const o of availableOrders) {
+      const k = cp2(o.zip_code);
+      if (!k) continue;
+      if (!map.has(k)) {
+        map.set(k, CLUSTER_COLORS[idx % CLUSTER_COLORS.length]);
+        idx++;
+      }
+    }
+    return map;
+  })();
+  const selectedCp2 = new Set(
+    Array.from(selected)
+      .map((n) => availableOrders.find((o) => o.order_number === n))
+      .map((o) => cp2(o?.zip_code))
+      .filter((v): v is string => !!v),
+  );
+  const selectedOrders = availableOrders.filter((o) => selected.has(o.order_number));
+
+  function toggleSelected(orderNum: string) {
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(orderNum)) next.delete(orderNum);
+      else next.add(orderNum);
+      return next;
+    });
+  }
+
+  function bulkRouteMatches(r: any, mode: "all" | "any"): boolean {
+    const prefs: string[] = (r.zip_prefixes ?? []).filter(Boolean);
+    if (prefs.length === 0) return true;
+    const testZip = (zip: string) => {
+      const cpNum = Number(zip);
+      for (const p of prefs) {
+        const m = /^(\d{1,4})-(\d{1,4})$/.exec(p);
+        if (m) {
+          const lo = Math.min(Number(m[1]), Number(m[2]));
+          const hi = Math.max(Number(m[1]), Number(m[2]));
+          if (Number.isFinite(cpNum) && cpNum >= lo && cpNum <= hi) return true;
+          continue;
+        }
+        if (zip.startsWith(p)) return true;
+      }
+      const nums = prefs.filter((p) => /^\d{4}$/.test(p)).map(Number);
+      if (nums.length >= 2) {
+        const min = Math.min(...nums);
+        const max = Math.max(...nums);
+        if (cpNum >= min && cpNum <= max) return true;
+      }
+      return false;
+    };
+    const zips = selectedOrders
+      .map((o) => zipPrefix(o.zip_code))
+      .filter((z): z is string => !!z);
+    if (zips.length === 0) return true;
+    return mode === "all" ? zips.every(testZip) : zips.some(testZip);
+  }
+
+  async function handleBulkConfirm() {
+    if (!bulkRouteId || selected.size === 0) return;
+    setBulkLoading(true);
+    let ok = 0;
+    const errors: string[] = [];
+    for (const on of Array.from(selected)) {
+      try {
+        const res = await fetchOrderFn({ data: { orderNumber: on } });
+        const o = res.order;
+        if (!o) throw new Error(res.error ?? "Sem dados");
+        const zip = zipPrefix(o.zip_code);
+        if (!zip) throw new Error("Sem CP");
+        if (!o.address || o.address === "—") throw new Error("Sem morada");
+        const vol = bulkVolumePer;
+        const min = o.has_assembly && bulkMinutesPer < 60 ? 60 : bulkMinutesPer;
+        if (res.existingActiveDelivery?.id) {
+          await transferFn({ data: { id: res.existingActiveDelivery.id, newRouteId: bulkRouteId } });
+        } else {
+          await scheduleFn({
+            data: {
+              route_id: bulkRouteId,
+              order_number: o.order_number,
+              gestaoclick_id: o.internal_id ?? null,
+              customer_name: o.customer_name,
+              address: o.address,
+              zip_code: o.zip_code,
+              city: o.city,
+              phone: o.phone,
+              total_value: o.total_value,
+              paid_value: o.paid_value,
+              volume_m3: vol,
+              delivery_type: "entrega",
+              estimated_minutes: min,
+              notes: null,
+              rescheduled_from_id: null,
+              order_payload: {
+                items: o.items ?? [],
+                pagamentos: o.pagamentos ?? [],
+                has_assembly: o.has_assembly ?? false,
+                has_delivery_service: o.has_delivery_service ?? false,
+                observations: o.observations ?? null,
+                status: o.status ?? null,
+                date: o.date ?? null,
+              },
+              override_corridor: bulkForce,
+            },
+          });
+        }
+        ok++;
+      } catch (e) {
+        errors.push(`${on}: ${e instanceof Error ? e.message : "erro"}`);
+      }
+    }
+    setBulkLoading(false);
+    const targetRoute = bulkRouteId;
+    if (ok > 0) toast.success(`${ok} entrega(s) agendada(s) em massa`);
+    if (errors.length > 0) toast.error(`Falhas: ${errors.slice(0, 3).join(" · ")}${errors.length > 3 ? "…" : ""}`);
+    setBulkOpen(false);
+    setSelected(new Set());
+    availableQuery.refetch();
+    if (ok > 0 && targetRoute) navigate({ to: "/rotas/$id", params: { id: targetRoute } });
+  }
+
 
   async function handleScheduleFromList(orderNum: string) {
     setLoadingRow(orderNum);
@@ -317,10 +471,43 @@ function AgendarPage() {
                 </div>
               )}
 
+              {selected.size > 0 && (
+                <div className="rounded-md border bg-primary/5 border-primary/30 px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users className="h-4 w-4 text-primary" />
+                    <span><strong>{selected.size}</strong> selecionada(s)</span>
+                    {selectedCp2.size > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        · Zonas: {Array.from(selectedCp2).map((k) => `${k}xxx`).join(", ")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                      <X className="h-3 w-3 mr-1" /> Limpar
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={selected.size < 2}
+                      onClick={() => {
+                        setBulkRouteId(null);
+                        setBulkForce(false);
+                        setBulkShowAll(false);
+                        setBulkOpen(true);
+                      }}
+                    >
+                      Agendar em massa <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-8"></TableHead>
+                      <TableHead className="w-8"></TableHead>
                       <TableHead>Código</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead className="hidden md:table-cell">Cidade / CP</TableHead>
@@ -332,53 +519,99 @@ function AgendarPage() {
                   </TableHeader>
                   <TableBody>
                     {availableQuery.isLoading && (
-                      <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">A carregar…</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">A carregar…</TableCell></TableRow>
                     )}
                     {!availableQuery.isLoading && (availableQuery.data?.orders.length ?? 0) === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">Sem vendas disponíveis.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">Sem vendas disponíveis.</TableCell></TableRow>
                     )}
-                    {availableQuery.data?.orders.map((o) => (
-                      <TableRow key={o.order_number} className={o.alreadyScheduled ? "opacity-60" : ""}>
-                        <TableCell className="font-mono text-xs">{o.order_number}</TableCell>
-                        <TableCell className="font-medium">{o.customer_name}</TableCell>
-                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                          {[o.city, o.zip_code].filter(Boolean).join(" · ") || (
-                            <span className="text-destructive">Sem CP</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{formatEUR(o.total_value)}</TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge variant="outline" className="text-[10px]">{o.situation}</Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
-                          {o.date ? formatDatePT(o.date) : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {o.alreadyScheduled ? (
-                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
-                              <CalendarClock className="h-3 w-3 mr-1" />
-                              {o.scheduledRouteDate ? formatDatePT(o.scheduledRouteDate) : "Agendado"}
-                            </Badge>
-                          ) : !o.zip_code ? (
-                            <Badge variant="outline" className="text-destructive border-destructive/40 text-[10px]">
-                              CP em falta
-                            </Badge>
-                          ) : (
-                            <Button
-                              size="sm"
-                              disabled={loadingRow === o.order_number}
-                              onClick={() => handleScheduleFromList(o.order_number)}
-                            >
-                              {loadingRow === o.order_number ? "…" : "Agendar"}
-                              <ArrowRight className="h-3 w-3 ml-1" />
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {availableOrders.map((o) => {
+                      const k = cp2(o.zip_code);
+                      const cluster = k ? clusterByCp2.get(k) : undefined;
+                      const isSelected = selected.has(o.order_number);
+                      const isSuggested =
+                        !isSelected && selectedCp2.size > 0 && k !== null && selectedCp2.has(k);
+                      const canSelect = !o.alreadyScheduled && !!o.zip_code;
+                      return (
+                        <TableRow
+                          key={o.order_number}
+                          className={`${o.alreadyScheduled ? "opacity-60" : ""} ${
+                            isSelected ? "bg-primary/5" : isSuggested ? "bg-amber-50/60" : ""
+                          }`}
+                        >
+                          <TableCell>
+                            {canSelect && (
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleSelected(o.order_number)}
+                                aria-label={`Selecionar ${o.order_number}`}
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {cluster ? (
+                              <div className="flex items-center gap-1">
+                                <span
+                                  className={`inline-block h-3 w-3 rounded-full ${cluster.dot}`}
+                                  title={`Zona ${k}xxx`}
+                                />
+                              </div>
+                            ) : null}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{o.order_number}</TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {o.customer_name}
+                              {isSuggested && (
+                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">
+                                  <Sparkles className="h-3 w-3 mr-0.5" /> Perto
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                            {[o.city, o.zip_code].filter(Boolean).join(" · ") || (
+                              <span className="text-destructive">Sem CP</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{formatEUR(o.total_value)}</TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <Badge variant="outline" className="text-[10px]">{o.situation}</Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                            {o.date ? formatDatePT(o.date) : "—"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {o.alreadyScheduled ? (
+                              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                                <CalendarClock className="h-3 w-3 mr-1" />
+                                {o.scheduledRouteDate ? formatDatePT(o.scheduledRouteDate) : "Agendado"}
+                              </Badge>
+                            ) : !o.zip_code ? (
+                              <Badge variant="outline" className="text-destructive border-destructive/40 text-[10px]">
+                                CP em falta
+                              </Badge>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant={selected.size > 0 ? "outline" : "default"}
+                                disabled={loadingRow === o.order_number}
+                                onClick={() => handleScheduleFromList(o.order_number)}
+                              >
+                                {loadingRow === o.order_number ? "…" : "Agendar"}
+                                <ArrowRight className="h-3 w-3 ml-1" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
+
+              <p className="text-xs text-muted-foreground">
+                Marca várias encomendas com o mesmo ponto colorido (mesma zona CP) e usa <strong>Agendar em massa</strong> para criar todas na mesma rota.
+              </p>
             </Card>
           </TabsContent>
           <TabsContent value="numero" className="m-0">
@@ -850,6 +1083,182 @@ function AgendarPage() {
       <div className="text-center">
         <Link to="/rotas" className="text-xs text-muted-foreground hover:text-foreground">Cancelar e voltar</Link>
       </div>
+
+      <Dialog open={bulkOpen} onOpenChange={(v) => !bulkLoading && setBulkOpen(v)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Agendar {selected.size} encomendas em massa</DialogTitle>
+            <DialogDescription>
+              Todas as encomendas serão agendadas na mesma rota. Volume e tempo aplicam-se a <em>cada</em> encomenda.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-md border max-h-40 overflow-y-auto divide-y">
+              {selectedOrders.map((o) => {
+                const k = cp2(o.zip_code);
+                const cl = k ? clusterByCp2.get(k) : undefined;
+                return (
+                  <div key={o.order_number} className="px-3 py-2 text-sm flex items-center gap-2">
+                    {cl && <span className={`inline-block h-2.5 w-2.5 rounded-full ${cl.dot}`} />}
+                    <span className="font-mono text-xs">{o.order_number}</span>
+                    <span className="flex-1 truncate">{o.customer_name}</span>
+                    <span className="text-xs text-muted-foreground">{o.city ?? ""} {o.zip_code ?? ""}</span>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => toggleSelected(o.order_number)}
+                      disabled={bulkLoading}
+                      aria-label="Remover"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Volume por encomenda (m³)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={bulkVolumePer}
+                  onChange={(e) => setBulkVolumePer(Number(e.target.value))}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Tempo por encomenda (min)</Label>
+                <Input
+                  type="number"
+                  min="5"
+                  value={bulkMinutesPer}
+                  onChange={(e) => setBulkMinutesPer(Number(e.target.value))}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Totais: <strong>{(bulkVolumePer * selected.size).toFixed(2)} m³</strong> ·{" "}
+              <strong>{bulkMinutesPer * selected.size} min</strong>
+            </p>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label>Rota</Label>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setBulkShowAll((v) => !v)}
+                  disabled={bulkLoading}
+                >
+                  {bulkShowAll ? "Só compatíveis" : "Mostrar todas"}
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {(() => {
+                  const openR = (routes as any[]).filter(
+                    (r) =>
+                      !["fechada", "concluida", "cheia"].includes(r.status) &&
+                      Number(r.current_volume_m3) + bulkVolumePer * selected.size <=
+                        Number(r.max_capacity_m3) + 0.001,
+                  );
+                  const list = openR
+                    .map((r) => ({
+                      r,
+                      matchAll: bulkRouteMatches(r, "all"),
+                      matchAny: bulkRouteMatches(r, "any"),
+                    }))
+                    .filter((x) => (bulkShowAll ? true : x.matchAny))
+                    .sort((a, b) => {
+                      const s = Number(b.matchAll) - Number(a.matchAll) || Number(b.matchAny) - Number(a.matchAny);
+                      if (s !== 0) return s;
+                      return String(a.r.route_date).localeCompare(String(b.r.route_date));
+                    });
+                  if (list.length === 0)
+                    return <p className="text-xs text-muted-foreground">Sem rotas disponíveis.</p>;
+                  return list.map(({ r, matchAll, matchAny }) => {
+                    const restante = Number(r.max_capacity_m3) - Number(r.current_volume_m3);
+                    return (
+                      <div
+                        key={r.id}
+                        onClick={() => setBulkRouteId(r.id)}
+                        className={`border rounded-md p-2 cursor-pointer transition-colors ${
+                          bulkRouteId === r.id ? "border-primary bg-primary/5" : "hover:bg-accent"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm flex items-center gap-2 flex-wrap">
+                              {r.zone}
+                              <span className="text-xs text-muted-foreground font-normal">
+                                {formatDatePT(r.route_date)}
+                              </span>
+                              {matchAll ? (
+                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
+                                  <Sparkles className="h-3 w-3 mr-0.5" /> Cobre todos os CPs
+                                </Badge>
+                              ) : matchAny ? (
+                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">
+                                  Cobre alguns
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-rose-100 text-rose-800 border-rose-200 text-[10px]">
+                                  Fora do CP
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {restante.toFixed(1)} m³ livres
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+            {bulkRouteId && !bulkRouteMatches((routes as any[]).find((r) => r.id === bulkRouteId), "all") && (
+              <label className="flex items-start gap-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md p-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={bulkForce}
+                  onChange={(e) => setBulkForce(e.target.checked)}
+                />
+                <span>
+                  Confirmo <strong>forçar</strong> agendamento em rota que não cobre todos os CPs selecionados.
+                </span>
+              </label>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkLoading}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleBulkConfirm}
+              disabled={
+                bulkLoading ||
+                !bulkRouteId ||
+                selected.size < 2 ||
+                (bulkRouteId != null &&
+                  !bulkRouteMatches((routes as any[]).find((r) => r.id === bulkRouteId), "all") &&
+                  !bulkForce)
+              }
+            >
+              <CheckCircle2 className="h-4 w-4 mr-1" />
+              {bulkLoading ? "A agendar…" : `Agendar ${selected.size}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

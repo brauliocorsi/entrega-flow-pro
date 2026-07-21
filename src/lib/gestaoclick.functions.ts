@@ -121,18 +121,31 @@ function normalizeOrder(
     (obsText ? /montagem|montar|instala/i.test(obsText) : false);
   const hasDeliveryService = items.some((i) => i.kind === "entrega") || frete > 0;
 
-  // Heurística para extrair CP português ("4715-105") de qualquer campo de morada
+  // Heurística para extrair CP português ("4715-105") e localidade de qualquer campo de morada
   const allAddrStr = [
     endNode?.logradouro,
     endNode?.numero,
     endNode?.complemento,
     endNode?.bairro,
     endNode?.nome_cidade,
+    endNode?.cidade,
+    endNode?.localidade,
+    endNode?.cep,
+    endNode?.codigo_postal,
   ]
     .filter(Boolean)
+    .map((s) => String(s))
     .join(" ");
   const cpMatch = allAddrStr.match(/\b(\d{4}-\d{3})\b/);
-  const zipCode = String(endNode?.cep ?? endNode?.codigo_postal ?? "") || (cpMatch ? cpMatch[1] : null);
+  const zipCode = String(endNode?.cep ?? endNode?.codigo_postal ?? "").trim() || (cpMatch ? cpMatch[1] : null);
+  let cityFromNodes = String(
+    endNode?.nome_cidade ?? endNode?.cidade ?? endNode?.localidade ?? "",
+  ).trim();
+  if (!cityFromNodes && cpMatch) {
+    const after = allAddrStr.slice(allAddrStr.indexOf(cpMatch[1]) + cpMatch[1].length);
+    const loc = after.replace(/^[\s,\-–]+/, "").split(/[,\-–\n]/)[0].trim();
+    if (loc) cityFromNodes = loc;
+  }
 
   const customerName = String(
     cliente?.nome ?? cliente?.razao_social ?? p?.nome_cliente ?? "—",

@@ -88,7 +88,7 @@ function AgendarPage() {
     queryOptions({
       queryKey: ["routes", "list"],
       queryFn: () => listRoutesFn({ data: {} }),
-      enabled: step >= 3,
+      enabled: step >= 3 || bulkOpen,
     }),
   );
 

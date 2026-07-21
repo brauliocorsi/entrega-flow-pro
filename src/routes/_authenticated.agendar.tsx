@@ -471,10 +471,43 @@ function AgendarPage() {
                 </div>
               )}
 
+              {selected.size > 0 && (
+                <div className="rounded-md border bg-primary/5 border-primary/30 px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users className="h-4 w-4 text-primary" />
+                    <span><strong>{selected.size}</strong> selecionada(s)</span>
+                    {selectedCp2.size > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        · Zonas: {Array.from(selectedCp2).map((k) => `${k}xxx`).join(", ")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                      <X className="h-3 w-3 mr-1" /> Limpar
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={selected.size < 2}
+                      onClick={() => {
+                        setBulkRouteId(null);
+                        setBulkForce(false);
+                        setBulkShowAll(false);
+                        setBulkOpen(true);
+                      }}
+                    >
+                      Agendar em massa <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-8"></TableHead>
+                      <TableHead className="w-8"></TableHead>
                       <TableHead>Código</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead className="hidden md:table-cell">Cidade / CP</TableHead>
@@ -486,53 +519,99 @@ function AgendarPage() {
                   </TableHeader>
                   <TableBody>
                     {availableQuery.isLoading && (
-                      <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">A carregar…</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">A carregar…</TableCell></TableRow>
                     )}
                     {!availableQuery.isLoading && (availableQuery.data?.orders.length ?? 0) === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">Sem vendas disponíveis.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">Sem vendas disponíveis.</TableCell></TableRow>
                     )}
-                    {availableQuery.data?.orders.map((o) => (
-                      <TableRow key={o.order_number} className={o.alreadyScheduled ? "opacity-60" : ""}>
-                        <TableCell className="font-mono text-xs">{o.order_number}</TableCell>
-                        <TableCell className="font-medium">{o.customer_name}</TableCell>
-                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                          {[o.city, o.zip_code].filter(Boolean).join(" · ") || (
-                            <span className="text-destructive">Sem CP</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{formatEUR(o.total_value)}</TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge variant="outline" className="text-[10px]">{o.situation}</Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
-                          {o.date ? formatDatePT(o.date) : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {o.alreadyScheduled ? (
-                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
-                              <CalendarClock className="h-3 w-3 mr-1" />
-                              {o.scheduledRouteDate ? formatDatePT(o.scheduledRouteDate) : "Agendado"}
-                            </Badge>
-                          ) : !o.zip_code ? (
-                            <Badge variant="outline" className="text-destructive border-destructive/40 text-[10px]">
-                              CP em falta
-                            </Badge>
-                          ) : (
-                            <Button
-                              size="sm"
-                              disabled={loadingRow === o.order_number}
-                              onClick={() => handleScheduleFromList(o.order_number)}
-                            >
-                              {loadingRow === o.order_number ? "…" : "Agendar"}
-                              <ArrowRight className="h-3 w-3 ml-1" />
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {availableOrders.map((o) => {
+                      const k = cp2(o.zip_code);
+                      const cluster = k ? clusterByCp2.get(k) : undefined;
+                      const isSelected = selected.has(o.order_number);
+                      const isSuggested =
+                        !isSelected && selectedCp2.size > 0 && k !== null && selectedCp2.has(k);
+                      const canSelect = !o.alreadyScheduled && !!o.zip_code;
+                      return (
+                        <TableRow
+                          key={o.order_number}
+                          className={`${o.alreadyScheduled ? "opacity-60" : ""} ${
+                            isSelected ? "bg-primary/5" : isSuggested ? "bg-amber-50/60" : ""
+                          }`}
+                        >
+                          <TableCell>
+                            {canSelect && (
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleSelected(o.order_number)}
+                                aria-label={`Selecionar ${o.order_number}`}
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {cluster ? (
+                              <div className="flex items-center gap-1">
+                                <span
+                                  className={`inline-block h-3 w-3 rounded-full ${cluster.dot}`}
+                                  title={`Zona ${k}xxx`}
+                                />
+                              </div>
+                            ) : null}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{o.order_number}</TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {o.customer_name}
+                              {isSuggested && (
+                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">
+                                  <Sparkles className="h-3 w-3 mr-0.5" /> Perto
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                            {[o.city, o.zip_code].filter(Boolean).join(" · ") || (
+                              <span className="text-destructive">Sem CP</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{formatEUR(o.total_value)}</TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <Badge variant="outline" className="text-[10px]">{o.situation}</Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                            {o.date ? formatDatePT(o.date) : "—"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {o.alreadyScheduled ? (
+                              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                                <CalendarClock className="h-3 w-3 mr-1" />
+                                {o.scheduledRouteDate ? formatDatePT(o.scheduledRouteDate) : "Agendado"}
+                              </Badge>
+                            ) : !o.zip_code ? (
+                              <Badge variant="outline" className="text-destructive border-destructive/40 text-[10px]">
+                                CP em falta
+                              </Badge>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant={selected.size > 0 ? "outline" : "default"}
+                                disabled={loadingRow === o.order_number}
+                                onClick={() => handleScheduleFromList(o.order_number)}
+                              >
+                                {loadingRow === o.order_number ? "…" : "Agendar"}
+                                <ArrowRight className="h-3 w-3 ml-1" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
+
+              <p className="text-xs text-muted-foreground">
+                Marca várias encomendas com o mesmo ponto colorido (mesma zona CP) e usa <strong>Agendar em massa</strong> para criar todas na mesma rota.
+              </p>
             </Card>
           </TabsContent>
           <TabsContent value="numero" className="m-0">

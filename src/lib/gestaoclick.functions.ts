@@ -167,7 +167,7 @@ function normalizeOrder(
     address_complement: String(endNode?.complemento ?? "") || null,
     neighborhood: String(endNode?.bairro ?? "") || null,
     zip_code: zipCode,
-    city: String(endNode?.nome_cidade ?? endNode?.cidade ?? endNode?.localidade ?? "") || null,
+    city: cityFromNodes || null,
     state: String(endNode?.estado ?? endNode?.uf ?? "") || null,
     phone: String(cliente?.telefone ?? cliente?.phone ?? "") || null,
     mobile: String(cliente?.celular ?? cliente?.telemovel ?? "") || null,

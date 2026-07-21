@@ -492,6 +492,23 @@ export const listAvailableOrders = createServerFn({ method: "POST" })
 
       // Listar vendas por cada situação
       const all: AvailableOrderDTO[] = [];
+      // Cache de clientes já resolvidos para evitar N chamadas ao mesmo cliente
+      const clienteCache = new Map<string, any>();
+      async function getClienteEndereco(clienteId: string | null): Promise<any> {
+        if (!clienteId) return null;
+        if (clienteCache.has(clienteId)) return clienteCache.get(clienteId);
+        try {
+          const c = await gcFetch(`${base}/api/clientes/${encodeURIComponent(clienteId)}`, headers);
+          const cli = c.json?.data ?? c.json ?? null;
+          const arr = Array.isArray(cli?.enderecos) ? cli.enderecos : [];
+          const node = arr[0]?.endereco ?? null;
+          clienteCache.set(clienteId, node);
+          return node;
+        } catch {
+          clienteCache.set(clienteId, null);
+          return null;
+        }
+      }
       for (const sit of matched) {
         let page = 1;
         let collected = 0;
@@ -511,9 +528,23 @@ export const listAvailableOrders = createServerFn({ method: "POST" })
             if (sitNome && !wanted.some((wl) => sitNome.includes(wl) || wl.includes(sitNome))) {
               continue;
             }
-            const endNode = Array.isArray(v?.enderecos)
-              ? v.enderecos[0]?.endereco ?? {}
-              : {};
+            let endNode: any = Array.isArray(v?.enderecos)
+              ? v.enderecos[0]?.endereco ?? null
+              : null;
+            // Fallback: se a venda não traz morada, buscar ao cliente
+            const hasAny =
+              endNode &&
+              (endNode.cep ||
+                endNode.codigo_postal ||
+                endNode.logradouro ||
+                endNode.nome_cidade ||
+                endNode.cidade ||
+                endNode.localidade);
+            if (!hasAny) {
+              const clienteId = String(v?.cliente_id ?? v?.cliente?.id ?? "") || null;
+              endNode = (await getClienteEndereco(clienteId)) ?? endNode ?? {};
+            }
+            endNode = endNode ?? {};
             const code = String(v?.codigo ?? v?.numero ?? v?.id ?? "");
             const cliente = String(v?.nome_cliente ?? v?.cliente?.nome ?? "—");
             // Junta todos os campos de morada para extrair CP e localidade se não vierem separados

@@ -607,19 +607,33 @@ export const listAvailableOrders = createServerFn({ method: "POST" })
       }
       let list = Array.from(map.values());
 
-      // Filtro de pesquisa local (nº, cliente, cidade OU CP — prefixo CP4)
+      // Filtro de pesquisa local (nº, cliente, cidade OU CP — prefixo CP4 ou intervalo "4000-4999")
       if (data.query) {
         const q = data.query.toLowerCase().trim();
         const qDigits = q.replace(/\D/g, "");
+        // Intervalo CP4: aceita "4000-4999", "4000 4999", "4000..4999", "4000/4999", "4000 a 4999"
+        const rangeMatch = q.match(/^\s*(\d{4})\s*(?:-|\.\.|\/|\s+a\s+|\s+até\s+|\s+)\s*(\d{4})\s*$/i);
+        const range = rangeMatch
+          ? (() => {
+              const a = parseInt(rangeMatch[1], 10);
+              const b = parseInt(rangeMatch[2], 10);
+              return { lo: Math.min(a, b), hi: Math.max(a, b) };
+            })()
+          : null;
         list = list.filter((o) => {
           const zip = String(o.zip_code ?? "").toLowerCase();
-          const zip4 = zip.replace(/\D/g, "").slice(0, 4);
+          const zip4Str = zip.replace(/\D/g, "").slice(0, 4);
+          if (range) {
+            if (zip4Str.length < 4) return false;
+            const zip4Num = parseInt(zip4Str, 10);
+            return zip4Num >= range.lo && zip4Num <= range.hi;
+          }
           return (
             o.order_number.toLowerCase().includes(q) ||
             o.customer_name.toLowerCase().includes(q) ||
             (o.city ?? "").toLowerCase().includes(q) ||
             zip.includes(q) ||
-            (qDigits.length > 0 && zip4.startsWith(qDigits))
+            (qDigits.length > 0 && zip4Str.startsWith(qDigits))
           );
         });
       }

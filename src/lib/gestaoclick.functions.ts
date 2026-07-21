@@ -532,19 +532,20 @@ export const listAvailableOrders = createServerFn({ method: "POST" })
               .map((s) => String(s))
               .join(" ");
             const cpMatch = addrBlob.match(/\b(\d{4}-\d{3})\b/);
+            const cp4Match = cpMatch ? null : addrBlob.match(/\b([1-9]\d{3})\b/);
             let cep = String(endNode?.cep ?? endNode?.codigo_postal ?? "").trim() || null;
             if (!cep && cpMatch) cep = cpMatch[1];
+            else if (!cep && cp4Match) cep = cp4Match[1];
             let cidade =
               String(endNode?.nome_cidade ?? endNode?.cidade ?? endNode?.localidade ?? "").trim() ||
               null;
             if (!cidade && cpMatch) {
-              // texto imediatamente a seguir ao CP costuma ser a localidade
               const after = addrBlob.slice(addrBlob.indexOf(cpMatch[1]) + cpMatch[1].length);
               const loc = after
                 .replace(/^[\s,\-–]+/, "")
                 .split(/[,\-–\n]/)[0]
                 .trim();
-              if (loc) cidade = loc;
+              if (loc && !/^\d/.test(loc)) cidade = loc;
             }
             all.push({
               internal_id: String(v?.id ?? ""),
@@ -575,15 +576,21 @@ export const listAvailableOrders = createServerFn({ method: "POST" })
       }
       let list = Array.from(map.values());
 
-      // Filtro de pesquisa local
+      // Filtro de pesquisa local (nº, cliente, cidade OU CP — prefixo CP4)
       if (data.query) {
-        const q = data.query.toLowerCase();
-        list = list.filter(
-          (o) =>
+        const q = data.query.toLowerCase().trim();
+        const qDigits = q.replace(/\D/g, "");
+        list = list.filter((o) => {
+          const zip = String(o.zip_code ?? "").toLowerCase();
+          const zip4 = zip.replace(/\D/g, "").slice(0, 4);
+          return (
             o.order_number.toLowerCase().includes(q) ||
             o.customer_name.toLowerCase().includes(q) ||
-            (o.city ?? "").toLowerCase().includes(q),
-        );
+            (o.city ?? "").toLowerCase().includes(q) ||
+            zip.includes(q) ||
+            (qDigits.length > 0 && zip4.startsWith(qDigits))
+          );
+        });
       }
 
       // Cruzar com scheduled_deliveries activas

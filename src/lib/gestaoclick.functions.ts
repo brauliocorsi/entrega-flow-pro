@@ -576,15 +576,21 @@ export const listAvailableOrders = createServerFn({ method: "POST" })
       }
       let list = Array.from(map.values());
 
-      // Filtro de pesquisa local
+      // Filtro de pesquisa local (nº, cliente, cidade OU CP — prefixo CP4)
       if (data.query) {
-        const q = data.query.toLowerCase();
-        list = list.filter(
-          (o) =>
+        const q = data.query.toLowerCase().trim();
+        const qDigits = q.replace(/\D/g, "");
+        list = list.filter((o) => {
+          const zip = String(o.zip_code ?? "").toLowerCase();
+          const zip4 = zip.replace(/\D/g, "").slice(0, 4);
+          return (
             o.order_number.toLowerCase().includes(q) ||
             o.customer_name.toLowerCase().includes(q) ||
-            (o.city ?? "").toLowerCase().includes(q),
-        );
+            (o.city ?? "").toLowerCase().includes(q) ||
+            zip.includes(q) ||
+            (qDigits.length > 0 && zip4.startsWith(qDigits))
+          );
+        });
       }
 
       // Cruzar com scheduled_deliveries activas

@@ -18,9 +18,27 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { formatEUR, formatDatePT, zipPrefix } from "@/lib/format";
 import { DELIVERY_TYPE_LABEL, ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT, AVAILABLE_SITUATIONS } from "@/lib/constants";
-import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText, ChevronDown, ChevronUp, RefreshCw, CalendarClock } from "lucide-react";
+import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText, ChevronDown, ChevronUp, RefreshCw, CalendarClock, Users, X } from "lucide-react";
+
+const CLUSTER_COLORS = [
+  { dot: "bg-blue-500", ring: "ring-blue-300", badge: "bg-blue-100 text-blue-800 border-blue-200" },
+  { dot: "bg-emerald-500", ring: "ring-emerald-300", badge: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  { dot: "bg-amber-500", ring: "ring-amber-300", badge: "bg-amber-100 text-amber-800 border-amber-200" },
+  { dot: "bg-rose-500", ring: "ring-rose-300", badge: "bg-rose-100 text-rose-800 border-rose-200" },
+  { dot: "bg-violet-500", ring: "ring-violet-300", badge: "bg-violet-100 text-violet-800 border-violet-200" },
+  { dot: "bg-cyan-500", ring: "ring-cyan-300", badge: "bg-cyan-100 text-cyan-800 border-cyan-200" },
+  { dot: "bg-orange-500", ring: "ring-orange-300", badge: "bg-orange-100 text-orange-800 border-orange-200" },
+  { dot: "bg-teal-500", ring: "ring-teal-300", badge: "bg-teal-100 text-teal-800 border-teal-200" },
+  { dot: "bg-fuchsia-500", ring: "ring-fuchsia-300", badge: "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200" },
+];
+const cp2 = (zip?: string | null) => {
+  const p = zipPrefix(zip);
+  return p ? p.slice(0, 2) : null;
+};
 
 const searchSchema = z.object({ routeId: z.string().optional() });
 

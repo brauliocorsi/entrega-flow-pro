@@ -74,6 +74,16 @@ function AgendarPage() {
   const [showAllRoutes, setShowAllRoutes] = useState(false);
   const [forceConfirm, setForceConfirm] = useState(false);
 
+  // Bulk scheduling state
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkRouteId, setBulkRouteId] = useState<string | null>(null);
+  const [bulkVolumePer, setBulkVolumePer] = useState(2);
+  const [bulkMinutesPer, setBulkMinutesPer] = useState(30);
+  const [bulkForce, setBulkForce] = useState(false);
+  const [bulkShowAll, setBulkShowAll] = useState(false);
+
   const { data: routes = [] } = useQuery(
     queryOptions({
       queryKey: ["routes", "list"],

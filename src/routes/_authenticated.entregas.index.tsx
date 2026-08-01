@@ -128,7 +128,21 @@ function MyDayPage() {
                     <div className="font-semibold text-sm text-amber-600">{formatEUR(pending)}</div>
                   </div>
                 </div>
+                <Link
+                  to="/entregas/caixa/$routeId"
+                  params={{ routeId: r.id }}
+                  className="mt-3 flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 hover:bg-muted transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <Wallet className="h-4 w-4" /> Caixa · em mãos
+                  </span>
+                  <span className="flex items-center gap-1 text-sm font-bold text-emerald-600">
+                    {formatEUR(cashInHand)}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </span>
+                </Link>
               </div>
+
 
               <div className="divide-y">
                 {r.deliveries.map((d: any) => {

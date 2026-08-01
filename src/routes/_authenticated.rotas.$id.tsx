@@ -938,40 +938,66 @@ function DeliveryCard({
                 )}
                 {items.length > 0 && (
                   <div className="mt-2 pt-2 border-t space-y-0.5 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Produtos</span>
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        Produtos <SourceTag kind="calc" />
+                      </span>
                       <span className="tabular-nums">{formatEUR(productsTotal)}</span>
                     </div>
                     {assemblyTotal > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Montagem</span>
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          Montagem <SourceTag kind="calc" />
+                        </span>
                         <span className="tabular-nums">{formatEUR(assemblyTotal)}</span>
                       </div>
                     )}
                     {deliveryTotal > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Entrega</span>
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          Entrega <SourceTag kind="calc" />
+                        </span>
                         <span className="tabular-nums">{formatEUR(deliveryTotal)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between font-semibold border-t pt-0.5">
-                      <span>Total</span>
+                    <div className="flex justify-between items-center gap-2 font-semibold border-t pt-0.5">
+                      <span className="flex items-center gap-1">
+                        Total <SourceTag kind={totalSource} />
+                      </span>
                       <span className="tabular-nums">{formatEUR(totalValue)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Pago</span>
+                    {totalMismatch && (
+                      <div className="flex items-start gap-1 rounded bg-amber-50 border border-amber-200 px-1.5 py-1 text-[11px] text-amber-800">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                        <span>
+                          Divergência: soma dos itens {formatEUR(itemsTotal)} ≠ total registado{" "}
+                          {formatEUR(totalValue)} (diferença {formatEUR(Math.abs(itemsTotal - totalValue))}).
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        Pago <SourceTag kind={paidSource} />
+                      </span>
                       <span className="tabular-nums text-emerald-700">{formatEUR(paidValue)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Por receber</span>
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        Por receber <SourceTag kind="calc" />
+                      </span>
                       <span
                         className={`tabular-nums ${remainingValue > 0 ? "text-rose-600 font-semibold" : ""}`}
                       >
                         {formatEUR(remainingValue)}
                       </span>
                     </div>
+                    <div className="pt-1 text-[10px] text-muted-foreground">
+                      <span className="font-medium">GC</span> = valor vindo do GestãoClick ·{" "}
+                      <span className="font-medium">Σ</span> = calculado nesta app
+                    </div>
                   </div>
                 )}
+
 
                 {productItems.length === 0 && assemblyItems.length === 0 && (
                   <div className="flex items-center justify-between gap-2">

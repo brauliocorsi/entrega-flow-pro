@@ -1618,3 +1618,40 @@ function ForecastHistoryButton({ routeId }: { routeId: string }) {
     </>
   );
 }
+
+/** Barra fixa de fecho de rota (ADM/Logística) com previsto vs realizado. */
+function CloseRouteBar({ routeId }: { routeId: string }) {
+  const fnCash = useServerFn(getRouteCash);
+  const { data } = useQuery({
+    queryKey: ["route-cash", routeId],
+    queryFn: () => fnCash({ data: { routeId } }),
+  });
+
+  const forecast = Number(data?.forecast_total ?? 0);
+  const realized = Number(data?.realized_total ?? 0);
+  const diff = realized - forecast;
+  const ok = Math.abs(diff) < 0.01;
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] md:pl-64">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 text-xs tabular-nums">
+          <span className="text-muted-foreground">
+            Previsto <b className="text-foreground">{formatEUR(forecast)}</b>
+          </span>
+          <span className="text-muted-foreground">
+            Realizado <b className="text-emerald-600">{formatEUR(realized)}</b>
+          </span>
+          <span className={ok ? "text-muted-foreground" : "text-amber-600 font-medium"}>
+            Δ {formatEUR(diff)}
+          </span>
+        </div>
+        <Link to="/rotas/$id/fechar" params={{ id: routeId }}>
+          <Button size="sm">
+            <CheckCircle2 className="h-4 w-4 mr-1" /> Fechar rota
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}

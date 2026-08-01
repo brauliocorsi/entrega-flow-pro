@@ -91,15 +91,8 @@ function MeusEnvelopes() {
   );
 
   return (
-    <div className="space-y-4 pb-6 max-w-2xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <PackageCheck className="h-6 w-6" /> Envelopes
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Envelopes entregues à espera de conferência e histórico já conferido.
-        </p>
-      </div>
+    <div className="space-y-4">
+
 
       <Card className="p-5 text-center">
         <div className="text-xs uppercase text-muted-foreground">

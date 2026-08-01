@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyCashRoutes } from "@/lib/cash.functions";
+import { useAuth } from "@/hooks/use-auth";
+import { AdminCaixaGlobal } from "@/components/caixa/AdminCaixaGlobal";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatEUR, formatDatePT } from "@/lib/format";
 import { Wallet, ChevronRight, AlertTriangle } from "lucide-react";
 
@@ -21,6 +25,51 @@ export const Route = createFileRoute("/_authenticated/entregas/caixa/")({
 });
 
 function CaixaIndexPage() {
+  const { role } = useAuth();
+  const isManager = role === "admin" || role === "logistico";
+  const [picked, setScope] = useState<"minha" | "todos" | null>(null);
+  const scope = picked ?? (isManager ? "todos" : "minha");
+
+  return (
+    <div className="space-y-4 pb-6 max-w-2xl mx-auto">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <Wallet className="h-6 w-6" /> Caixa
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {isManager && scope === "todos"
+            ? "Valores em mãos dos funcionários de entrega, entradas das rotas e saídas registadas."
+            : "Rotas com envelope por fechar e valor em dinheiro à tua responsabilidade."}
+        </p>
+      </div>
+
+      {isManager && (
+        <div className="flex gap-1.5">
+          <Button
+            size="sm"
+            variant={scope === "todos" ? "secondary" : "outline"}
+            className="h-7"
+            onClick={() => setScope("todos")}
+          >
+            Todos os funcionários
+          </Button>
+          <Button
+            size="sm"
+            variant={scope === "minha" ? "secondary" : "outline"}
+            className="h-7"
+            onClick={() => setScope("minha")}
+          >
+            A minha caixa
+          </Button>
+        </div>
+      )}
+
+      {isManager && scope === "todos" ? <AdminCaixaGlobal /> : <MinhaCaixa />}
+    </div>
+  );
+}
+
+function MinhaCaixa() {
   const fn = useServerFn(getMyCashRoutes);
   const { data, isLoading } = useQuery({
     queryKey: ["my-cash-routes"],
@@ -35,15 +84,8 @@ function CaixaIndexPage() {
   );
 
   return (
-    <div className="space-y-4 pb-6 max-w-2xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Wallet className="h-6 w-6" /> Caixa
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Rotas com envelope por fechar e valor em dinheiro à tua responsabilidade.
-        </p>
-      </div>
+    <div className="space-y-4">
+
 
       <Card className="p-5 text-center">
         <div className="text-xs uppercase text-muted-foreground">Total em mãos</div>

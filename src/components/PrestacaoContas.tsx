@@ -14,7 +14,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatEUR } from "@/lib/format";
-import { PackageCheck, Check, X, Receipt, Lock } from "lucide-react";
+import {
+  PackageCheck,
+  Check,
+  X,
+  Receipt,
+  Lock,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 
 const EXPENSE_TONE: Record<string, string> = {
   pendente: "bg-amber-100 text-amber-800 border-amber-200",
@@ -155,6 +163,14 @@ export function PrestacaoContas() {
                   </div>
                 )}
 
+                <OrdersCompare
+                  orders={r.orders ?? []}
+                  forecast={Number(r.forecast_total ?? 0)}
+                  realized={Number(r.realized_total ?? 0)}
+                />
+
+
+
                 {r.other_methods.length > 0 && (
                   <div className="space-y-1.5">
                     <div className="text-[11px] uppercase text-muted-foreground">
@@ -266,5 +282,92 @@ export function PrestacaoContas() {
         </div>
       )}
     </Card>
+  );
+}
+
+function OrdersCompare({
+  orders,
+  forecast,
+  realized,
+}: {
+  orders: any[];
+  forecast: number;
+  realized: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const diff = realized - forecast;
+  if (orders.length === 0) return null;
+
+  return (
+    <div className="rounded-md border">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
+      >
+        <span className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">
+          {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          Notas de encomenda ({orders.length})
+        </span>
+        <span className="text-xs flex items-center gap-2">
+          <span>
+            Prev. <strong>{formatEUR(forecast)}</strong>
+          </span>
+          <span className="text-emerald-600">
+            Real. <strong>{formatEUR(realized)}</strong>
+          </span>
+          <span className={Math.abs(diff) < 0.01 ? "text-muted-foreground" : "text-amber-600"}>
+            {formatEUR(diff)}
+          </span>
+        </span>
+      </button>
+
+      {open && (
+        <div className="border-t divide-y">
+          {orders.map((o: any) => (
+            <div key={o.id} className="px-3 py-2 text-xs space-y-1">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="font-medium">
+                  #{o.order_number} · {o.customer_name}
+                </span>
+                <Badge variant="outline" className="text-[10px]">
+                  {o.outcome ?? o.status}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground">Previsto</div>
+                  <div className="font-semibold">{formatEUR(o.forecast)}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground">Realizado</div>
+                  <div className="font-semibold text-emerald-600">{formatEUR(o.realized)}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground">Diferença</div>
+                  <div
+                    className={
+                      "font-semibold " +
+                      (Math.abs(Number(o.diff)) < 0.01 ? "text-muted-foreground" : "text-amber-600")
+                    }
+                  >
+                    {formatEUR(o.diff)}
+                  </div>
+                </div>
+              </div>
+              {o.methods.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {o.methods.map((m: any) => (
+                    <Badge key={m.method_name} variant="outline" className="text-[10px]">
+                      {m.method_name}: {formatEUR(m.amount)}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

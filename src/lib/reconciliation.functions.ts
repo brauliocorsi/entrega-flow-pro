@@ -9,15 +9,6 @@ const scopeSchema = z.object({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
-async function assertManager(ctx: any) {
-  const { data } = await ctx.supabase
-    .from("user_roles")
-    .select("role")
-    .eq("ic_placeholder", "")
-    .limit(0);
-  void data;
-}
-
 /** Carrega e interpreta um extrato bancário (CSV/Excel direto, PDF/foto por IA). */
 export const uploadStatement = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -288,5 +279,3 @@ export const deleteStatement = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
-
-void assertManager;

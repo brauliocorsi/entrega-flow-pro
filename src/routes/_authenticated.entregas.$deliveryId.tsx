@@ -263,12 +263,12 @@ function CourierDeliveryPage() {
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
             <div className="text-[11px] uppercase text-muted-foreground">Total</div>
-            <div className="font-semibold">{formatEUR(Number(d.total_value ?? 0))}</div>
+            <div className="font-semibold">{formatEUR(totals.totalValue)}</div>
           </div>
           <div>
             <div className="text-[11px] uppercase text-muted-foreground">Já pago</div>
             <div className="font-semibold text-emerald-600">
-              {formatEUR(Number(d.paid_value ?? 0))}
+              {formatEUR(totals.paidValue)}
             </div>
           </div>
           <div>

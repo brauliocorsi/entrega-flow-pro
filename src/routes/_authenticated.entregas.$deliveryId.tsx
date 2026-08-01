@@ -48,8 +48,10 @@ import {
   CalendarClock,
   Ban,
   PackageCheck,
+  CircleDashed,
   Loader2,
 } from "lucide-react";
+import { deliveryOutcomeTone, openNavigation } from "@/lib/nav-link";
 
 export const Route = createFileRoute("/_authenticated/entregas/$deliveryId")({
   head: () => ({

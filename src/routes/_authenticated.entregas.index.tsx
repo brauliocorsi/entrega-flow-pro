@@ -122,6 +122,7 @@ function MyDayPage() {
               <div className="divide-y">
                 {r.deliveries.map((d: any) => {
                   const finished = !!d.outcome;
+                  const dTotals = computeDeliveryTotals(d);
                   return (
                     <Link
                       key={d.id}

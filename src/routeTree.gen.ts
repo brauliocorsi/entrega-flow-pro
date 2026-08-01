@@ -18,6 +18,7 @@ import { Route as AuthenticatedAgendarRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedEntregasIndexRouteImport } from './routes/_authenticated.entregas.index'
 import { Route as AuthenticatedComprasIndexRouteImport } from './routes/_authenticated.compras.index'
 import { Route as AuthenticatedRotasIdRouteImport } from './routes/_authenticated.rotas.$id'
+import { Route as AuthenticatedEntregasDeliveryIdRouteImport } from './routes/_authenticated.entregas.$deliveryId'
 import { Route as AuthenticatedComprasNovaRouteImport } from './routes/_authenticated.compras.nova'
 import { Route as AuthenticatedAdminVeiculosRouteImport } from './routes/_authenticated.admin.veiculos'
 import { Route as AuthenticatedAdminUtilizadoresRouteImport } from './routes/_authenticated.admin.utilizadores'
@@ -76,6 +77,12 @@ const AuthenticatedRotasIdRoute = AuthenticatedRotasIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedRotasRoute,
 } as any)
+const AuthenticatedEntregasDeliveryIdRoute =
+  AuthenticatedEntregasDeliveryIdRouteImport.update({
+    id: '/entregas/$deliveryId',
+    path: '/entregas/$deliveryId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedComprasNovaRoute =
   AuthenticatedComprasNovaRouteImport.update({
     id: '/compras/nova',
@@ -150,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
   '/admin/veiculos': typeof AuthenticatedAdminVeiculosRoute
   '/compras/nova': typeof AuthenticatedComprasNovaRoute
+  '/entregas/$deliveryId': typeof AuthenticatedEntregasDeliveryIdRoute
   '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/compras/': typeof AuthenticatedComprasIndexRoute
   '/entregas/': typeof AuthenticatedEntregasIndexRoute
@@ -170,6 +178,7 @@ export interface FileRoutesByTo {
   '/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
   '/admin/veiculos': typeof AuthenticatedAdminVeiculosRoute
   '/compras/nova': typeof AuthenticatedComprasNovaRoute
+  '/entregas/$deliveryId': typeof AuthenticatedEntregasDeliveryIdRoute
   '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/compras': typeof AuthenticatedComprasIndexRoute
   '/entregas': typeof AuthenticatedEntregasIndexRoute
@@ -192,6 +201,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
   '/_authenticated/admin/veiculos': typeof AuthenticatedAdminVeiculosRoute
   '/_authenticated/compras/nova': typeof AuthenticatedComprasNovaRoute
+  '/_authenticated/entregas/$deliveryId': typeof AuthenticatedEntregasDeliveryIdRoute
   '/_authenticated/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/_authenticated/compras/': typeof AuthenticatedComprasIndexRoute
   '/_authenticated/entregas/': typeof AuthenticatedEntregasIndexRoute
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/admin/utilizadores'
     | '/admin/veiculos'
     | '/compras/nova'
+    | '/entregas/$deliveryId'
     | '/rotas/$id'
     | '/compras/'
     | '/entregas/'
@@ -234,6 +245,7 @@ export interface FileRouteTypes {
     | '/admin/utilizadores'
     | '/admin/veiculos'
     | '/compras/nova'
+    | '/entregas/$deliveryId'
     | '/rotas/$id'
     | '/compras'
     | '/entregas'
@@ -255,6 +267,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/utilizadores'
     | '/_authenticated/admin/veiculos'
     | '/_authenticated/compras/nova'
+    | '/_authenticated/entregas/$deliveryId'
     | '/_authenticated/rotas/$id'
     | '/_authenticated/compras/'
     | '/_authenticated/entregas/'
@@ -333,6 +346,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/rotas/$id'
       preLoaderRoute: typeof AuthenticatedRotasIdRouteImport
       parentRoute: typeof AuthenticatedRotasRoute
+    }
+    '/_authenticated/entregas/$deliveryId': {
+      id: '/_authenticated/entregas/$deliveryId'
+      path: '/entregas/$deliveryId'
+      fullPath: '/entregas/$deliveryId'
+      preLoaderRoute: typeof AuthenticatedEntregasDeliveryIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/compras/nova': {
       id: '/_authenticated/compras/nova'
@@ -441,6 +461,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminUtilizadoresRoute: typeof AuthenticatedAdminUtilizadoresRoute
   AuthenticatedAdminVeiculosRoute: typeof AuthenticatedAdminVeiculosRoute
   AuthenticatedComprasNovaRoute: typeof AuthenticatedComprasNovaRoute
+  AuthenticatedEntregasDeliveryIdRoute: typeof AuthenticatedEntregasDeliveryIdRoute
   AuthenticatedComprasIndexRoute: typeof AuthenticatedComprasIndexRoute
   AuthenticatedEntregasIndexRoute: typeof AuthenticatedEntregasIndexRoute
 }
@@ -457,6 +478,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminUtilizadoresRoute: AuthenticatedAdminUtilizadoresRoute,
   AuthenticatedAdminVeiculosRoute: AuthenticatedAdminVeiculosRoute,
   AuthenticatedComprasNovaRoute: AuthenticatedComprasNovaRoute,
+  AuthenticatedEntregasDeliveryIdRoute: AuthenticatedEntregasDeliveryIdRoute,
   AuthenticatedComprasIndexRoute: AuthenticatedComprasIndexRoute,
   AuthenticatedEntregasIndexRoute: AuthenticatedEntregasIndexRoute,
 }

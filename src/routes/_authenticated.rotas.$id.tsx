@@ -453,13 +453,36 @@ function RouteSimulationMap({
     return <div className="h-[420px] grid place-items-center text-sm text-muted-foreground bg-muted/20">A chave do mapa não está disponível.</div>;
   }
 
+  const noGeometry = !!data && data.legs.length === 0;
+  const failureMsg =
+    (error && "Não foi possível contactar o serviço de mapas.") ||
+    (noGeometry && (data?.error || "Não foi possível traçar o trajeto para estas moradas.")) ||
+    (mapStops.length === 0 && stops.length > 0 && "As paragens desta rota não têm morada válida para traçar o trajeto.") ||
+    null;
+
   return (
     <div className="space-y-3">
-      <div ref={mapRef} className="w-full h-[420px]" />
+      <div className="relative">
+        <div ref={mapRef} className="w-full h-[420px]" />
+        {failureMsg && (
+          <div className="absolute inset-0 grid place-items-center bg-background/85 p-6 text-center">
+            <div className="max-w-md space-y-2">
+              <div className="text-sm font-medium text-rose-600">Trajeto não disponível</div>
+              <p className="text-xs text-muted-foreground">{failureMsg}</p>
+              <p className="text-xs text-muted-foreground">
+                Corrige a morada/código postal das entregas ou usa o botão “Abrir trajeto” para ver no Google Maps.
+              </p>
+            </div>
+          </div>
+        )}
+        {isLoading && !failureMsg && (
+          <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm text-muted-foreground">
+            A calcular trajeto…
+          </div>
+        )}
+      </div>
       <div className="px-4 pb-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
-        {isLoading && <span>A calcular trajeto…</span>}
-        {error && <span className="text-rose-600">Não foi possível calcular o trajeto.</span>}
-        {data && (
+        {data && !failureMsg && (
           <>
             <span className="inline-flex items-center gap-1"><RouteIcon className="h-3.5 w-3.5" /> {formatDistance(data.distanceMeters)}</span>
             <span>{formatDuration(data.duration)}</span>
@@ -470,6 +493,7 @@ function RouteSimulationMap({
     </div>
   );
 }
+
 
 export const Route = createFileRoute("/_authenticated/rotas/$id")({
   component: RouteDetail,

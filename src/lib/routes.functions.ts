@@ -184,6 +184,7 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
       duration: "0s",
       polyline: "",
       optimizedOrder: [] as number[],
+      error: "" as string,
       legs: [] as Array<{
         distanceMeters: number;
         duration: string;
@@ -196,7 +197,14 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
     if (!response.ok) {
       const body = await response.text();
       console.error(`Google Maps Routes API error ${response.status}: ${body}`);
-      return emptyResult;
+      let msg = `Serviço de mapas indisponível (${response.status}).`;
+      try {
+        const parsed = JSON.parse(body);
+        if (parsed?.error?.message) msg = `Mapas: ${String(parsed.error.message).slice(0, 200)}`;
+      } catch {
+        /* body não é JSON */
+      }
+      return { ...emptyResult, error: msg };
     }
 
     const result = await response.json();
@@ -204,8 +212,14 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
 
     if (!route?.polyline?.encodedPolyline) {
       console.warn("Google Maps did not return geometry", JSON.stringify(result).slice(0, 500));
-      return emptyResult;
+      return {
+        ...emptyResult,
+        error:
+          "Não foi possível traçar o trajeto: uma ou mais moradas das paragens não foram reconhecidas pelo Google Maps.",
+      };
     }
+
+
 
 
     return {

@@ -60,6 +60,11 @@ function AgendarPage() {
   const [availSituations, setAvailSituations] = useState<string[]>(AVAILABLE_SITUATIONS);
   const [loadingRow, setLoadingRow] = useState<string | null>(null);
   const [confirmReschedule, setConfirmReschedule] = useState(false);
+  const [zoneFilter, setZoneFilter] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [details, setDetails] = useState<Record<string, FetchOrderResult>>({});
+  const [detailLoading, setDetailLoading] = useState<string | null>(null);
+
 
   const [step, setStep] = useState(1);
   const [orderNumber, setOrderNumber] = useState("");

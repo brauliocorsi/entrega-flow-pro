@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listStaff, upsertStaff, deleteStaff } from "@/lib/fleet.functions";
+import { listUsers } from "@/lib/users.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,9 +29,19 @@ type Staff = {
   phone: string | null;
   notes: string | null;
   active: boolean;
+  user_id: string | null;
 };
 
-const empty = { id: undefined as string | undefined, name: "", kind: "motorista" as Kind, phone: "", notes: "", active: true };
+const NO_USER = "__none__";
+const empty = {
+  id: undefined as string | undefined,
+  name: "",
+  kind: "motorista" as Kind,
+  phone: "",
+  notes: "",
+  active: true,
+  user_id: NO_USER,
+};
 
 const KIND_LABEL: Record<Kind, string> = { motorista: "Motorista", auxiliar: "Auxiliar" };
 const KIND_TONE: Record<Kind, string> = {
@@ -44,6 +55,7 @@ function StaffPage() {
   const listFn = useServerFn(listStaff);
   const saveFn = useServerFn(upsertStaff);
   const delFn = useServerFn(deleteStaff);
+  const usersFn = useServerFn(listUsers);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ ...empty });
 
@@ -51,6 +63,12 @@ function StaffPage() {
   const { data = [], isLoading } = useQuery({
     queryKey: ["admin", "staff"],
     queryFn: () => listFn(),
+    enabled,
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ["admin", "users"],
+    queryFn: () => usersFn(),
     enabled,
   });
 
@@ -75,6 +93,7 @@ function StaffPage() {
           phone: form.phone || null,
           notes: form.notes || null,
           active: form.active,
+          user_id: form.user_id === NO_USER ? null : form.user_id,
         },
       });
       toast.success("Guardado");
@@ -96,7 +115,15 @@ function StaffPage() {
     }
   }
   function openEdit(s: Staff) {
-    setForm({ id: s.id, name: s.name, kind: s.kind, phone: s.phone ?? "", notes: s.notes ?? "", active: s.active });
+    setForm({
+      id: s.id,
+      name: s.name,
+      kind: s.kind,
+      phone: s.phone ?? "",
+      notes: s.notes ?? "",
+      active: s.active,
+      user_id: s.user_id ?? NO_USER,
+    });
     setOpen(true);
   }
 
@@ -131,6 +158,11 @@ function StaffPage() {
                   <div className="flex items-center gap-2 mt-0.5">
                     <Badge className={KIND_TONE[s.kind]} variant="outline">{KIND_LABEL[s.kind]}</Badge>
                     {s.phone && <span className="text-xs text-muted-foreground">{s.phone}</span>}
+                    {s.user_id ? (
+                      <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">Conta ligada</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px]">Sem conta</Badge>
+                    )}
                   </div>
                   {s.notes && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{s.notes}</div>}
                 </div>
@@ -166,6 +198,20 @@ function StaffPage() {
                 <SelectContent>
                   <SelectItem value="motorista">Motorista</SelectItem>
                   <SelectItem value="auxiliar">Auxiliar</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Conta de utilizador (para entrar na app)</Label>
+              <Select value={form.user_id} onValueChange={(v) => setForm({ ...form, user_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Sem conta" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_USER}>Sem conta</SelectItem>
+                  {users.map((u: any) => (
+                    <SelectItem key={u.user_id} value={u.user_id}>
+                      {u.display_name || u.email}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

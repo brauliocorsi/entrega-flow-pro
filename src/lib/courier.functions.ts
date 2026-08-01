@@ -87,6 +87,7 @@ export const getMyDay = createServerFn({ method: "GET" })
       .from("scheduled_deliveries")
       .select("*")
       .in("route_id", ids)
+      .order("stop_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
     if (dErr) throw new Error(dErr.message);
 

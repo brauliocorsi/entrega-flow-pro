@@ -439,7 +439,7 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
     const ids = (routes ?? []).map((r: any) => r.id);
     if (ids.length === 0) return { date, routes: [] };
 
-    const [{ data: payments }, { data: expenses }, { data: settlements }, { data: deliveries }] =
+    const [{ data: payments }, { data: expenses }, { data: settlements }, { data: deliveries }, { data: srs }] =
       await Promise.all([
         context.supabase
           .from("delivery_payments")
@@ -450,10 +450,14 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
         context.supabase
           .from("scheduled_deliveries")
           .select(
-            "id, route_id, order_number, customer_name, status, outcome, total_value, paid_value, remaining_value, order_payload",
+            "id, route_id, order_number, customer_name, status, outcome, outcome_notes, total_value, paid_value, remaining_value, order_payload",
           )
           .in("route_id", ids)
           .order("order_number", { ascending: true }),
+        context.supabase
+          .from("service_requests")
+          .select("id, delivery_id, route_id, status, description")
+          .in("route_id", ids),
       ]);
 
     return {

@@ -39,6 +39,8 @@ import {
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
 import { RouteCashPanel } from "@/components/rotas/RouteCashPanel";
+import { OrdemEntregasEditor } from "@/components/rotas/OrdemEntregasEditor";
+
 import { toast } from "sonner";
 import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2, Wallet, Download, History as HistoryIcon, AlertTriangle } from "lucide-react";
 
@@ -124,11 +126,13 @@ function buildStopAddress(address: string, zip?: string | null, city?: string | 
 
 function RouteSimulationSection({
   rawStops,
+  manualOrder = false,
   selectedId,
   setSelectedId,
   selectStop,
 }: {
   rawStops: Stop[];
+  manualOrder?: boolean;
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
   selectStop: (id: string | null) => void;
@@ -152,11 +156,13 @@ function RouteSimulationSection({
 
   const stops: Stop[] = useMemo(() => {
     const invalid = rawStops.filter((s) => !validStops.includes(s));
-    if (optData?.optimizedOrder && optData.optimizedOrder.length === validStops.length) {
+    // Com ordem manual definida, o trajeto segue essa sequência em vez da otimizada.
+    if (!manualOrder && optData?.optimizedOrder && optData.optimizedOrder.length === validStops.length) {
       return [...optData.optimizedOrder.map((i) => validStops[i]).filter(Boolean), ...invalid];
     }
     return [...validStops, ...invalid];
-  }, [rawStops, validStops, optData]);
+  }, [rawStops, validStops, optData, manualOrder]);
+
 
 
   const legs = optData?.legs ?? [];
@@ -638,16 +644,32 @@ function RouteDetail() {
                 label: `#${d.order_number} · ${d.customer_name}`,
                 full: buildStopAddress(d.address, d.zip_code, d.city),
               }));
+              const manualOrder = activeDeliveries.some((d: any) => d.stop_order != null);
 
               return (
-                <RouteSimulationSection
-                  rawStops={rawStops}
-                  selectedId={selectedId}
-                  setSelectedId={setSelectedId}
-                  selectStop={selectStop}
-                />
+                <>
+                  <OrdemEntregasEditor
+                    routeId={r.id}
+                    deliveries={activeDeliveries.map((d: any) => ({
+                      id: d.id,
+                      order_number: d.order_number,
+                      customer_name: d.customer_name,
+                      address: d.address,
+                    }))}
+                    locked={false}
+                    invalidateKeys={[["route-deliveries", r.id], ["scheduled-deliveries", r.id]]}
+                  />
+                  <RouteSimulationSection
+                    rawStops={rawStops}
+                    manualOrder={manualOrder}
+                    selectedId={selectedId}
+                    setSelectedId={setSelectedId}
+                    selectStop={selectStop}
+                  />
+                </>
               );
             })()}
+
 
             <Tabs defaultValue="ativas" className="mt-6">
               <TabsList>

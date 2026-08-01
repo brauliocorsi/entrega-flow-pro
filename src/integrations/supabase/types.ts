@@ -14,6 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
+      bank_statements: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          file_name: string
+          file_path: string | null
+          id: string
+          kind: string
+          period_end: string | null
+          period_start: string | null
+          route_id: string | null
+          scope: string
+          status: string
+          transactions_count: number
+          updated_at: string
+          uploaded_by: string
+          uploaded_by_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          file_name: string
+          file_path?: string | null
+          id?: string
+          kind?: string
+          period_end?: string | null
+          period_start?: string | null
+          route_id?: string | null
+          scope?: string
+          status?: string
+          transactions_count?: number
+          updated_at?: string
+          uploaded_by: string
+          uploaded_by_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          file_name?: string
+          file_path?: string | null
+          id?: string
+          kind?: string
+          period_end?: string | null
+          period_start?: string | null
+          route_id?: string | null
+          scope?: string
+          status?: string
+          transactions_count?: number
+          updated_at?: string
+          uploaded_by?: string
+          uploaded_by_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statements_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          matched_at: string | null
+          matched_by: string | null
+          matched_payment_id: string | null
+          method: string | null
+          reference: string | null
+          statement_id: string
+          status: string
+          tx_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string
+          id?: string
+          matched_at?: string | null
+          matched_by?: string | null
+          matched_payment_id?: string | null
+          method?: string | null
+          reference?: string | null
+          statement_id: string
+          status?: string
+          tx_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          matched_at?: string | null
+          matched_by?: string | null
+          matched_payment_id?: string | null
+          method?: string | null
+          reference?: string | null
+          statement_id?: string
+          status?: string
+          tx_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transactions_matched_payment_id_fkey"
+            columns: ["matched_payment_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_statement_id_fkey"
+            columns: ["statement_id"]
+            isOneToOne: false
+            referencedRelation: "bank_statements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_fee_ranges: {
         Row: {
           active: boolean
@@ -59,6 +184,7 @@ export type Database = {
       delivery_payments: {
         Row: {
           amount: number
+          bank_transaction_id: string | null
           confirmed: boolean
           confirmed_at: string | null
           confirmed_by: string | null
@@ -70,11 +196,14 @@ export type Database = {
           notes: string | null
           received_by: string
           received_by_name: string | null
+          reconciled_at: string | null
+          reconciled_by: string | null
           route_id: string
           updated_at: string
         }
         Insert: {
           amount: number
+          bank_transaction_id?: string | null
           confirmed?: boolean
           confirmed_at?: string | null
           confirmed_by?: string | null
@@ -86,11 +215,14 @@ export type Database = {
           notes?: string | null
           received_by: string
           received_by_name?: string | null
+          reconciled_at?: string | null
+          reconciled_by?: string | null
           route_id: string
           updated_at?: string
         }
         Update: {
           amount?: number
+          bank_transaction_id?: string | null
           confirmed?: boolean
           confirmed_at?: string | null
           confirmed_by?: string | null
@@ -102,10 +234,19 @@ export type Database = {
           notes?: string | null
           received_by?: string
           received_by_name?: string | null
+          reconciled_at?: string | null
+          reconciled_by?: string | null
           route_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "delivery_payments_bank_transaction_id_fkey"
+            columns: ["bank_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bank_transactions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "delivery_payments_delivery_id_fkey"
             columns: ["delivery_id"]
@@ -500,6 +641,7 @@ export type Database = {
           max_minutes: number
           notes: string | null
           route_date: string
+          started_at: string | null
           status: Database["public"]["Enums"]["route_status"]
           template_id: string | null
           updated_at: string
@@ -520,6 +662,7 @@ export type Database = {
           max_minutes?: number
           notes?: string | null
           route_date: string
+          started_at?: string | null
           status?: Database["public"]["Enums"]["route_status"]
           template_id?: string | null
           updated_at?: string
@@ -540,6 +683,7 @@ export type Database = {
           max_minutes?: number
           notes?: string | null
           route_date?: string
+          started_at?: string | null
           status?: Database["public"]["Enums"]["route_status"]
           template_id?: string | null
           updated_at?: string
@@ -580,6 +724,7 @@ export type Database = {
           seller_id: string | null
           seller_name: string | null
           status: Database["public"]["Enums"]["delivery_status"]
+          stop_order: number | null
           total_value: number
           updated_at: string
           volume_m3: number
@@ -607,6 +752,7 @@ export type Database = {
           seller_id?: string | null
           seller_name?: string | null
           status?: Database["public"]["Enums"]["delivery_status"]
+          stop_order?: number | null
           total_value?: number
           updated_at?: string
           volume_m3?: number
@@ -634,6 +780,7 @@ export type Database = {
           seller_id?: string | null
           seller_name?: string | null
           status?: Database["public"]["Enums"]["delivery_status"]
+          stop_order?: number | null
           total_value?: number
           updated_at?: string
           volume_m3?: number

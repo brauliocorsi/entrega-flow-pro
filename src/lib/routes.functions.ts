@@ -70,11 +70,87 @@ export const getRouteWithDeliveries = createServerFn({ method: "GET" })
       .from("scheduled_deliveries")
       .select("*")
       .eq("route_id", data.id)
+      .order("stop_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
     if (dErr) throw new Error(dErr.message);
 
     return { route, deliveries: deliveries ?? [] };
   });
+
+/** Marca a rota como iniciada (bloqueia a reordenação pelo entregador). */
+export const startRoute = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: route, error } = await context.supabase
+      .from("routes")
+      .select("id, started_at")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!route) throw new Error("Rota não encontrada");
+    if (route.started_at) return { ok: true, started_at: route.started_at };
+
+    const startedAt = new Date().toISOString();
+    const { error: uErr } = await context.supabase
+      .from("routes")
+      .update({ started_at: startedAt })
+      .eq("id", data.id);
+    if (uErr) throw new Error(uErr.message);
+    return { ok: true, started_at: startedAt };
+  });
+
+/**
+ * Define a ordem manual das entregas de uma rota.
+ * Entregador: só na sua rota e enquanto a rota não estiver iniciada.
+ * Admin/logística: sempre.
+ */
+export const reorderDeliveries = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        route_id: z.string().uuid(),
+        delivery_ids: z.array(z.string().uuid()).min(1).max(200),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: roleRows } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    const roles = (roleRows ?? []).map((r: any) => r.role as string);
+    const isManager = roles.includes("admin") || roles.includes("logistico");
+
+    const { data: route, error: rErr } = await context.supabase
+      .from("routes")
+      .select("id, started_at, status")
+      .eq("id", data.route_id)
+      .maybeSingle();
+    if (rErr) throw new Error(rErr.message);
+    if (!route) throw new Error("Rota não encontrada");
+
+    if (!isManager) {
+      if (route.started_at) {
+        throw new Error("A rota já foi iniciada — a ordem das entregas já não pode ser alterada");
+      }
+      if (route.status === "concluida") {
+        throw new Error("Rota concluída — a ordem já não pode ser alterada");
+      }
+    }
+
+    for (let i = 0; i < data.delivery_ids.length; i++) {
+      const { error } = await context.supabase
+        .from("scheduled_deliveries")
+        .update({ stop_order: i + 1 })
+        .eq("id", data.delivery_ids[i])
+        .eq("route_id", data.route_id);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true, count: data.delivery_ids.length };
+  });
+
 
 export const updateRouteStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

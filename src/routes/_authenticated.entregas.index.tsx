@@ -1,8 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyDay } from "@/lib/courier.functions";
+import { startRoute } from "@/lib/routes.functions";
+import { OrdemEntregasEditor } from "@/components/rotas/OrdemEntregasEditor";
+import { toast } from "sonner";
 import { getMyCashRoutes } from "@/lib/cash.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -25,6 +28,7 @@ import {
   Navigation,
   Wallet,
   PackageCheck,
+  Play,
 } from "lucide-react";
 
 
@@ -174,6 +178,12 @@ function MyDayPage() {
                 )}
               </div>
 
+              {r.status !== "concluida" && active.length > 1 && (
+                <div className="p-3 border-b bg-muted/20">
+                  <CourierOrderBlock route={r} deliveries={active} />
+                </div>
+              )}
+
 
               <div className="divide-y">
                 {r.deliveries.map((d: any) => {
@@ -317,6 +327,47 @@ function CourierSummary({ pendingDeliveries }: { pendingDeliveries: number }) {
           </div>
         </Card>
       </Link>
+    </div>
+  );
+}
+
+/** Ordem de entrega definida pelo entregador — bloqueia quando a rota é iniciada. */
+function CourierOrderBlock({ route, deliveries }: { route: any; deliveries: any[] }) {
+  const qc = useQueryClient();
+  const startFn = useServerFn(startRoute);
+  const startMut = useMutation({
+    mutationFn: () => startFn({ data: { id: route.id } }),
+    onSuccess: () => {
+      toast.success("Rota iniciada — ordem bloqueada");
+      qc.invalidateQueries({ queryKey: ["my-day"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao iniciar a rota"),
+  });
+
+  return (
+    <div className="space-y-2">
+      <OrdemEntregasEditor
+        routeId={route.id}
+        deliveries={deliveries.map((d: any) => ({
+          id: d.id,
+          order_number: d.order_number,
+          customer_name: d.customer_name,
+          address: d.address,
+        }))}
+        locked={!!route.started_at}
+        invalidateKeys={[["my-day"]]}
+      />
+      {!route.started_at && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full"
+          disabled={startMut.isPending}
+          onClick={() => startMut.mutate()}
+        >
+          <Play className="h-4 w-4 mr-1" /> Iniciar rota (fixa a ordem)
+        </Button>
+      )}
     </div>
   );
 }

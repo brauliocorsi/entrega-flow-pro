@@ -535,7 +535,13 @@ function OrdersList({
                     <span>
                       {p.method_name}: <strong>{formatEUR(p.amount)}</strong>
                       {p.received_by_name ? ` · ${p.received_by_name}` : ""}
+                      {p.reconciled_at && (
+                        <Badge className="ml-1 text-[10px] bg-sky-100 text-sky-800 border-sky-200">
+                          Conciliado
+                        </Badge>
+                      )}
                     </span>
+
                     <Button
                       size="sm"
                       variant={p.confirmed ? "secondary" : "outline"}

@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Calculator } from "lucide-react";
 import { ConferenciaLista } from "@/components/caixa/ConferenciaLista";
+import { ConciliacaoPanel } from "@/components/caixa/ConciliacaoPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 export const Route = createFileRoute("/_authenticated/conferencia")({
   head: () => ({
@@ -36,7 +39,19 @@ function ConferenciaPage() {
         </p>
       </div>
 
-      <ConferenciaLista />
+      <Tabs defaultValue="envelopes">
+        <TabsList>
+          <TabsTrigger value="envelopes">Envelopes</TabsTrigger>
+          <TabsTrigger value="conciliacao">Conciliação bancária</TabsTrigger>
+        </TabsList>
+        <TabsContent value="envelopes" className="mt-3">
+          <ConferenciaLista />
+        </TabsContent>
+        <TabsContent value="conciliacao" className="mt-3">
+          <ConciliacaoPanel />
+        </TabsContent>
+      </Tabs>
+
     </div>
   );
 }

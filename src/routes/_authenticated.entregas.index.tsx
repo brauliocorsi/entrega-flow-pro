@@ -21,7 +21,9 @@ import {
   CircleDashed,
   XCircle,
   Navigation,
+  Wallet,
 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/entregas/")({
   head: () => ({

@@ -13,6 +13,7 @@ import { formatEUR, formatDatePT } from "@/lib/format";
 import { computeDeliveryTotals } from "@/lib/delivery-totals";
 import { deliveryOutcomeTone, openNavigation } from "@/lib/nav-link";
 import { DELIVERY_TYPE_LABEL } from "@/lib/constants";
+import { FecharRotaDialog } from "@/components/entregas/FecharRotaDialog";
 import {
   Truck,
   MapPin,
@@ -161,6 +162,16 @@ function MyDayPage() {
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </span>
                 </Link>
+
+                {r.status === "concluida" ? (
+                  <div className="mt-3 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">
+                    Rota fechada — pendente de conferência do administrador
+                  </div>
+                ) : (
+                  <div className="mt-3">
+                    <FecharRotaDialog routeId={r.id} deliveries={r.deliveries} />
+                  </div>
+                )}
               </div>
 
 

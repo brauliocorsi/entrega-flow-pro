@@ -67,7 +67,9 @@ async function buildCash(ctx: any, routeId: string) {
 
   const { data: payments } = await ctx.supabase
     .from("delivery_payments")
-    .select("id, method_name, amount, received_by_name, created_at, delivery_id")
+    .select(
+      "id, method_name, amount, received_by_name, created_at, delivery_id, confirmed, confirmed_at",
+    )
     .eq("route_id", routeId)
     .order("created_at", { ascending: true });
 
@@ -82,6 +84,14 @@ async function buildCash(ctx: any, routeId: string) {
     .select("*")
     .eq("route_id", routeId)
     .maybeSingle();
+
+  const { data: deliveries } = await ctx.supabase
+    .from("scheduled_deliveries")
+    .select(
+      "id, order_number, customer_name, status, outcome, total_value, paid_value, remaining_value, order_payload",
+    )
+    .eq("route_id", routeId)
+    .order("order_number", { ascending: true });
 
   const byMethod = new Map<string, number>();
   for (const p of payments ?? []) {
@@ -103,6 +113,8 @@ async function buildCash(ctx: any, routeId: string) {
     ((settlement?.methods as any[]) ?? []).map((m: any) => [m.method_name, !!m.confirmed]),
   );
 
+  const orders = (deliveries ?? []).map((d: any) => buildOrderCompare(d, payments ?? []));
+
   return {
     route,
     payments: payments ?? [],
@@ -111,6 +123,10 @@ async function buildCash(ctx: any, routeId: string) {
     cash_in: cashIn,
     expenses_total: expensesTotal,
     in_hand: round2(cashIn - expensesTotal),
+    orders,
+    forecast_total: round2(orders.reduce((a: number, o: any) => a + o.forecast, 0)),
+    realized_total: round2(orders.reduce((a: number, o: any) => a + o.realized, 0)),
+    pending_confirmations: (payments ?? []).filter((p: any) => !p.confirmed).length,
     other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
       .filter((m) => !isCash(m.method_name))
       .map((m) => ({ ...m, confirmed: confirmed.get(m.method_name) ?? false })),
@@ -119,6 +135,7 @@ async function buildCash(ctx: any, routeId: string) {
     ),
   };
 }
+
 
 /** Caixa de uma rota: recebimentos, despesas, valor em mãos e envelope. */
 export const getRouteCash = createServerFn({ method: "GET" })
@@ -148,6 +165,15 @@ export const addCashExpense = createServerFn({ method: "POST" })
       .maybeSingle();
     if (settlement && settlement.status !== "aberta") {
       throw new Error("O envelope desta rota já foi fechado");
+    }
+
+    const { data: routeRow } = await context.supabase
+      .from("routes")
+      .select("status")
+      .eq("id", data.route_id)
+      .maybeSingle();
+    if (routeRow && routeRow.status === "concluida") {
+      throw new Error("A rota já foi fechada — não é possível registar novas saídas");
     }
 
     const { error } = await context.supabase.from("route_cash_expenses").insert({
@@ -313,6 +339,12 @@ export const closeSettlement = createServerFn({ method: "POST" })
         `Faltam confirmar: ${pendingMethods.map((m: any) => m.method_name).join(", ")}`,
       );
     }
+    const pendingPayments = (cash.payments ?? []).filter((p: any) => !p.confirmed);
+    if (pendingPayments.length > 0) {
+      throw new Error(
+        `Faltam confirmar ${pendingPayments.length} recebimento(s) individuais das encomendas`,
+      );
+    }
     const pendingExpenses = cash.expenses.filter((e: any) => e.status === "pendente");
     if (pendingExpenses.length > 0) {
       throw new Error("Há despesas por aprovar ou rejeitar");
@@ -329,6 +361,61 @@ export const closeSettlement = createServerFn({ method: "POST" })
       })
       .eq("id", cash.settlement.id);
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Admin: confirmar (ou reverter) um recebimento individual de uma encomenda. */
+export const confirmPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ payment_id: z.string().uuid(), confirmed: z.boolean() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: payment, error: pErr } = await context.supabase
+      .from("delivery_payments")
+      .select("id, route_id, method_name")
+      .eq("id", data.payment_id)
+      .maybeSingle();
+    if (pErr) throw new Error(pErr.message);
+    if (!payment) throw new Error("Recebimento não encontrado");
+
+    const { error } = await context.supabase
+      .from("delivery_payments")
+      .update({
+        confirmed: data.confirmed,
+        confirmed_by: data.confirmed ? context.userId : null,
+        confirmed_at: data.confirmed ? new Date().toISOString() : null,
+      })
+      .eq("id", data.payment_id);
+    if (error) throw new Error(error.message);
+
+    // Sincroniza o estado agregado do método no envelope da rota.
+    const { data: settlement } = await context.supabase
+      .from("route_settlements")
+      .select("id, methods, status")
+      .eq("route_id", payment.route_id)
+      .maybeSingle();
+
+    if (settlement && settlement.status !== "conferida") {
+      const { data: rest } = await context.supabase
+        .from("delivery_payments")
+        .select("method_name, confirmed")
+        .eq("route_id", payment.route_id);
+      const allConfirmed = (name: string) =>
+        (rest ?? [])
+          .filter((r: any) => r.method_name === name)
+          .every((r: any) => !!r.confirmed);
+      const methods = ((settlement.methods as any[]) ?? []).map((m: any) => {
+        const ok = allConfirmed(m.method_name);
+        return { ...m, confirmed: ok, confirmed_at: ok ? new Date().toISOString() : null };
+      });
+      await context.supabase
+        .from("route_settlements")
+        .update({ methods })
+        .eq("id", settlement.id);
+    }
+
     return { ok: true };
   });
 
@@ -356,7 +443,7 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
       await Promise.all([
         context.supabase
           .from("delivery_payments")
-          .select("route_id, delivery_id, method_name, amount")
+          .select("id, route_id, delivery_id, method_name, amount, received_by_name, created_at, confirmed, confirmed_at")
           .in("route_id", ids),
         context.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
         context.supabase.from("route_settlements").select("*").in("route_id", ids),
@@ -399,8 +486,11 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
           expenses_total: expTotal,
           in_hand: round2(cashIn - expTotal),
           orders,
+          payments_total: ps.length,
+          pending_confirmations: ps.filter((p: any) => !p.confirmed).length,
           forecast_total: round2(orders.reduce((a: number, o: any) => a + o.forecast, 0)),
           realized_total: round2(orders.reduce((a: number, o: any) => a + o.realized, 0)),
+
           other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
             .filter((m) => !isCash(m.method_name))
             .map((m) => ({ ...m, confirmed: confirmed.get(m.method_name) ?? false })),
@@ -508,6 +598,16 @@ function buildOrderCompare(d: any, routePayments: any[]) {
     realized,
     diff: round2(realized - forecast),
     methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount })),
+    payments: ps.map((p: any) => ({
+      id: p.id,
+      method_name: p.method_name,
+      amount: Number(p.amount),
+      received_by_name: p.received_by_name ?? null,
+      created_at: p.created_at,
+      confirmed: !!p.confirmed,
+      confirmed_at: p.confirmed_at ?? null,
+    })),
+    pending_confirmations: ps.filter((p: any) => !p.confirmed).length,
   };
 }
 
@@ -533,7 +633,7 @@ async function loadOperation(ctx: any, days: number) {
   const [{ data: payments }, { data: expenses }, { data: settlements }] = await Promise.all([
     ctx.supabase
       .from("delivery_payments")
-      .select("id, route_id, delivery_id, method_name, amount, received_by_name, created_at")
+      .select("id, route_id, delivery_id, method_name, amount, received_by_name, created_at, confirmed, confirmed_at")
       .in("route_id", ids),
     ctx.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
     ctx.supabase.from("route_settlements").select("*").in("route_id", ids),

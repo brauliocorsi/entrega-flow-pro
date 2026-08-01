@@ -6,6 +6,7 @@ import {
   getSettlementsByDate,
   reviewExpense,
   confirmSettlementMethod,
+  confirmPayment,
   closeSettlement,
 } from "@/lib/cash.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -167,6 +168,8 @@ export function PrestacaoContas() {
                   orders={r.orders ?? []}
                   forecast={Number(r.forecast_total ?? 0)}
                   realized={Number(r.realized_total ?? 0)}
+                  locked={conferida}
+                  pending={Number(r.pending_confirmations ?? 0)}
                 />
 
 
@@ -289,11 +292,26 @@ function OrdersCompare({
   orders,
   forecast,
   realized,
+  locked,
+  pending,
 }: {
   orders: any[];
   forecast: number;
   realized: number;
+  locked: boolean;
+  pending: number;
 }) {
+  const qc = useQueryClient();
+  const confirmPayFn = useServerFn(confirmPayment);
+  const payMut = useMutation({
+    mutationFn: (v: { payment_id: string; confirmed: boolean }) => confirmPayFn({ data: v }),
+    onSuccess: () => {
+      toast.success("Recebimento atualizado");
+      qc.invalidateQueries({ queryKey: ["settlements"] });
+      qc.invalidateQueries({ queryKey: ["route-cash"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Falha ao confirmar"),
+  });
   const [open, setOpen] = useState(false);
   const diff = realized - forecast;
   if (orders.length === 0) return null;
@@ -308,6 +326,11 @@ function OrdersCompare({
         <span className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           Notas de encomenda ({orders.length})
+          {pending > 0 && (
+            <Badge className="text-[10px] bg-amber-100 text-amber-800 border-amber-200">
+              {pending} por confirmar
+            </Badge>
+          )}
         </span>
         <span className="text-xs flex items-center gap-2">
           <span>
@@ -355,12 +378,33 @@ function OrdersCompare({
                   </div>
                 </div>
               </div>
-              {o.methods.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {o.methods.map((m: any) => (
-                    <Badge key={m.method_name} variant="outline" className="text-[10px]">
-                      {m.method_name}: {formatEUR(m.amount)}
-                    </Badge>
+              {(o.payments ?? []).length > 0 && (
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase text-muted-foreground">
+                    Recebimentos desta encomenda
+                  </div>
+                  {(o.payments ?? []).map((p: any) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between gap-2 rounded border px-2 py-1"
+                    >
+                      <span>
+                        {p.method_name}: <strong>{formatEUR(p.amount)}</strong>
+                        {p.received_by_name ? ` · ${p.received_by_name}` : ""}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant={p.confirmed ? "secondary" : "outline"}
+                        className="h-6 text-[11px]"
+                        disabled={locked || payMut.isPending}
+                        onClick={() =>
+                          payMut.mutate({ payment_id: p.id, confirmed: !p.confirmed })
+                        }
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        {p.confirmed ? "Confirmado" : "Confirmar"}
+                      </Button>
+                    </div>
                   ))}
                 </div>
               )}

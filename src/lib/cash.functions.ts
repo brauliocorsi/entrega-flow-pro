@@ -439,7 +439,7 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
     const ids = (routes ?? []).map((r: any) => r.id);
     if (ids.length === 0) return { date, routes: [] };
 
-    const [{ data: payments }, { data: expenses }, { data: settlements }, { data: deliveries }] =
+    const [{ data: payments }, { data: expenses }, { data: settlements }, { data: deliveries }, { data: srs }] =
       await Promise.all([
         context.supabase
           .from("delivery_payments")
@@ -450,10 +450,14 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
         context.supabase
           .from("scheduled_deliveries")
           .select(
-            "id, route_id, order_number, customer_name, status, outcome, total_value, paid_value, remaining_value, order_payload",
+            "id, route_id, order_number, customer_name, status, outcome, outcome_notes, total_value, paid_value, remaining_value, order_payload",
           )
           .in("route_id", ids)
           .order("order_number", { ascending: true }),
+        context.supabase
+          .from("service_requests")
+          .select("id, delivery_id, route_id, status, description")
+          .in("route_id", ids),
       ]);
 
     return {
@@ -475,9 +479,10 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
         const confirmed = new Map<string, boolean>(
           ((st?.methods as any[]) ?? []).map((m: any) => [m.method_name, !!m.confirmed]),
         );
+        const rsrs = (srs ?? []).filter((s: any) => s.route_id === r.id);
         const orders = (deliveries ?? [])
           .filter((d: any) => d.route_id === r.id)
-          .map((d: any) => buildOrderCompare(d, ps));
+          .map((d: any) => buildOrderCompare(d, ps, rsrs));
         return {
           ...r,
           settlement: st,
@@ -578,7 +583,7 @@ export const getMyCashRoutes = createServerFn({ method: "GET" })
   });
 
 /** Previsto (a receber) vs realizado (recebido) de uma nota de encomenda. */
-function buildOrderCompare(d: any, routePayments: any[]) {
+function buildOrderCompare(d: any, routePayments: any[], serviceRequests: any[] = []) {
   const totals = computeDeliveryTotals(d);
   const ps = routePayments.filter((p: any) => p.delivery_id === d.id);
   const realized = round2(ps.reduce((a: number, p: any) => a + Number(p.amount), 0));
@@ -589,12 +594,16 @@ function buildOrderCompare(d: any, routePayments: any[]) {
   // O previsto é o valor a receber na rota ANTES dos recebimentos registados:
   // paid_value já inclui os pagamentos da rota, por isso somamos o realizado de volta.
   const forecast = round2(Math.max(totals.totalValue - (totals.paidValue - realized), 0));
+  const srs = (serviceRequests ?? []).filter((s: any) => s.delivery_id === d.id);
   return {
     id: d.id,
     order_number: d.order_number,
     customer_name: d.customer_name,
     status: d.status,
     outcome: d.outcome,
+    outcome_notes: d.outcome_notes ?? null,
+    service_requests: srs.map((s: any) => ({ id: s.id, status: s.status, description: s.description })),
+    has_service_request: srs.length > 0,
     total_value: round2(totals.totalValue),
     forecast,
     realized,

@@ -378,3 +378,37 @@ export const deleteRoute = createServerFn({ method: "POST" })
     if (delErr) throw new Error(delErr.message);
     return { ok: true };
   });
+
+// Pesquisa entregas agendadas por nº de nota de encomenda (ou cliente),
+// devolvendo a rota a que estão vinculadas.
+export const searchDeliveriesByOrder = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ query: z.string().min(1).max(60) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const q = data.query.trim();
+    const { data: rows, error } = await context.supabase
+      .from("scheduled_deliveries")
+      .select(
+        "id, order_number, customer_name, city, zip_code, status, volume_m3, estimated_minutes, delivery_type, route_id, routes:route_id(id, route_date, zone, driver, status, color)",
+      )
+      .or(`order_number.ilike.%${q}%,customer_name.ilike.%${q}%`)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r: any) => ({
+      id: r.id as string,
+      order_number: r.order_number as string,
+      customer_name: r.customer_name as string,
+      city: (r.city ?? null) as string | null,
+      zip_code: (r.zip_code ?? null) as string | null,
+      status: r.status as string,
+      volume_m3: Number(r.volume_m3 ?? 0),
+      estimated_minutes: Number(r.estimated_minutes ?? 0),
+      delivery_type: r.delivery_type as string,
+      route_id: r.route_id as string,
+      route_date: (r.routes?.route_date ?? null) as string | null,
+      route_zone: (r.routes?.zone ?? null) as string | null,
+      route_driver: (r.routes?.driver ?? null) as string | null,
+      route_status: (r.routes?.status ?? null) as string | null,
+    }));
+  });

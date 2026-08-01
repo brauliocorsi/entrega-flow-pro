@@ -47,6 +47,17 @@ async function assertCanTouchRoute(ctx: any, routeId: string) {
   }
 }
 
+async function assertRouteOpen(ctx: any, routeId: string) {
+  const { data: route } = await ctx.supabase
+    .from("routes")
+    .select("status")
+    .eq("id", routeId)
+    .maybeSingle();
+  if (route?.status === "concluida") {
+    throw new Error("A rota já foi fechada — fala com o administrador para reabrir");
+  }
+}
+
 /** Rotas do dia onde o utilizador está escalado (motorista ou auxiliar). */
 export const getMyDay = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -153,6 +164,7 @@ export const addDeliveryPayment = createServerFn({ method: "POST" })
     if (!delivery) throw new Error("Entrega não encontrada");
 
     await assertCanTouchRoute(context, delivery.route_id);
+    await assertRouteOpen(context, delivery.route_id);
 
     const { data: method } = await context.supabase
       .from("payment_methods")
@@ -210,6 +222,7 @@ export const setDeliveryResult = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!delivery) throw new Error("Entrega não encontrada");
     await assertCanTouchRoute(context, delivery.route_id);
+    await assertRouteOpen(context, delivery.route_id);
 
     const map: Record<
       (typeof RESULTS)[number],

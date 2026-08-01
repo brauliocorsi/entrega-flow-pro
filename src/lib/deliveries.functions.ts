@@ -411,6 +411,15 @@ export const closeRoute = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => CloseRouteInput.parse(d))
   .handler(async ({ data, context }) => {
+    const { data: route, error: rSelErr } = await context.supabase
+      .from("routes")
+      .select("id, status")
+      .eq("id", data.routeId)
+      .maybeSingle();
+    if (rSelErr) throw new Error(rSelErr.message);
+    if (!route) throw new Error("Rota não encontrada ou sem acesso");
+    if (route.status === "concluida") throw new Error("Esta rota já foi fechada");
+
     for (const o of data.outcomes) {
       // entregue → status entregue; restantes mantêm-se como histórico mas marcam outcome
       const status = o.outcome === "entregue" ? "entregue" : "reagendado";
@@ -430,7 +439,8 @@ export const closeRoute = createServerFn({ method: "POST" })
       .update({ status: "concluida" })
       .eq("id", data.routeId);
     if (rErr) throw new Error(rErr.message);
-    return { ok: true };
+    const pending = data.outcomes.filter((o) => o.outcome !== "entregue").length;
+    return { ok: true, pending };
   });
 
 export const listPendingReschedules = createServerFn({ method: "GET" })

@@ -223,9 +223,11 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
 
 
     return {
+      error: "",
       distanceMeters: Number(route.distanceMeters ?? 0),
       duration: String(route.duration ?? "0s"),
       polyline: String(route.polyline.encodedPolyline),
+
       optimizedOrder: Array.isArray(route.optimizedIntermediateWaypointIndex)
         ? route.optimizedIntermediateWaypointIndex.map((i: any) => Number(i))
         : [],

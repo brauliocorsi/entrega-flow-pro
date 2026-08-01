@@ -503,6 +503,46 @@ function AgendarPage() {
                 </div>
               )}
 
+              {zoneKeys.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground mr-1">Zonas:</span>
+                  {zoneKeys.map((k) => {
+                    const c = clusterByCp2.get(k)!;
+                    const on = zoneFilter.has(k);
+                    const count = availableOrders.filter((o) => cp2(o.zip_code) === k).length;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() =>
+                          setZoneFilter((cur) => {
+                            const next = new Set(cur);
+                            if (next.has(k)) next.delete(k);
+                            else next.add(k);
+                            return next;
+                          })
+                        }
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition ${
+                          on ? `${c.badge} ring-2 ${c.ring}` : "bg-background hover:bg-muted"
+                        }`}
+                        aria-pressed={on}
+                      >
+                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${c.dot}`} />
+                        {k}xxx
+                        <span className="text-[10px] opacity-70">({count})</span>
+                      </button>
+                    );
+                  })}
+                  {zoneFilter.size > 0 && (
+                    <Button size="sm" variant="ghost" onClick={() => setZoneFilter(new Set())}>
+                      <X className="h-3 w-3 mr-1" /> Todas
+                    </Button>
+                  )}
+                </div>
+              )}
+
+
+
               {selected.size > 0 && (
                 <div className="rounded-md border bg-primary/5 border-primary/30 px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2 text-sm">

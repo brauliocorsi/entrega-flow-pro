@@ -28,6 +28,7 @@ import { Route as AuthenticatedAdminPagamentosRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminOtimizacaoRouteImport } from './routes/_authenticated.admin.otimizacao'
 import { Route as AuthenticatedAdminExportarRouteImport } from './routes/_authenticated.admin.exportar'
 import { Route as AuthenticatedAdminEquipaRouteImport } from './routes/_authenticated.admin.equipa'
+import { Route as AuthenticatedAdminAssistenciasRouteImport } from './routes/_authenticated.admin.assistencias'
 import { Route as ApiPublicCronGenerateRoutesRouteImport } from './routes/api/public/cron/generate-routes'
 import { Route as AuthenticatedRotasIdFecharRouteImport } from './routes/_authenticated.rotas.$id.fechar'
 
@@ -137,6 +138,12 @@ const AuthenticatedAdminEquipaRoute =
     path: '/admin/equipa',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminAssistenciasRoute =
+  AuthenticatedAdminAssistenciasRouteImport.update({
+    id: '/admin/assistencias',
+    path: '/admin/assistencias',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const ApiPublicCronGenerateRoutesRoute =
   ApiPublicCronGenerateRoutesRouteImport.update({
     id: '/api/public/cron/generate-routes',
@@ -156,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/agendar': typeof AuthenticatedAgendarRoute
   '/conferencia': typeof AuthenticatedConferenciaRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/admin/assistencias': typeof AuthenticatedAdminAssistenciasRoute
   '/admin/equipa': typeof AuthenticatedAdminEquipaRoute
   '/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
@@ -178,6 +186,7 @@ export interface FileRoutesByTo {
   '/agendar': typeof AuthenticatedAgendarRoute
   '/conferencia': typeof AuthenticatedConferenciaRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/admin/assistencias': typeof AuthenticatedAdminAssistenciasRoute
   '/admin/equipa': typeof AuthenticatedAdminEquipaRoute
   '/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
@@ -202,6 +211,7 @@ export interface FileRoutesById {
   '/_authenticated/agendar': typeof AuthenticatedAgendarRoute
   '/_authenticated/conferencia': typeof AuthenticatedConferenciaRoute
   '/_authenticated/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/_authenticated/admin/assistencias': typeof AuthenticatedAdminAssistenciasRoute
   '/_authenticated/admin/equipa': typeof AuthenticatedAdminEquipaRoute
   '/_authenticated/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/_authenticated/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/agendar'
     | '/conferencia'
     | '/rotas'
+    | '/admin/assistencias'
     | '/admin/equipa'
     | '/admin/exportar'
     | '/admin/otimizacao'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/agendar'
     | '/conferencia'
     | '/rotas'
+    | '/admin/assistencias'
     | '/admin/equipa'
     | '/admin/exportar'
     | '/admin/otimizacao'
@@ -271,6 +283,7 @@ export interface FileRouteTypes {
     | '/_authenticated/agendar'
     | '/_authenticated/conferencia'
     | '/_authenticated/rotas'
+    | '/_authenticated/admin/assistencias'
     | '/_authenticated/admin/equipa'
     | '/_authenticated/admin/exportar'
     | '/_authenticated/admin/otimizacao'
@@ -430,6 +443,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminEquipaRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/assistencias': {
+      id: '/_authenticated/admin/assistencias'
+      path: '/admin/assistencias'
+      fullPath: '/admin/assistencias'
+      preLoaderRoute: typeof AuthenticatedAdminAssistenciasRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/api/public/cron/generate-routes': {
       id: '/api/public/cron/generate-routes'
       path: '/api/public/cron/generate-routes'
@@ -473,6 +493,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAgendarRoute: typeof AuthenticatedAgendarRoute
   AuthenticatedConferenciaRoute: typeof AuthenticatedConferenciaRoute
   AuthenticatedRotasRoute: typeof AuthenticatedRotasRouteWithChildren
+  AuthenticatedAdminAssistenciasRoute: typeof AuthenticatedAdminAssistenciasRoute
   AuthenticatedAdminEquipaRoute: typeof AuthenticatedAdminEquipaRoute
   AuthenticatedAdminExportarRoute: typeof AuthenticatedAdminExportarRoute
   AuthenticatedAdminOtimizacaoRoute: typeof AuthenticatedAdminOtimizacaoRoute
@@ -491,6 +512,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAgendarRoute: AuthenticatedAgendarRoute,
   AuthenticatedConferenciaRoute: AuthenticatedConferenciaRoute,
   AuthenticatedRotasRoute: AuthenticatedRotasRouteWithChildren,
+  AuthenticatedAdminAssistenciasRoute: AuthenticatedAdminAssistenciasRoute,
   AuthenticatedAdminEquipaRoute: AuthenticatedAdminEquipaRoute,
   AuthenticatedAdminExportarRoute: AuthenticatedAdminExportarRoute,
   AuthenticatedAdminOtimizacaoRoute: AuthenticatedAdminOtimizacaoRoute,

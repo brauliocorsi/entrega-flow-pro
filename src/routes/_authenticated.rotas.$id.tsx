@@ -39,6 +39,8 @@ import {
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
 import { RouteCashPanel } from "@/components/rotas/RouteCashPanel";
+import { OrdemEntregasEditor } from "@/components/rotas/OrdemEntregasEditor";
+
 import { toast } from "sonner";
 import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2, Wallet, Download, History as HistoryIcon, AlertTriangle } from "lucide-react";
 

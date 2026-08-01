@@ -1,54 +1,63 @@
-## Objetivo
+# Refatoração UI/UX — app mobile-first
 
-Na página **/agendar**, adicionar uma aba que lista vendas do GestãoClick cuja situação é **"Disponível para entrega"** ou **"Disponível para levantamento"**, com botão **Agendar** em cada linha que salta directamente para o passo 3 (escolher rota) com a venda já carregada.
+Modernizar toda a interface com uma navegação tipo aplicação nativa, adaptando-se automaticamente a telemóvel, tablet e desktop, mantendo a paleta Azul Profundo refinada e adicionando modo escuro.
 
-## UI
+## Navegação adaptativa
 
-Topo da página passa a ter duas abas (`Tabs` shadcn):
+Um único componente de layout deteta a largura do ecrã e escolhe a navegação:
 
-1. **Por número** — fluxo actual (pesquisar por código de encomenda).
-2. **Disponíveis no GestãoClick** — nova tabela.
+```text
+MOBILE (<768px)          TABLET (768–1279px)      DESKTOP (>=1280px)
+┌──────────────┐         ┌──┬───────────────┐     ┌──────┬────────────┐
+│ topbar fina  │         │ic│  topbar       │     │ side │  topbar    │
+│              │         │on│               │     │ bar  │            │
+│   conteúdo   │         │  │  conteúdo     │     │ full │  conteúdo  │
+│              │         │ra│               │     │      │            │
+├──────────────┤         │il│               │     │      │            │
+│ ▢ ▢ (+) ▢ ▢ │         └──┴───────────────┘     └──────┴────────────┘
+└──────────────┘
+```
 
-A tabela mostra: Código · Cliente · Cidade / CP · Valor · Situação · Data · **Acções**. Cada linha tem:
-- **Agendar** → carrega a venda via `fetchOrder` e salta para o passo 3 (manter defaults de tipo=entrega, volume=2 m³, minutos=30; o utilizador pode voltar para trás se quiser ajustar).
-- Link "ver no GestãoClick" (opcional).
+- **Telemóvel**: barra inferior fixa com 4 separadores (Rotas, Agendar-lista, Conferência, Mais) e um **botão central destacado** para a ação principal (Agendar entrega). Topbar fina com título da página, avatar/menu do utilizador e ações contextuais. O separador "Mais" abre uma gaveta (sheet) com Otimização, Configurações, Exportar e Sair.
+- **Tablet**: rail lateral estreito só com ícones (expande ao passar o rato) + topbar.
+- **Desktop**: sidebar completa com secções agrupadas (Operação, Comercial, Acessos, Dados), colapsável.
 
-Filtros simples acima da tabela: pesquisa por código/cliente + selector de situação (multi). Botão **Recarregar**. Estado vazio + erro tratados.
+Tudo o que hoje está no dropdown "Configurações" passa a viver nestes menus, com os mesmos controlos de permissão por role (admin / logístico / vendedor).
 
-## Backend
+## Modo escuro
 
-Novo server fn `listAvailableOrders` em `src/lib/gestaoclick.functions.ts`:
+Deteta a preferência do sistema no arranque, com toggle manual (claro / escuro / sistema) guardado no dispositivo. Sem "flash" branco ao carregar.
 
-- Input: `{ situations?: string[]; query?: string; limit?: number }` (default situações = `["Disponível para entrega", "Disponível para levantamento"]`, limit 50).
-- Para cada situação:
-  1. `GET /api/situacoes_vendas` → resolver `situacao_id` pelo nome (case-insensitive).
-  2. `GET /api/vendas?situacao_id={id}&order_by=data_venda&order_type=desc&limit={n}`.
-- Normalizar para DTO leve: `{ id, order_number, customer_name, city, zip_code, total_value, situation, date }`.
-- Cruzar com `scheduled_deliveries` (já agendados activos) para marcar/excluir os que já têm entrega activa — bandeira `alreadyScheduled: boolean` na linha (mostrar desactivado com badge "Já agendado").
-- Erros do GestãoClick devolvem `{ orders: [], error }` (não quebra a UI).
+## Refresco visual
 
-As labels das situações ficam como constante exportada em `src/lib/constants.ts` (`AVAILABLE_SITUATIONS`) — fácil acrescentar mais no futuro.
+- Paleta Azul Profundo refinada (#0f1b3d → #3b6fa0) aplicada como tokens semânticos, com variantes claras e escuras.
+- Cartões mais suaves (cantos arredondados, sombras leves), tipografia com hierarquia mais clara, espaçamento consistente.
+- Estados vazios, de carregamento (skeletons) e de erro uniformizados.
+- Alvos de toque com ≥44px, safe-area do iPhone respeitada na barra inferior.
 
-## Frontend wiring
+## Adaptação das páginas ao telemóvel
 
-`src/routes/_authenticated.agendar.tsx`:
+- **Rotas**: as tabelas passam a cartões empilhados em telemóvel (rota de hoje em destaque mantém-se), tabela normal em desktop.
+- **Agendar**: passos do wizard em ecrã inteiro no telemóvel, com barra de progresso no topo e botões de ação fixos em baixo; a seleção múltipla e a barra "Agendar em massa" ficam acima da tab bar.
+- **Detalhe/Fecho de rota, Conferência**: formulários numa coluna, ações principais fixas em baixo.
+- **Admin (templates, taxas, veículos, equipa, utilizadores, exportar)**: tabelas com scroll horizontal controlado ou cartões em telemóvel; o mapa de zonas ocupa a largura total.
 
-- Importar `Tabs/TabsList/TabsTrigger/TabsContent`, novo server fn `listAvailableOrders`.
-- `useQuery` para a lista (key inclui filtros), `enabled` apenas quando a aba "Disponíveis" está activa.
-- Acção **Agendar(orderNumber)**:
-  1. `setOrderNumber(n)` + `await fetchOrderFn`.
-  2. Se sucesso → `setStep(3)` (mantém volume/minutos/tipo default; pré-carrega `routes`).
-  3. Se erro → toast.
+Nenhuma lógica de negócio, cálculo de rotas ou integração com o GestãoClick é alterada — apenas apresentação e navegação.
 
-## Ficheiros a tocar
+## Detalhes técnicos
 
-- `src/lib/gestaoclick.functions.ts` — novo `listAvailableOrders`.
-- `src/lib/constants.ts` — `AVAILABLE_SITUATIONS`.
-- `src/routes/_authenticated.agendar.tsx` — abas + tabela + acção.
+- Novo `src/hooks/use-breakpoint.ts` (mobile / tablet / desktop) baseado em `matchMedia`, seguro para SSR (rende primeiro o layout desktop-neutro e ajusta após hidratação, sem mismatch).
+- `src/routes/_authenticated.tsx` reescrito como shell: `<AppShell>` que escolhe `MobileTabBar`, `TabletRail` ou `DesktopSidebar`.
+- Novos componentes em `src/components/nav/`: `AppShell.tsx`, `MobileTabBar.tsx`, `MoreSheet.tsx`, `DesktopSidebar.tsx`, `TopBar.tsx`, `ThemeToggle.tsx`.
+- Config de navegação centralizada (`src/lib/nav-items.ts`) com rótulo, ícone, rota e roles permitidas — uma única fonte de verdade para os três layouts.
+- Tema: `src/components/theme-provider.tsx` + tokens `--background/--primary/...` atualizados em `:root` e `.dark` no `src/styles.css` (oklch). Sem cores hardcoded nos componentes.
+- Uso dos componentes shadcn já existentes (`sheet`, `dialog`, `card`, `dropdown-menu`); nenhum pacote novo.
+- `head()` de cada rota revisto com título e descrição próprios.
 
-## Notas técnicas
+## Ordem de execução
 
-- API do GestãoClick: o filtro real por situação varia (`situacao_id` vs `situacao`); a server fn tenta `situacao_id` e cai para filtragem em memória se o backend ignorar o parâmetro.
-- Paginação: v1 mostra primeiras 50 por situação ordenadas por data desc; se precisares de mais, adicionamos "carregar mais" depois.
-- Permissões: server fn usa `requireSupabaseAuth` (qualquer utilizador autenticado pode listar, igual ao `fetchOrder` actual).
-- Sem alterações a BD nem migrações.
+1. Tokens de tema + provider de modo escuro.
+2. Config de navegação + `AppShell` com os três layouts.
+3. Topbar, tab bar mobile com botão central, sheet "Mais".
+4. Adaptação página a página (Rotas → Agendar → Conferência → Admin).
+5. Verificação em telemóvel, tablet e desktop com capturas.

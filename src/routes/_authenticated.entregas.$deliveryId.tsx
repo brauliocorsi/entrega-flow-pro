@@ -35,6 +35,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { formatEUR, formatDateTimePT } from "@/lib/format";
+import { computeDeliveryTotals } from "@/lib/delivery-totals";
 import { DELIVERY_TYPE_LABEL } from "@/lib/constants";
 import {
   ArrowLeft,
@@ -209,8 +210,10 @@ function CourierDeliveryPage() {
 
   const d: any = data.delivery;
   const paid = data.payments.reduce((a: number, p: any) => a + Number(p.amount), 0);
-  const remaining = Math.max(Number(d.total_value ?? 0) - Number(d.paid_value ?? 0), 0);
+  const totals = computeDeliveryTotals(d);
+  const remaining = totals.remainingValue;
   const produtos = productList(d.order_payload);
+
 
   return (
     <div className="space-y-4 pb-8">
@@ -260,12 +263,12 @@ function CourierDeliveryPage() {
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
             <div className="text-[11px] uppercase text-muted-foreground">Total</div>
-            <div className="font-semibold">{formatEUR(Number(d.total_value ?? 0))}</div>
+            <div className="font-semibold">{formatEUR(totals.totalValue)}</div>
           </div>
           <div>
             <div className="text-[11px] uppercase text-muted-foreground">Já pago</div>
             <div className="font-semibold text-emerald-600">
-              {formatEUR(Number(d.paid_value ?? 0))}
+              {formatEUR(totals.paidValue)}
             </div>
           </div>
           <div>

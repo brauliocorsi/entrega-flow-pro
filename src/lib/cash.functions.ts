@@ -167,6 +167,15 @@ export const addCashExpense = createServerFn({ method: "POST" })
       throw new Error("O envelope desta rota já foi fechado");
     }
 
+    const { data: routeRow } = await context.supabase
+      .from("routes")
+      .select("status")
+      .eq("id", data.route_id)
+      .maybeSingle();
+    if (routeRow && routeRow.status === "concluida") {
+      throw new Error("A rota já foi fechada — não é possível registar novas saídas");
+    }
+
     const { error } = await context.supabase.from("route_cash_expenses").insert({
       route_id: data.route_id,
       category: data.category,
@@ -330,6 +339,12 @@ export const closeSettlement = createServerFn({ method: "POST" })
         `Faltam confirmar: ${pendingMethods.map((m: any) => m.method_name).join(", ")}`,
       );
     }
+    const pendingPayments = (cash.payments ?? []).filter((p: any) => !p.confirmed);
+    if (pendingPayments.length > 0) {
+      throw new Error(
+        `Faltam confirmar ${pendingPayments.length} recebimento(s) individuais das encomendas`,
+      );
+    }
     const pendingExpenses = cash.expenses.filter((e: any) => e.status === "pendente");
     if (pendingExpenses.length > 0) {
       throw new Error("Há despesas por aprovar ou rejeitar");
@@ -346,6 +361,61 @@ export const closeSettlement = createServerFn({ method: "POST" })
       })
       .eq("id", cash.settlement.id);
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Admin: confirmar (ou reverter) um recebimento individual de uma encomenda. */
+export const confirmPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ payment_id: z.string().uuid(), confirmed: z.boolean() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: payment, error: pErr } = await context.supabase
+      .from("delivery_payments")
+      .select("id, route_id, method_name")
+      .eq("id", data.payment_id)
+      .maybeSingle();
+    if (pErr) throw new Error(pErr.message);
+    if (!payment) throw new Error("Recebimento não encontrado");
+
+    const { error } = await context.supabase
+      .from("delivery_payments")
+      .update({
+        confirmed: data.confirmed,
+        confirmed_by: data.confirmed ? context.userId : null,
+        confirmed_at: data.confirmed ? new Date().toISOString() : null,
+      })
+      .eq("id", data.payment_id);
+    if (error) throw new Error(error.message);
+
+    // Sincroniza o estado agregado do método no envelope da rota.
+    const { data: settlement } = await context.supabase
+      .from("route_settlements")
+      .select("id, methods, status")
+      .eq("route_id", payment.route_id)
+      .maybeSingle();
+
+    if (settlement && settlement.status !== "conferida") {
+      const { data: rest } = await context.supabase
+        .from("delivery_payments")
+        .select("method_name, confirmed")
+        .eq("route_id", payment.route_id);
+      const allConfirmed = (name: string) =>
+        (rest ?? [])
+          .filter((r: any) => r.method_name === name)
+          .every((r: any) => !!r.confirmed);
+      const methods = ((settlement.methods as any[]) ?? []).map((m: any) => {
+        const ok = allConfirmed(m.method_name);
+        return { ...m, confirmed: ok, confirmed_at: ok ? new Date().toISOString() : null };
+      });
+      await context.supabase
+        .from("route_settlements")
+        .update({ methods })
+        .eq("id", settlement.id);
+    }
+
     return { ok: true };
   });
 

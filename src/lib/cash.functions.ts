@@ -67,7 +67,9 @@ async function buildCash(ctx: any, routeId: string) {
 
   const { data: payments } = await ctx.supabase
     .from("delivery_payments")
-    .select("id, method_name, amount, received_by_name, created_at, delivery_id")
+    .select(
+      "id, method_name, amount, received_by_name, created_at, delivery_id, confirmed, confirmed_at",
+    )
     .eq("route_id", routeId)
     .order("created_at", { ascending: true });
 
@@ -82,6 +84,14 @@ async function buildCash(ctx: any, routeId: string) {
     .select("*")
     .eq("route_id", routeId)
     .maybeSingle();
+
+  const { data: deliveries } = await ctx.supabase
+    .from("scheduled_deliveries")
+    .select(
+      "id, order_number, customer_name, status, outcome, total_value, paid_value, remaining_value, order_payload",
+    )
+    .eq("route_id", routeId)
+    .order("order_number", { ascending: true });
 
   const byMethod = new Map<string, number>();
   for (const p of payments ?? []) {
@@ -103,6 +113,8 @@ async function buildCash(ctx: any, routeId: string) {
     ((settlement?.methods as any[]) ?? []).map((m: any) => [m.method_name, !!m.confirmed]),
   );
 
+  const orders = (deliveries ?? []).map((d: any) => buildOrderCompare(d, payments ?? []));
+
   return {
     route,
     payments: payments ?? [],
@@ -111,6 +123,10 @@ async function buildCash(ctx: any, routeId: string) {
     cash_in: cashIn,
     expenses_total: expensesTotal,
     in_hand: round2(cashIn - expensesTotal),
+    orders,
+    forecast_total: round2(orders.reduce((a: number, o: any) => a + o.forecast, 0)),
+    realized_total: round2(orders.reduce((a: number, o: any) => a + o.realized, 0)),
+    pending_confirmations: (payments ?? []).filter((p: any) => !p.confirmed).length,
     other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
       .filter((m) => !isCash(m.method_name))
       .map((m) => ({ ...m, confirmed: confirmed.get(m.method_name) ?? false })),
@@ -119,6 +135,7 @@ async function buildCash(ctx: any, routeId: string) {
     ),
   };
 }
+
 
 /** Caixa de uma rota: recebimentos, despesas, valor em mãos e envelope. */
 export const getRouteCash = createServerFn({ method: "GET" })

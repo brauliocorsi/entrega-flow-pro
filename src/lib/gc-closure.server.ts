@@ -183,10 +183,58 @@ function receiptDescription(codigo: string, method: string, amount: number, date
   return `Venda nº ${codigo} · ${method} · ${money(amount).toFixed(2)} € · entrega ${date}`;
 }
 
+function paymentNode(row: any) {
+  return row?.pagamento ?? row ?? {};
+}
+
+function isDeliveryPayment(row: any) {
+  const p = paymentNode(row);
+  const searchable = [
+    p?.observacao,
+    p?.observacoes,
+    p?.forma_pagamento,
+    p?.nome_forma_pagamento,
+    p?.descricao,
+  ]
+    .filter(Boolean)
+    .map((value) => norm(String(value)))
+    .join(" ");
+  return /(pagar na entrega|pagamento na entrega|na entrega|contra reembolso)/.test(searchable);
+}
+
+async function buildSalePaymentRows(
+  payments: Array<{ method_name: string; amount: number; created_at?: string | null }>,
+  planoContasId: string | number | null,
+) {
+  const rows: any[] = [];
+  for (const p of payments) {
+    const amount = money(Number(p.amount));
+    if (amount <= 0) continue;
+    const formaId = await resolveFormaPagamentoId(p.method_name);
+    if (!formaId) {
+      throw new Error(`Forma de pagamento "${p.method_name}" não encontrada no GestãoClick`);
+    }
+    const date = (p.created_at ?? new Date().toISOString()).slice(0, 10);
+    rows.push({
+      pagamento: {
+        data_vencimento: date,
+        data_pagamento: date,
+        valor: amount.toFixed(2),
+        forma_pagamento_id: Number(formaId) || formaId,
+        ...(planoContasId
+          ? { plano_contas_id: Number(planoContasId) || planoContasId }
+          : {}),
+        observacao: `Recebido na entrega · ${p.method_name}`,
+        liquidado: "pg",
+      },
+    });
+  }
+  return rows;
+}
+
 /**
- * Atualiza situação e observações da venda e regista os recebimentos no financeiro.
- * Nota: a API de vendas do GestãoClick ignora o bloco `pagamentos` em updates,
- * por isso os valores recebidos são lançados via /api/recebimentos.
+ * Atualiza situação, observações e linhas de pagamento da venda, além de
+ * registar os recebimentos no financeiro.
  */
 export async function updateGestaoClickVendaClosure(args: {
   vendaId: string;
@@ -217,12 +265,21 @@ export async function updateGestaoClickVendaClosure(args: {
     const planoContasId =
       (existingPayments[0]?.pagamento ?? existingPayments[0] ?? {})?.plano_contas_id ?? null;
 
-    // 1) Situação + observações na venda
+    const realizedPaymentRows = await buildSalePaymentRows(args.payments, planoContasId);
+    const preservedPaymentRows = existingPayments.filter((row) => !isDeliveryPayment(row));
+
+    // 1) A API de vendas trata PUT como substituição do recurso. Enviar a venda
+    // completa preserva produtos/cliente e permite atualizar as linhas exibidas
+    // em "Dados de pagamento" dentro da própria venda.
     const prevObs = String(venda.observacoes ?? "").trim();
     const body: Record<string, unknown> = {
-      cliente_id: venda.cliente_id,
+      ...venda,
       situacao_id: Number(situacaoId) || situacaoId,
       observacoes: prevObs ? `${prevObs}\n\n${args.observacoes}` : args.observacoes,
+      pagamentos:
+        realizedPaymentRows.length > 0
+          ? [...preservedPaymentRows, ...realizedPaymentRows]
+          : existingPayments,
     };
     await sendJson("PUT", `${base}/api/vendas/${encodeURIComponent(args.vendaId)}`, headers, body);
 
@@ -278,6 +335,24 @@ export async function updateGestaoClickVendaClosure(args: {
     const saved: any = verified?.data ?? verified ?? null;
     if (String(saved?.situacao_id ?? "") !== String(situacaoId)) {
       return { ok: false, error: `GestãoClick não aplicou a situação "${args.situacaoLabel}"` };
+    }
+
+    if (realizedPaymentRows.length > 0) {
+      const savedPayments: any[] = Array.isArray(saved?.pagamentos) ? saved.pagamentos : [];
+      const savedRealized = savedPayments.filter((row) => {
+        const p = paymentNode(row);
+        return norm(String(p?.observacao ?? "")).includes("recebido na entrega");
+      });
+      const savedTotal = money(
+        savedRealized.reduce((sum, row) => sum + Number(paymentNode(row)?.valor ?? 0), 0),
+      );
+      const expectedSaleTotal = money(args.payments.reduce((sum, p) => sum + Number(p.amount), 0));
+      if (savedRealized.length !== realizedPaymentRows.length || savedTotal !== expectedSaleTotal) {
+        return {
+          ok: false,
+          error: "GestãoClick não atualizou as linhas de Dados de pagamento da venda",
+        };
+      }
     }
 
     const expectedTotal = money(args.payments.reduce((sum, p) => sum + Number(p.amount), 0));

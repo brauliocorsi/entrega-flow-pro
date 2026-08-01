@@ -582,7 +582,7 @@ function RouteDetail() {
                 <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Agendar entrega</Button>
               </Link>
             )}
-            {!isClosed && r.deliveries_count > 0 && (
+            {canForecast && !isClosed && r.deliveries_count > 0 && (
               <Link to="/rotas/$id/fechar" params={{ id: r.id }}>
                 <Button size="sm" variant="outline"><CheckCircle2 className="h-4 w-4 mr-1" /> Fechar rota</Button>
               </Link>

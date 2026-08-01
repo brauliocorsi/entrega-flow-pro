@@ -709,6 +709,9 @@ export type Database = {
           customer_name: string
           delivery_type: Database["public"]["Enums"]["delivery_type"]
           estimated_minutes: number
+          gc_sync_error: string | null
+          gc_sync_status: string | null
+          gc_synced_at: string | null
           id: string
           notes: string | null
           order_number: string
@@ -717,6 +720,7 @@ export type Database = {
           outcome_at: string | null
           outcome_notes: string | null
           paid_value: number
+          partial_items: Json | null
           phone: string | null
           remaining_value: number
           rescheduled_from_id: string | null
@@ -737,6 +741,9 @@ export type Database = {
           customer_name: string
           delivery_type?: Database["public"]["Enums"]["delivery_type"]
           estimated_minutes?: number
+          gc_sync_error?: string | null
+          gc_sync_status?: string | null
+          gc_synced_at?: string | null
           id?: string
           notes?: string | null
           order_number: string
@@ -745,6 +752,7 @@ export type Database = {
           outcome_at?: string | null
           outcome_notes?: string | null
           paid_value?: number
+          partial_items?: Json | null
           phone?: string | null
           remaining_value?: number
           rescheduled_from_id?: string | null
@@ -765,6 +773,9 @@ export type Database = {
           customer_name?: string
           delivery_type?: Database["public"]["Enums"]["delivery_type"]
           estimated_minutes?: number
+          gc_sync_error?: string | null
+          gc_sync_status?: string | null
+          gc_synced_at?: string | null
           id?: string
           notes?: string | null
           order_number?: string
@@ -773,6 +784,7 @@ export type Database = {
           outcome_at?: string | null
           outcome_notes?: string | null
           paid_value?: number
+          partial_items?: Json | null
           phone?: string | null
           remaining_value?: number
           rescheduled_from_id?: string | null
@@ -983,7 +995,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "vendedor" | "logistico" | "entregador"
-      delivery_outcome: "entregue" | "nao_entregue" | "entregue_parcial"
+      delivery_outcome:
+        | "entregue"
+        | "nao_entregue"
+        | "entregue_parcial"
+        | "reagendado"
+        | "cancelado"
       delivery_status:
         | "agendado"
         | "confirmado"
@@ -1126,7 +1143,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "vendedor", "logistico", "entregador"],
-      delivery_outcome: ["entregue", "nao_entregue", "entregue_parcial"],
+      delivery_outcome: [
+        "entregue",
+        "nao_entregue",
+        "entregue_parcial",
+        "reagendado",
+        "cancelado",
+      ],
       delivery_status: [
         "agendado",
         "confirmado",

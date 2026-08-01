@@ -3,6 +3,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getRouteSimulation, getRouteWithDeliveries, listRoutes, updateRouteFleet, updateRouteDate } from "@/lib/routes.functions";
+import { getRouteCash } from "@/lib/cash.functions";
 import { listVehicles, listStaff } from "@/lib/fleet.functions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
@@ -555,7 +556,8 @@ function RouteDetail() {
   const isClosed = r.status === "fechada" || r.status === "concluida";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24">
+      {canForecast && !isClosed && r.deliveries_count > 0 && <CloseRouteBar routeId={r.id} />}
       <Link to="/rotas" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
         <ArrowLeft className="h-4 w-4" /> Todas as rotas
       </Link>
@@ -582,7 +584,7 @@ function RouteDetail() {
                 <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Agendar entrega</Button>
               </Link>
             )}
-            {!isClosed && r.deliveries_count > 0 && (
+            {canForecast && !isClosed && r.deliveries_count > 0 && (
               <Link to="/rotas/$id/fechar" params={{ id: r.id }}>
                 <Button size="sm" variant="outline"><CheckCircle2 className="h-4 w-4 mr-1" /> Fechar rota</Button>
               </Link>
@@ -1615,5 +1617,42 @@ function ForecastHistoryButton({ routeId }: { routeId: string }) {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/** Barra fixa de fecho de rota (ADM/Logística) com previsto vs realizado. */
+function CloseRouteBar({ routeId }: { routeId: string }) {
+  const fnCash = useServerFn(getRouteCash);
+  const { data } = useQuery({
+    queryKey: ["route-cash", routeId],
+    queryFn: () => fnCash({ data: { routeId } }),
+  });
+
+  const forecast = Number(data?.forecast_total ?? 0);
+  const realized = Number(data?.realized_total ?? 0);
+  const diff = realized - forecast;
+  const ok = Math.abs(diff) < 0.01;
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] md:pl-64">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3 text-xs tabular-nums">
+          <span className="text-muted-foreground">
+            Previsto <b className="text-foreground">{formatEUR(forecast)}</b>
+          </span>
+          <span className="text-muted-foreground">
+            Realizado <b className="text-emerald-600">{formatEUR(realized)}</b>
+          </span>
+          <span className={ok ? "text-muted-foreground" : "text-amber-600 font-medium"}>
+            Δ {formatEUR(diff)}
+          </span>
+        </div>
+        <Link to="/rotas/$id/fechar" params={{ id: routeId }}>
+          <Button size="sm">
+            <CheckCircle2 className="h-4 w-4 mr-1" /> Fechar rota
+          </Button>
+        </Link>
+      </div>
+    </div>
   );
 }

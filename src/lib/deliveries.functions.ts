@@ -401,11 +401,29 @@ const CloseRouteInput = z.object({
   outcomes: z.array(
     z.object({
       delivery_id: z.string().uuid(),
-      outcome: z.enum(["entregue", "nao_entregue", "entregue_parcial"]),
-      outcome_notes: z.string().max(500).nullable().optional(),
+      outcome: z.enum([
+        "entregue",
+        "nao_entregue",
+        "entregue_parcial",
+        "reagendado",
+        "cancelado",
+      ]),
+      outcome_notes: z.string().max(1000).nullable().optional(),
+      partial_items: z
+        .array(z.object({ description: z.string().max(300), delivered: z.boolean() }))
+        .nullable()
+        .optional(),
     }),
   ),
 });
+
+const NEEDS_JUSTIFICATION = new Set(["entregue_parcial", "reagendado", "cancelado", "nao_entregue"]);
+
+function deliveryStatusFor(outcome: string): "entregue" | "reagendado" | "cancelado" {
+  if (outcome === "entregue" || outcome === "entregue_parcial") return "entregue";
+  if (outcome === "cancelado") return "cancelado";
+  return "reagendado";
+}
 
 export const closeRoute = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -421,15 +439,22 @@ export const closeRoute = createServerFn({ method: "POST" })
     if (route.status === "concluida") throw new Error("Esta rota já foi fechada");
 
     for (const o of data.outcomes) {
-      // entregue → status entregue; restantes mantêm-se como histórico mas marcam outcome
-      const status = o.outcome === "entregue" ? "entregue" : "reagendado";
+      if (NEEDS_JUSTIFICATION.has(o.outcome) && !(o.outcome_notes ?? "").trim()) {
+        throw new Error("Justificação obrigatória nas entregas parciais, reagendadas ou canceladas");
+      }
+    }
+
+    for (const o of data.outcomes) {
       const { error } = await context.supabase
         .from("scheduled_deliveries")
         .update({
           outcome: o.outcome,
           outcome_notes: o.outcome_notes ?? null,
           outcome_at: new Date().toISOString(),
-          status,
+          status: deliveryStatusFor(o.outcome),
+          partial_items: o.outcome === "entregue_parcial" ? (o.partial_items ?? null) : null,
+          gc_sync_status: "pendente",
+          gc_sync_error: null,
         })
         .eq("id", o.delivery_id);
       if (error) throw new Error(error.message);

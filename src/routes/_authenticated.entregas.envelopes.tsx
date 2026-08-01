@@ -27,7 +27,8 @@ export const Route = createFileRoute("/_authenticated/entregas/envelopes")({
 function EnvelopesPage() {
   const { role } = useAuth();
   const isManager = role === "admin" || role === "logistico";
-  const [scope, setScope] = useState<"meus" | "todos">(isManager ? "todos" : "meus");
+  const [picked, setScope] = useState<"meus" | "todos" | null>(null);
+  const scope = picked ?? (isManager ? "todos" : "meus");
 
   return (
     <div className="space-y-4 pb-6 max-w-2xl mx-auto">

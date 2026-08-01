@@ -27,7 +27,8 @@ export const Route = createFileRoute("/_authenticated/entregas/caixa/")({
 function CaixaIndexPage() {
   const { role } = useAuth();
   const isManager = role === "admin" || role === "logistico";
-  const [scope, setScope] = useState<"minha" | "todos">(isManager ? "todos" : "minha");
+  const [picked, setScope] = useState<"minha" | "todos" | null>(null);
+  const scope = picked ?? (isManager ? "todos" : "minha");
 
   return (
     <div className="space-y-4 pb-6 max-w-2xl mx-auto">

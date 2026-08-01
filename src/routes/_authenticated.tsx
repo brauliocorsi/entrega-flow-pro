@@ -22,7 +22,6 @@ import {
   ChevronDown,
   LayoutTemplate,
   Car,
-  ShoppingCart,
   FileSpreadsheet,
 } from "lucide-react";
 
@@ -73,10 +72,6 @@ function AuthenticatedLayout() {
             <NavLink to="/rotas" active={isActive("/rotas")} icon={<Calendar className="h-4 w-4" />} label="Rotas" />
             <NavLink to="/agendar" active={isActive("/agendar")} icon={<Plus className="h-4 w-4" />} label="Agendar" />
             <NavLink to="/conferencia" active={isActive("/conferencia")} icon={<Calculator className="h-4 w-4" />} label="Conferência" />
-            {(role === "admin" || role === "logistico") && (
-              <NavLink to="/compras" active={isActive("/compras")} icon={<ShoppingCart className="h-4 w-4" />} label="Compras" />
-            )}
-
             {(role === "admin" || role === "logistico") && (
               <NavLink to="/admin/otimizacao" active={isActive("/admin/otimizacao")} icon={<Sparkles className="h-4 w-4" />} label="Otimização" />
             )}

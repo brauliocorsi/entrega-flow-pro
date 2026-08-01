@@ -3,6 +3,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getRouteSimulation, getRouteWithDeliveries, listRoutes, updateRouteFleet, updateRouteDate } from "@/lib/routes.functions";
+import { getRouteCash } from "@/lib/cash.functions";
 import { listVehicles, listStaff } from "@/lib/fleet.functions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";

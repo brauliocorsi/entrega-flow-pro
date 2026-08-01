@@ -125,6 +125,33 @@ function AgendarPage() {
   );
   const selectedOrders = availableOrders.filter((o) => selected.has(o.order_number));
 
+  // Filtro por zona (ponto colorido)
+  const zoneKeys = Array.from(clusterByCp2.keys()).sort();
+  const visibleOrders = availableOrders.filter((o) => {
+    if (zoneFilter.size === 0) return true;
+    const k = cp2(o.zip_code);
+    return k ? zoneFilter.has(k) : false;
+  });
+
+  async function toggleExpanded(orderNum: string) {
+    if (expanded === orderNum) {
+      setExpanded(null);
+      return;
+    }
+    setExpanded(orderNum);
+    if (details[orderNum]) return;
+    setDetailLoading(orderNum);
+    try {
+      const res = await fetchOrderFn({ data: { orderNumber: orderNum } });
+      setDetails((cur) => ({ ...cur, [orderNum]: res }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao carregar detalhes");
+    } finally {
+      setDetailLoading(null);
+    }
+  }
+
+
   function toggleSelected(orderNum: string) {
     setSelected((cur) => {
       const next = new Set(cur);

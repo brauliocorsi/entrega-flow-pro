@@ -384,6 +384,54 @@ function RoutesIndex() {
         )}
       </Card>
 
+      {search.trim().length >= 2 && (
+        <Card className="p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Package className="h-4 w-4 text-primary" />
+            <p className="text-sm font-medium">
+              Agendamentos para “{search.trim()}”
+              {deliveryMatches.length > 0 && (
+                <span className="text-muted-foreground font-normal"> · {deliveryMatches.length}</span>
+              )}
+            </p>
+          </div>
+          {matchesLoading ? (
+            <p className="text-sm text-muted-foreground">A pesquisar…</p>
+          ) : deliveryMatches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma nota de encomenda encontrada em rotas.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {deliveryMatches.map((d) => {
+                const active = d.status === "agendado" || d.status === "confirmado";
+                return (
+                  <div
+                    key={d.id}
+                    className="flex flex-wrap items-center gap-2 rounded-md border p-2 text-sm"
+                  >
+                    <span className="font-mono font-semibold">#{d.order_number}</span>
+                    <span className="text-muted-foreground truncate max-w-[200px]">{d.customer_name}</span>
+                    <Badge variant={active ? "default" : "secondary"} className="text-[10px]">
+                      {d.status}
+                    </Badge>
+                    <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {d.route_date ? formatDatePT(d.route_date) : "—"}
+                      <MapPin className="h-3.5 w-3.5" />
+                      {d.route_zone ?? "—"}
+                    </span>
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/rotas/$id" params={{ id: d.route_id }}>Ver rota</Link>
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
+
       {isLoading ? (
         <div className="text-center text-muted-foreground py-12">A carregar…</div>
       ) : filtered.length === 0 ? (

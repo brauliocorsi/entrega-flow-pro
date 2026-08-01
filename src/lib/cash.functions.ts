@@ -393,3 +393,81 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
       }),
     };
   });
+
+/** Rotas do entregador (últimos dias) com caixa e estado de envelope. */
+export const getMyCashRoutes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ days: z.number().int().min(1).max(120).optional() }).default({}).parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    const days = data.days ?? 30;
+    const from = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+
+    const { data: staff } = await context.supabase
+      .from("staff")
+      .select("name, active")
+      .eq("user_id", context.userId);
+    const names = (staff ?? []).filter((s: any) => s.active).map((s: any) => norm(s.name));
+
+    const { data: routes, error } = await context.supabase
+      .from("routes")
+      .select("id, zone, route_date, driver, assistant, status, color")
+      .gte("route_date", from)
+      .order("route_date", { ascending: false });
+    if (error) throw new Error(error.message);
+
+    const mine = (routes ?? []).filter(
+      (r: any) =>
+        names.length === 0 || names.includes(norm(r.driver)) || names.includes(norm(r.assistant)),
+    );
+    const ids = mine.map((r: any) => r.id);
+    if (ids.length === 0) return { routes: [], total_in_hand: 0 };
+
+    const [{ data: payments }, { data: expenses }, { data: settlements }] = await Promise.all([
+      context.supabase
+        .from("delivery_payments")
+        .select("route_id, method_name, amount")
+        .in("route_id", ids),
+      context.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
+      context.supabase.from("route_settlements").select("*").in("route_id", ids),
+    ]);
+
+    const rows = mine.map((r: any) => {
+      const ps = (payments ?? []).filter((p: any) => p.route_id === r.id);
+      const es = (expenses ?? []).filter((e: any) => e.route_id === r.id);
+      const st = (settlements ?? []).find((s: any) => s.route_id === r.id) ?? null;
+      const cashIn = round2(
+        ps.filter((p: any) => isCash(p.method_name)).reduce((a, p: any) => a + Number(p.amount), 0),
+      );
+      const expTotal = round2(
+        es.filter((e: any) => e.status !== "rejeitada").reduce((a, e: any) => a + Number(e.amount), 0),
+      );
+      const byMethod = new Map<string, number>();
+      for (const p of ps) {
+        byMethod.set(p.method_name, round2((byMethod.get(p.method_name) ?? 0) + Number(p.amount)));
+      }
+      const confirmed = new Map<string, boolean>(
+        ((st?.methods as any[]) ?? []).map((m: any) => [m.method_name, !!m.confirmed]),
+      );
+      return {
+        ...r,
+        settlement: st,
+        expenses_count: es.length,
+        pending_expenses: es.filter((e: any) => e.status === "pendente").length,
+        cash_in: cashIn,
+        expenses_total: expTotal,
+        in_hand: round2(cashIn - expTotal),
+        other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
+          .filter((m) => !isCash(m.method_name))
+          .map((m) => ({ ...m, confirmed: confirmed.get(m.method_name) ?? false })),
+      };
+    });
+
+    return {
+      routes: rows,
+      total_in_hand: round2(
+        rows.filter((r) => !r.settlement || r.settlement.status === "aberta").reduce((a, r) => a + r.in_hand, 0),
+      ),
+    };
+  });

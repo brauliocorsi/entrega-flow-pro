@@ -412,7 +412,7 @@ function RoutesIndex() {
             </p>
           ) : (
             <div className="space-y-2">
-              {deliveryMatches.map((d) => {
+              {deliveryMatches.map((d: (typeof deliveryMatches)[number]) => {
                 const active = d.status === "agendado" || d.status === "confirmado";
                 return (
                   <div

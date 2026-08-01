@@ -71,10 +71,13 @@ function MyDayPage() {
         data.routes.map((r: any) => {
           const active = r.deliveries.filter((d: any) => d.status !== "cancelado");
           const done = active.filter((d: any) => d.status === "entregue" || d.outcome);
-          const forecast = active.reduce((a: number, d: any) => a + Number(d.total_value ?? 0), 0);
+          const forecast = active.reduce(
+            (a: number, d: any) => a + computeDeliveryTotals(d).totalValue,
+            0,
+          );
           const received = r.payments.reduce((a: number, p: any) => a + Number(p.amount), 0);
           const pending = active.reduce(
-            (a: number, d: any) => a + Number(d.remaining_value ?? 0),
+            (a: number, d: any) => a + computeDeliveryTotals(d).remainingValue,
             0,
           );
           const pct = active.length ? (done.length / active.length) * 100 : 0;

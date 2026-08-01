@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
@@ -21,6 +21,8 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { formatEUR, formatDatePT, zipPrefix } from "@/lib/format";
+import { situationTone } from "@/lib/situation-tone";
+import { OrderDetailsPanel } from "@/components/agendar/OrderDetailsPanel";
 import { DELIVERY_TYPE_LABEL, ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT, AVAILABLE_SITUATIONS } from "@/lib/constants";
 import { AlertCircle, Search, ArrowRight, ArrowLeft, CheckCircle2, User, Package, Wrench, Truck, Sparkles, Mail, Phone, MapPin, FileText, ChevronDown, ChevronUp, RefreshCw, CalendarClock, Users, X } from "lucide-react";
 
@@ -607,7 +609,7 @@ function AgendarPage() {
                       const tone = situationTone(o.situation);
                       const isOpen = expanded === o.order_number;
                       return (
-                        <>
+                        <Fragment key={o.order_number}>
                         <TableRow
                           key={o.order_number}
                           className={`${o.alreadyScheduled ? "opacity-60" : ""} ${
@@ -711,7 +713,7 @@ function AgendarPage() {
                             </TableCell>
                           </TableRow>
                         )}
-                        </>
+                        </Fragment>
                       );
                     })}
 

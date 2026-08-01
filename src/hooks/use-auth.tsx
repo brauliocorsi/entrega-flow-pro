@@ -44,13 +44,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
         setTimeout(() => loadRole(s.user.id), 0);
       } else {
         setRole(null);
+        if (event === "SIGNED_OUT") {
+          // Evita que queries protegidas continuem a disparar sem sessão (401).
+          queryClient.cancelQueries();
+          queryClient.clear();
+        }
       }
     });
     supabase.auth.getSession().then(({ data }) => {
@@ -60,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [queryClient]);
 
   return (
     <AuthContext.Provider
@@ -71,10 +76,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role,
         refreshRole: () => loadRole(user?.id),
         signOut: async () => {
+          await queryClient.cancelQueries();
+          queryClient.clear();
           await supabase.auth.signOut();
         },
       }}
     >
+
       {children}
     </AuthContext.Provider>
   );

@@ -147,9 +147,9 @@ function MyDayPage() {
                           <Badge variant="outline" className="text-[10px]">
                             {DELIVERY_TYPE_LABEL[d.delivery_type] ?? d.delivery_type}
                           </Badge>
-                          {Number(d.remaining_value) > 0 ? (
+                          {dTotals.remainingValue > 0 ? (
                             <Badge className="text-[10px] bg-amber-100 text-amber-800 border-amber-200">
-                              Receber {formatEUR(Number(d.remaining_value))}
+                              Receber {formatEUR(dTotals.remainingValue)}
                             </Badge>
                           ) : (
                             <Badge className="text-[10px] bg-emerald-100 text-emerald-800 border-emerald-200">

@@ -586,7 +586,9 @@ function buildOrderCompare(d: any, routePayments: any[]) {
   for (const p of ps) {
     byMethod.set(p.method_name, round2((byMethod.get(p.method_name) ?? 0) + Number(p.amount)));
   }
-  const forecast = round2(totals.remainingValue);
+  // O previsto é o valor a receber na rota ANTES dos recebimentos registados:
+  // paid_value já inclui os pagamentos da rota, por isso somamos o realizado de volta.
+  const forecast = round2(Math.max(totals.totalValue - (totals.paidValue - realized), 0));
   return {
     id: d.id,
     order_number: d.order_number,

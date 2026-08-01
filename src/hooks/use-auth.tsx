@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+
 
 type Role = "admin" | "vendedor" | "logistico" | null;
 
@@ -16,10 +18,12 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<Role>(null);
   const [loading, setLoading] = useState(true);
+
 
   async function loadRole(uid: string | undefined) {
     if (!uid) {
@@ -40,13 +44,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
         setTimeout(() => loadRole(s.user.id), 0);
       } else {
         setRole(null);
+        if (event === "SIGNED_OUT") {
+          // Evita que queries protegidas continuem a disparar sem sessão (401).
+          queryClient.cancelQueries();
+          queryClient.clear();
+        }
       }
     });
     supabase.auth.getSession().then(({ data }) => {
@@ -56,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [queryClient]);
 
   return (
     <AuthContext.Provider
@@ -67,10 +76,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role,
         refreshRole: () => loadRole(user?.id),
         signOut: async () => {
+          await queryClient.cancelQueries();
+          queryClient.clear();
           await supabase.auth.signOut();
         },
       }}
     >
+
       {children}
     </AuthContext.Provider>
   );

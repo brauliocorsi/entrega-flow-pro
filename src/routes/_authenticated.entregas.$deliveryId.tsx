@@ -48,8 +48,10 @@ import {
   CalendarClock,
   Ban,
   PackageCheck,
+  CircleDashed,
   Loader2,
 } from "lucide-react";
+import { deliveryOutcomeTone, openNavigation } from "@/lib/nav-link";
 
 export const Route = createFileRoute("/_authenticated/entregas/$deliveryId")({
   head: () => ({
@@ -211,6 +213,7 @@ function CourierDeliveryPage() {
   const d: any = data.delivery;
   const paid = data.payments.reduce((a: number, p: any) => a + Number(p.amount), 0);
   const totals = computeDeliveryTotals(d);
+  const tone = deliveryOutcomeTone(d.outcome, d.status);
   const remaining = totals.remainingValue;
   const produtos = productList(d.order_payload);
 
@@ -221,7 +224,7 @@ function CourierDeliveryPage() {
         <ArrowLeft className="h-4 w-4 mr-1" /> O meu dia
       </Button>
 
-      <Card className="p-4 space-y-2">
+      <Card className={`p-4 space-y-2 ${tone.card}`}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h1 className="text-lg font-bold truncate">
@@ -236,6 +239,15 @@ function CourierDeliveryPage() {
             {DELIVERY_TYPE_LABEL[d.delivery_type] ?? d.delivery_type}
           </Badge>
         </div>
+        <div
+          className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold ${tone.badge}`}
+        >
+          {d.outcome ? <CheckCircle2 className="h-4 w-4" /> : <CircleDashed className="h-4 w-4" />}
+          {tone.label}
+          {d.outcome_at && (
+            <span className="font-normal opacity-90">· {formatDateTimePT(d.outcome_at)}</span>
+          )}
+        </div>
         <div className="flex flex-wrap gap-2">
           {d.phone && (
             <Button asChild size="sm" variant="secondary">
@@ -244,16 +256,14 @@ function CourierDeliveryPage() {
               </a>
             </Button>
           )}
-          <Button asChild size="sm" variant="secondary">
-            <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                [d.address, d.zip_code, d.city].filter(Boolean).join(", "),
-              )}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <MapPin className="h-4 w-4 mr-1" /> Navegar
-            </a>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() =>
+              openNavigation([d.address, d.zip_code, d.city].filter(Boolean).join(", "))
+            }
+          >
+            <MapPin className="h-4 w-4 mr-1" /> Navegar
           </Button>
         </div>
         {d.notes && <p className="text-sm bg-muted rounded-md p-2">{d.notes}</p>}

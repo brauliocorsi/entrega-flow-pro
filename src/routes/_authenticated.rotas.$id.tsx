@@ -875,6 +875,11 @@ function DeliveryCard({
                             {Number(it?.quantity ?? 1)}×
                           </span>
                           <span className="flex-1">{it?.description ?? "Produto"}</span>
+                          <span className="tabular-nums whitespace-nowrap">
+                            {formatEUR(
+                              Number(it?.total ?? Number(it?.quantity ?? 1) * Number(it?.price ?? 0)),
+                            )}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -892,11 +897,75 @@ function DeliveryCard({
                             {Number(it?.quantity ?? 1)}×
                           </span>
                           <span className="flex-1">{it?.description ?? "Montagem"}</span>
+                          <span className="tabular-nums whitespace-nowrap">
+                            {formatEUR(
+                              Number(it?.total ?? Number(it?.quantity ?? 1) * Number(it?.price ?? 0)),
+                            )}
+                          </span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
+                {deliveryItems.length > 0 && (
+                  <div className="mt-2 pt-2 border-t">
+                    <div className="text-[10px] uppercase tracking-wide text-sky-700 mb-1 flex items-center gap-1">
+                      <Truck className="h-3 w-3" /> Entrega
+                    </div>
+                    <ul className="text-xs space-y-0.5">
+                      {deliveryItems.map((it, idx) => (
+                        <li key={idx} className="flex gap-2">
+                          <span className="text-muted-foreground tabular-nums w-8 shrink-0">
+                            {Number(it?.quantity ?? 1)}×
+                          </span>
+                          <span className="flex-1">{it?.description ?? "Entrega"}</span>
+                          <span className="tabular-nums whitespace-nowrap">
+                            {formatEUR(
+                              Number(it?.total ?? Number(it?.quantity ?? 1) * Number(it?.price ?? 0)),
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {items.length > 0 && (
+                  <div className="mt-2 pt-2 border-t space-y-0.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Produtos</span>
+                      <span className="tabular-nums">{formatEUR(productsTotal)}</span>
+                    </div>
+                    {assemblyTotal > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Montagem</span>
+                        <span className="tabular-nums">{formatEUR(assemblyTotal)}</span>
+                      </div>
+                    )}
+                    {deliveryTotal > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Entrega</span>
+                        <span className="tabular-nums">{formatEUR(deliveryTotal)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold border-t pt-0.5">
+                      <span>Total</span>
+                      <span className="tabular-nums">{formatEUR(totalValue)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Pago</span>
+                      <span className="tabular-nums text-emerald-700">{formatEUR(paidValue)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Por receber</span>
+                      <span
+                        className={`tabular-nums ${remainingValue > 0 ? "text-rose-600 font-semibold" : ""}`}
+                      >
+                        {formatEUR(remainingValue)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {productItems.length === 0 && assemblyItems.length === 0 && (
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-xs text-muted-foreground">

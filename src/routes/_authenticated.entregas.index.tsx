@@ -326,3 +326,44 @@ function CourierSummary({ pendingDeliveries }: { pendingDeliveries: number }) {
     </div>
   );
 }
+
+/** Ordem de entrega definida pelo entregador — bloqueia quando a rota é iniciada. */
+function CourierOrderBlock({ route, deliveries }: { route: any; deliveries: any[] }) {
+  const qc = useQueryClient();
+  const startFn = useServerFn(startRoute);
+  const startMut = useMutation({
+    mutationFn: () => startFn({ data: { id: route.id } }),
+    onSuccess: () => {
+      toast.success("Rota iniciada — ordem bloqueada");
+      qc.invalidateQueries({ queryKey: ["my-day"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao iniciar a rota"),
+  });
+
+  return (
+    <div className="space-y-2">
+      <OrdemEntregasEditor
+        routeId={route.id}
+        deliveries={deliveries.map((d: any) => ({
+          id: d.id,
+          order_number: d.order_number,
+          customer_name: d.customer_name,
+          address: d.address,
+        }))}
+        locked={!!route.started_at}
+        invalidateKeys={[["my-day"]]}
+      />
+      {!route.started_at && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full"
+          disabled={startMut.isPending}
+          onClick={() => startMut.mutate()}
+        >
+          <Play className="h-4 w-4 mr-1" /> Iniciar rota (fixa a ordem)
+        </Button>
+      )}
+    </div>
+  );
+}

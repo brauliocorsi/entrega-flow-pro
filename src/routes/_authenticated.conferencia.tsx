@@ -59,6 +59,9 @@ function ConferenciaPage() {
 
       <CaixaDoDia />
 
+      <PrestacaoContas />
+
+
       <Card className="p-5">
         <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 sm:items-end">
           <div className="flex-1">

@@ -373,7 +373,7 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
       await Promise.all([
         context.supabase
           .from("delivery_payments")
-          .select("route_id, delivery_id, method_name, amount")
+          .select("id, route_id, delivery_id, method_name, amount, received_by_name, created_at, confirmed, confirmed_at")
           .in("route_id", ids),
         context.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
         context.supabase.from("route_settlements").select("*").in("route_id", ids),
@@ -525,6 +525,16 @@ function buildOrderCompare(d: any, routePayments: any[]) {
     realized,
     diff: round2(realized - forecast),
     methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount })),
+    payments: ps.map((p: any) => ({
+      id: p.id,
+      method_name: p.method_name,
+      amount: Number(p.amount),
+      received_by_name: p.received_by_name ?? null,
+      created_at: p.created_at,
+      confirmed: !!p.confirmed,
+      confirmed_at: p.confirmed_at ?? null,
+    })),
+    pending_confirmations: ps.filter((p: any) => !p.confirmed).length,
   };
 }
 
@@ -550,7 +560,7 @@ async function loadOperation(ctx: any, days: number) {
   const [{ data: payments }, { data: expenses }, { data: settlements }] = await Promise.all([
     ctx.supabase
       .from("delivery_payments")
-      .select("id, route_id, delivery_id, method_name, amount, received_by_name, created_at")
+      .select("id, route_id, delivery_id, method_name, amount, received_by_name, created_at, confirmed, confirmed_at")
       .in("route_id", ids),
     ctx.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
     ctx.supabase.from("route_settlements").select("*").in("route_id", ids),

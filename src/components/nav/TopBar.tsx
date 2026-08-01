@@ -51,7 +51,7 @@ export function TopBar({
         ) : null}
 
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">{title}</h1>
+          <p className="truncate text-sm font-semibold tracking-tight text-muted-foreground">{title}</p>
         </div>
 
         <ThemeToggle />

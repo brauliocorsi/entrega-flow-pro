@@ -35,6 +35,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { formatEUR, formatDateTimePT } from "@/lib/format";
+import { computeDeliveryTotals } from "@/lib/delivery-totals";
 import { DELIVERY_TYPE_LABEL } from "@/lib/constants";
 import {
   ArrowLeft,

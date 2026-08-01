@@ -55,7 +55,9 @@ type RouteSimulation = {
   distanceMeters: number;
   duration: string;
   polyline: string;
+  error?: string;
   optimizedOrder?: number[];
+
   legs: Array<{
     distanceMeters: number;
     duration: string;
@@ -112,25 +114,30 @@ function RouteSimulationSection({
   selectStop: (id: string | null) => void;
 }) {
   const simulationFn = useServerFn(getRouteSimulation);
+  // Paragens sem morada utilizável rebentavam a validação e deixavam o mapa vazio.
+  const validStops = useMemo(() => rawStops.filter((s) => (s.full ?? "").trim().length >= 5), [rawStops]);
   const { data: optData } = useQuery<RouteSimulation>({
-    queryKey: ["route-simulation", rawStops.map((s) => s.id).join(",")],
-    enabled: rawStops.length > 0,
+    queryKey: ["route-simulation", validStops.map((s) => s.id).join(",")],
+    enabled: validStops.length > 0,
     queryFn: () =>
       simulationFn({
         data: {
           origin: WAREHOUSE_ADDRESS,
           destination: WAREHOUSE_ADDRESS,
-          intermediates: rawStops.map((s) => s.full),
+          intermediates: validStops.map((s) => s.full.trim().slice(0, 255)),
         },
       }),
   });
 
+
   const stops: Stop[] = useMemo(() => {
-    if (optData?.optimizedOrder && optData.optimizedOrder.length === rawStops.length) {
-      return optData.optimizedOrder.map((i) => rawStops[i]).filter(Boolean);
+    const invalid = rawStops.filter((s) => !validStops.includes(s));
+    if (optData?.optimizedOrder && optData.optimizedOrder.length === validStops.length) {
+      return [...optData.optimizedOrder.map((i) => validStops[i]).filter(Boolean), ...invalid];
     }
-    return rawStops;
-  }, [rawStops, optData]);
+    return [...validStops, ...invalid];
+  }, [rawStops, validStops, optData]);
+
 
   const legs = optData?.legs ?? [];
 
@@ -263,20 +270,23 @@ function RouteSimulationMap({
   const selectedIdx = stops.findIndex((s) => s.id === selectedId);
   const selectedStop = selectedIdx >= 0 ? stops[selectedIdx] : null;
 
+  const mapStops = useMemo(() => stops.filter((s) => (s.full ?? "").trim().length >= 5), [stops]);
+
   const simulationInput = useMemo(() => {
-    if (stops.length === 0) return null;
+    if (mapStops.length === 0) return null;
     return {
       origin: WAREHOUSE_ADDRESS,
       destination: WAREHOUSE_ADDRESS,
-      intermediates: stops.map((stop) => stop.full),
+      intermediates: mapStops.map((stop) => stop.full.trim().slice(0, 255)),
     };
-  }, [stops]);
+  }, [mapStops]);
 
   const { data, isLoading, error } = useQuery<RouteSimulation>({
-    queryKey: ["route-simulation", stops.map((s) => s.id).join(",")],
+    queryKey: ["route-simulation", mapStops.map((s) => s.id).join(",")],
     enabled: Boolean(simulationInput),
     queryFn: () => simulationFn({ data: simulationInput! }),
   });
+
 
   useEffect(() => {
     if (!mapsKey || !mapRef.current) return;
@@ -443,13 +453,36 @@ function RouteSimulationMap({
     return <div className="h-[420px] grid place-items-center text-sm text-muted-foreground bg-muted/20">A chave do mapa não está disponível.</div>;
   }
 
+  const noGeometry = !!data && data.legs.length === 0;
+  const failureMsg =
+    (error && "Não foi possível contactar o serviço de mapas.") ||
+    (noGeometry && (data?.error || "Não foi possível traçar o trajeto para estas moradas.")) ||
+    (mapStops.length === 0 && stops.length > 0 && "As paragens desta rota não têm morada válida para traçar o trajeto.") ||
+    null;
+
   return (
     <div className="space-y-3">
-      <div ref={mapRef} className="w-full h-[420px]" />
+      <div className="relative">
+        <div ref={mapRef} className="w-full h-[420px]" />
+        {failureMsg && (
+          <div className="absolute inset-0 grid place-items-center bg-background/85 p-6 text-center">
+            <div className="max-w-md space-y-2">
+              <div className="text-sm font-medium text-rose-600">Trajeto não disponível</div>
+              <p className="text-xs text-muted-foreground">{failureMsg}</p>
+              <p className="text-xs text-muted-foreground">
+                Corrige a morada/código postal das entregas ou usa o botão “Abrir trajeto” para ver no Google Maps.
+              </p>
+            </div>
+          </div>
+        )}
+        {isLoading && !failureMsg && (
+          <div className="absolute inset-0 grid place-items-center bg-background/70 text-sm text-muted-foreground">
+            A calcular trajeto…
+          </div>
+        )}
+      </div>
       <div className="px-4 pb-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
-        {isLoading && <span>A calcular trajeto…</span>}
-        {error && <span className="text-rose-600">Não foi possível calcular o trajeto.</span>}
-        {data && (
+        {data && !failureMsg && (
           <>
             <span className="inline-flex items-center gap-1"><RouteIcon className="h-3.5 w-3.5" /> {formatDistance(data.distanceMeters)}</span>
             <span>{formatDuration(data.duration)}</span>
@@ -460,6 +493,7 @@ function RouteSimulationMap({
     </div>
   );
 }
+
 
 export const Route = createFileRoute("/_authenticated/rotas/$id")({
   component: RouteDetail,

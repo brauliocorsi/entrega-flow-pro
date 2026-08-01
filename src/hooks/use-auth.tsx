@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 
-type Role = "admin" | "vendedor" | "logistico" | null;
+type Role = "admin" | "vendedor" | "logistico" | "entregador" | null;
 
 interface AuthState {
   loading: boolean;
@@ -37,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data && data.length > 0) {
       if (data.some((r) => r.role === "admin")) setRole("admin");
       else if (data.some((r) => r.role === "logistico")) setRole("logistico");
+      else if (data.some((r) => r.role === "entregador")) setRole("entregador");
       else setRole("vendedor");
     } else {
       setRole("vendedor");

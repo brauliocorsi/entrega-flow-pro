@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
@@ -6,8 +6,25 @@ import { getAllSettlements } from "@/lib/cash.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatEUR, formatDatePT, formatDateTimePT } from "@/lib/format";
-import { PackageCheck, ArrowUpRight, User } from "lucide-react";
+import {
+  PackageCheck,
+  ArrowUpRight,
+  User,
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 const EXPENSE_TONE: Record<string, string> = {
   pendente: "bg-amber-100 text-amber-800 border-amber-200",
@@ -17,26 +34,85 @@ const EXPENSE_TONE: Record<string, string> = {
 
 type Filter = "todos" | "pendentes" | "conferidos";
 
+const PAGE_SIZE = 10;
+const ALL = "__all__";
+
 export function AdminEnvelopes() {
   const fn = useServerFn(getAllSettlements);
   const [days, setDays] = useState(60);
   const [filter, setFilter] = useState<Filter>("pendentes");
+  const [q, setQ] = useState("");
+  const [zone, setZone] = useState<string>(ALL);
+  const [person, setPerson] = useState<string>(ALL);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [page, setPage] = useState(1);
+
   const { data, isLoading } = useQuery({
     queryKey: ["all-settlements", days],
     queryFn: () => fn({ data: { days } }),
     refetchOnWindowFocus: true,
   });
 
-  if (isLoading) return <div className="text-muted-foreground">A carregar…</div>;
+  const all = useMemo(() => (data?.settlements ?? []) as any[], [data]);
 
-  const all = data?.settlements ?? [];
-  const rows = all.filter((r: any) =>
-    filter === "todos"
-      ? true
-      : filter === "pendentes"
-        ? r.settlement?.status === "entregue"
-        : r.settlement?.status === "conferida",
+  const zones = useMemo(
+    () => Array.from(new Set(all.map((r) => r.zone).filter(Boolean))).sort(),
+    [all],
   );
+  const people = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          all.flatMap((r) =>
+            [r.driver, r.assistant, r.settlement?.submitted_by_name].filter(Boolean),
+          ),
+        ),
+      ).sort(),
+    [all],
+  );
+
+  const rows = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return all.filter((r: any) => {
+      const st = r.settlement;
+      if (filter === "pendentes" && st?.status !== "entregue") return false;
+      if (filter === "conferidos" && st?.status !== "conferida") return false;
+      if (zone !== ALL && r.zone !== zone) return false;
+      if (
+        person !== ALL &&
+        ![r.driver, r.assistant, st?.submitted_by_name].filter(Boolean).includes(person)
+      )
+        return false;
+      if (from && String(r.route_date) < from) return false;
+      if (to && String(r.route_date) > to) return false;
+      if (term) {
+        const hay = [
+          st?.envelope_code,
+          r.zone,
+          r.driver,
+          r.assistant,
+          st?.submitted_by_name,
+          formatDatePT(r.route_date),
+          r.route_date,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!hay.includes(term)) return false;
+      }
+      return true;
+    });
+  }, [all, filter, zone, person, from, to, q]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const current = Math.min(page, totalPages);
+  const pageRows = rows.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  const reset = () => setPage(1);
+  const hasFilters =
+    q !== "" || zone !== ALL || person !== ALL || from !== "" || to !== "" || filter !== "pendentes";
+
+  if (isLoading) return <div className="text-muted-foreground">A carregar…</div>;
 
   return (
     <div className="space-y-4">
@@ -50,42 +126,185 @@ export function AdminEnvelopes() {
         </div>
       </Card>
 
-      <div className="flex flex-wrap gap-1.5">
-        {(["pendentes", "conferidos", "todos"] as Filter[]).map((f) => (
-          <Button
-            key={f}
-            size="sm"
-            variant={filter === f ? "secondary" : "outline"}
-            className="h-7 capitalize"
-            onClick={() => setFilter(f)}
-          >
-            {f}
-          </Button>
-        ))}
-        <span className="mx-1" />
-        {[30, 60, 180].map((d) => (
-          <Button
-            key={d}
-            size="sm"
-            variant={days === d ? "secondary" : "outline"}
-            className="h-7"
-            onClick={() => setDays(d)}
-          >
-            {d} dias
-          </Button>
-        ))}
-      </div>
+      <Card className="p-4 space-y-3">
+        <div className="relative">
+          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Pesquisar por código do envelope, rota ou responsável…"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              reset();
+            }}
+          />
+        </div>
 
-      {rows.length === 0 ? (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <Label className="text-[11px] uppercase text-muted-foreground">Rota</Label>
+            <Select
+              value={zone}
+              onValueChange={(v) => {
+                setZone(v);
+                reset();
+              }}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todas as rotas</SelectItem>
+                {zones.map((z) => (
+                  <SelectItem key={z} value={z}>
+                    {z}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label className="text-[11px] uppercase text-muted-foreground">Responsável</Label>
+            <Select
+              value={person}
+              onValueChange={(v) => {
+                setPerson(v);
+                reset();
+              }}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos</SelectItem>
+                {people.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label className="text-[11px] uppercase text-muted-foreground">De</Label>
+            <Input
+              type="date"
+              className="mt-1"
+              value={from}
+              onChange={(e) => {
+                setFrom(e.target.value);
+                reset();
+              }}
+            />
+          </div>
+
+          <div>
+            <Label className="text-[11px] uppercase text-muted-foreground">Até</Label>
+            <Input
+              type="date"
+              className="mt-1"
+              value={to}
+              onChange={(e) => {
+                setTo(e.target.value);
+                reset();
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {(["pendentes", "conferidos", "todos"] as Filter[]).map((f) => (
+            <Button
+              key={f}
+              size="sm"
+              variant={filter === f ? "secondary" : "outline"}
+              className="h-7 capitalize"
+              onClick={() => {
+                setFilter(f);
+                reset();
+              }}
+            >
+              {f}
+            </Button>
+          ))}
+          <span className="mx-1" />
+          {[30, 60, 180].map((d) => (
+            <Button
+              key={d}
+              size="sm"
+              variant={days === d ? "secondary" : "outline"}
+              className="h-7"
+              onClick={() => {
+                setDays(d);
+                reset();
+              }}
+            >
+              {d} dias
+            </Button>
+          ))}
+          {hasFilters && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 ml-auto"
+              onClick={() => {
+                setQ("");
+                setZone(ALL);
+                setPerson(ALL);
+                setFrom("");
+                setTo("");
+                setFilter("pendentes");
+                reset();
+              }}
+            >
+              <X className="h-3.5 w-3.5 mr-1" /> Limpar
+            </Button>
+          )}
+        </div>
+
+        <div className="text-xs text-muted-foreground">
+          {rows.length} envelope(s) encontrados
+          {rows.length > PAGE_SIZE ? ` · página ${current} de ${totalPages}` : ""}
+        </div>
+      </Card>
+
+      {pageRows.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">
           Sem envelopes nesta seleção.
         </Card>
       ) : (
-        rows.map((r: any) => <EnvelopeCard key={r.id} row={r} />)
+        pageRows.map((r: any) => <EnvelopeCard key={r.id} row={r} />)
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={current <= 1}
+            onClick={() => setPage(current - 1)}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {current} / {totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={current >= totalPages}
+            onClick={() => setPage(current + 1)}
+          >
+            Seguinte <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
       )}
     </div>
   );
 }
+
 
 function EnvelopeCard({ row }: { row: any }) {
   const st = row.settlement;

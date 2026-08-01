@@ -1652,7 +1652,7 @@ function ForecastHistoryButton({ routeId }: { routeId: string }) {
 }
 
 /** Barra fixa de fecho de rota (ADM/Logística) com previsto vs realizado. */
-function CloseRouteBar({ routeId }: { routeId: string }) {
+function CloseRouteBar({ routeId, pendingConference }: { routeId: string; pendingConference?: boolean }) {
   const fnCash = useServerFn(getRouteCash);
   const { data } = useQuery({
     queryKey: ["route-cash", routeId],
@@ -1680,7 +1680,8 @@ function CloseRouteBar({ routeId }: { routeId: string }) {
         </div>
         <Link to="/rotas/$id/fechar" params={{ id: routeId }}>
           <Button size="sm">
-            <CheckCircle2 className="h-4 w-4 mr-1" /> Fechar rota
+            <CheckCircle2 className="h-4 w-4 mr-1" />
+            {pendingConference ? "Conferir e fechar" : "Fechar rota"}
           </Button>
         </Link>
       </div>

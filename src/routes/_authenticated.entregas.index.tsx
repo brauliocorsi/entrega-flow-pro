@@ -6,11 +6,22 @@ import { getMyDay } from "@/lib/courier.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { formatEUR, formatDatePT } from "@/lib/format";
 import { computeDeliveryTotals } from "@/lib/delivery-totals";
+import { deliveryOutcomeTone, openNavigation } from "@/lib/nav-link";
 import { DELIVERY_TYPE_LABEL } from "@/lib/constants";
-import { Truck, MapPin, Phone, ChevronRight, CheckCircle2, CircleDashed } from "lucide-react";
+import {
+  Truck,
+  MapPin,
+  Phone,
+  ChevronRight,
+  CheckCircle2,
+  CircleDashed,
+  XCircle,
+  Navigation,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/entregas/")({
   head: () => ({

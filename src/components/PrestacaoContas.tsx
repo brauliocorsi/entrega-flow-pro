@@ -155,6 +155,14 @@ export function PrestacaoContas() {
                   </div>
                 )}
 
+                <OrdersCompare
+                  orders={r.orders ?? []}
+                  forecast={Number(r.forecast_total ?? 0)}
+                  realized={Number(r.realized_total ?? 0)}
+                />
+
+
+
                 {r.other_methods.length > 0 && (
                   <div className="space-y-1.5">
                     <div className="text-[11px] uppercase text-muted-foreground">

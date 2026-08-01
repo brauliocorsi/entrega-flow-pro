@@ -560,7 +560,11 @@ function RouteDetail() {
               <h1 className="text-2xl font-bold">{r.zone}</h1>
               <Badge className={ROUTE_STATUS_TONE[r.status]}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
             </div>
-            <p className="text-sm text-muted-foreground">{WEEKDAYS_PT[d.getDay()]}, {formatDatePT(r.route_date)} · {r.driver ?? "Motorista por atribuir"}</p>
+            <div className="text-sm text-muted-foreground flex items-center gap-1.5 flex-wrap">
+              <span>{WEEKDAYS_PT[d.getDay()]}, {formatDatePT(r.route_date)}</span>
+              <RouteDateEditor route={r} />
+              <span>· {r.driver ?? "Motorista por atribuir"}</span>
+            </div>
             <p className="text-xs text-muted-foreground mt-1">CP: {(r.zip_prefixes ?? []).join(", ") || "—"}</p>
           </div>
           <div className="flex gap-2">

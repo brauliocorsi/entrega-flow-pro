@@ -31,6 +31,7 @@ import { Route as AuthenticatedAdminEquipaRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminAssistenciasRouteImport } from './routes/_authenticated.admin.assistencias'
 import { Route as ApiPublicCronGenerateRoutesRouteImport } from './routes/api/public/cron/generate-routes'
 import { Route as AuthenticatedRotasIdFecharRouteImport } from './routes/_authenticated.rotas.$id.fechar'
+import { Route as AuthenticatedEntregasCaixaRouteIdRouteImport } from './routes/_authenticated.entregas.caixa.$routeId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -156,6 +157,12 @@ const AuthenticatedRotasIdFecharRoute =
     path: '/fechar',
     getParentRoute: () => AuthenticatedRotasIdRoute,
   } as any)
+const AuthenticatedEntregasCaixaRouteIdRoute =
+  AuthenticatedEntregasCaixaRouteIdRouteImport.update({
+    id: '/entregas/caixa/$routeId',
+    path: '/entregas/caixa/$routeId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/compras/': typeof AuthenticatedComprasIndexRoute
   '/entregas/': typeof AuthenticatedEntregasIndexRoute
+  '/entregas/caixa/$routeId': typeof AuthenticatedEntregasCaixaRouteIdRoute
   '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
@@ -200,6 +208,7 @@ export interface FileRoutesByTo {
   '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/compras': typeof AuthenticatedComprasIndexRoute
   '/entregas': typeof AuthenticatedEntregasIndexRoute
+  '/entregas/caixa/$routeId': typeof AuthenticatedEntregasCaixaRouteIdRoute
   '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
@@ -225,6 +234,7 @@ export interface FileRoutesById {
   '/_authenticated/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/_authenticated/compras/': typeof AuthenticatedComprasIndexRoute
   '/_authenticated/entregas/': typeof AuthenticatedEntregasIndexRoute
+  '/_authenticated/entregas/caixa/$routeId': typeof AuthenticatedEntregasCaixaRouteIdRoute
   '/_authenticated/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/rotas/$id'
     | '/compras/'
     | '/entregas/'
+    | '/entregas/caixa/$routeId'
     | '/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
   fileRoutesByTo: FileRoutesByTo
@@ -273,6 +284,7 @@ export interface FileRouteTypes {
     | '/rotas/$id'
     | '/compras'
     | '/entregas'
+    | '/entregas/caixa/$routeId'
     | '/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
   id:
@@ -297,6 +309,7 @@ export interface FileRouteTypes {
     | '/_authenticated/rotas/$id'
     | '/_authenticated/compras/'
     | '/_authenticated/entregas/'
+    | '/_authenticated/entregas/caixa/$routeId'
     | '/_authenticated/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
   fileRoutesById: FileRoutesById
@@ -464,6 +477,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRotasIdFecharRouteImport
       parentRoute: typeof AuthenticatedRotasIdRoute
     }
+    '/_authenticated/entregas/caixa/$routeId': {
+      id: '/_authenticated/entregas/caixa/$routeId'
+      path: '/entregas/caixa/$routeId'
+      fullPath: '/entregas/caixa/$routeId'
+      preLoaderRoute: typeof AuthenticatedEntregasCaixaRouteIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -506,6 +526,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedEntregasDeliveryIdRoute: typeof AuthenticatedEntregasDeliveryIdRoute
   AuthenticatedComprasIndexRoute: typeof AuthenticatedComprasIndexRoute
   AuthenticatedEntregasIndexRoute: typeof AuthenticatedEntregasIndexRoute
+  AuthenticatedEntregasCaixaRouteIdRoute: typeof AuthenticatedEntregasCaixaRouteIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -525,6 +546,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedEntregasDeliveryIdRoute: AuthenticatedEntregasDeliveryIdRoute,
   AuthenticatedComprasIndexRoute: AuthenticatedComprasIndexRoute,
   AuthenticatedEntregasIndexRoute: AuthenticatedEntregasIndexRoute,
+  AuthenticatedEntregasCaixaRouteIdRoute:
+    AuthenticatedEntregasCaixaRouteIdRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

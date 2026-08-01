@@ -14,6 +14,7 @@ const StaffInput = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1).max(100),
   kind: z.enum(["motorista", "auxiliar"]),
+  user_id: z.string().uuid().nullable().optional(),
   phone: z.string().max(40).nullable().optional(),
   notes: z.string().max(500).nullable().optional(),
   active: z.boolean().default(true),
@@ -95,6 +96,7 @@ export const upsertStaff = createServerFn({ method: "POST" })
     const payload = {
       name: data.name,
       kind: data.kind,
+      user_id: data.user_id ?? null,
       phone: data.phone?.trim() || null,
       notes: data.notes?.trim() || null,
       active: data.active,

@@ -23,11 +23,13 @@ const ROLE_LABEL: Record<string, string> = {
   admin: "Administrador",
   logistico: "Logística",
   vendedor: "Vendedor",
+  entregador: "Entregador",
 };
 const ROLE_TONE: Record<string, string> = {
   admin: "bg-rose-100 text-rose-800 border-rose-200",
   logistico: "bg-amber-100 text-amber-800 border-amber-200",
   vendedor: "bg-sky-100 text-sky-800 border-sky-200",
+  entregador: "bg-emerald-100 text-emerald-800 border-emerald-200",
 };
 
 function AdminUsersPage() {
@@ -39,7 +41,7 @@ function AdminUsersPage() {
   const deleteFn = useServerFn(deleteUser);
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "", display_name: "", role: "vendedor" as "admin" | "vendedor" | "logistico" });
+  const [form, setForm] = useState({ email: "", password: "", display_name: "", role: "vendedor" as "admin" | "vendedor" | "logistico" | "entregador" });
 
   const enabled = !loading && role === "admin";
   const { data: users = [], isLoading } = useQuery({
@@ -122,6 +124,7 @@ function AdminUsersPage() {
                       <SelectItem value="admin">Administrador</SelectItem>
                       <SelectItem value="logistico">Logística</SelectItem>
                       <SelectItem value="vendedor">Vendedor</SelectItem>
+                      <SelectItem value="entregador">Entregador</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button size="sm" variant="outline" onClick={() => handleDelete(u.user_id, u.email)}>
@@ -158,6 +161,7 @@ function AdminUsersPage() {
                   <SelectItem value="admin">Administrador</SelectItem>
                   <SelectItem value="logistico">Logística</SelectItem>
                   <SelectItem value="vendedor">Vendedor</SelectItem>
+                      <SelectItem value="entregador">Entregador</SelectItem>
                 </SelectContent>
               </Select>
             </div>

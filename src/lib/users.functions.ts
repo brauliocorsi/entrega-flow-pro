@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const RoleEnum = z.enum(["admin", "vendedor", "logistico"]);
+const RoleEnum = z.enum(["admin", "vendedor", "logistico", "entregador"]);
 
 async function ensureAdmin(supabase: any, userId: string) {
   const { data } = await supabase

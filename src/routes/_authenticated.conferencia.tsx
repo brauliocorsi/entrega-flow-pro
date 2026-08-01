@@ -39,7 +39,19 @@ function ConferenciaPage() {
         </p>
       </div>
 
-      <ConferenciaLista />
+      <Tabs defaultValue="envelopes">
+        <TabsList>
+          <TabsTrigger value="envelopes">Envelopes</TabsTrigger>
+          <TabsTrigger value="conciliacao">Conciliação bancária</TabsTrigger>
+        </TabsList>
+        <TabsContent value="envelopes" className="mt-3">
+          <ConferenciaLista />
+        </TabsContent>
+        <TabsContent value="conciliacao" className="mt-3">
+          <ConciliacaoPanel />
+        </TabsContent>
+      </Tabs>
+
     </div>
   );
 }

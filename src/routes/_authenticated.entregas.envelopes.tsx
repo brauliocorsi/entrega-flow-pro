@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyCashRoutes } from "@/lib/cash.functions";
+import { useAuth } from "@/hooks/use-auth";
+import { AdminEnvelopes } from "@/components/caixa/AdminEnvelopes";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatEUR, formatDatePT, formatDateTimePT } from "@/lib/format";
 import { PackageCheck, ChevronRight, Clock, CheckCircle2 } from "lucide-react";
 
@@ -21,6 +25,50 @@ export const Route = createFileRoute("/_authenticated/entregas/envelopes")({
 });
 
 function EnvelopesPage() {
+  const { role } = useAuth();
+  const isManager = role === "admin" || role === "logistico";
+  const [scope, setScope] = useState<"meus" | "todos">(isManager ? "todos" : "meus");
+
+  return (
+    <div className="space-y-4 pb-6 max-w-2xl mx-auto">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <PackageCheck className="h-6 w-6" /> Envelopes
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {isManager && scope === "todos"
+            ? "Todos os envelopes com rota, data, responsáveis, saídas e previsto vs realizado."
+            : "Envelopes entregues à espera de conferência e histórico já conferido."}
+        </p>
+      </div>
+
+      {isManager && (
+        <div className="flex gap-1.5">
+          <Button
+            size="sm"
+            variant={scope === "todos" ? "secondary" : "outline"}
+            className="h-7"
+            onClick={() => setScope("todos")}
+          >
+            Todas as rotas
+          </Button>
+          <Button
+            size="sm"
+            variant={scope === "meus" ? "secondary" : "outline"}
+            className="h-7"
+            onClick={() => setScope("meus")}
+          >
+            Os meus envelopes
+          </Button>
+        </div>
+      )}
+
+      {isManager && scope === "todos" ? <AdminEnvelopes /> : <MeusEnvelopes />}
+    </div>
+  );
+}
+
+function MeusEnvelopes() {
   const fn = useServerFn(getMyCashRoutes);
   const { data, isLoading } = useQuery({
     queryKey: ["my-cash-routes"],
@@ -29,6 +77,7 @@ function EnvelopesPage() {
   });
 
   if (isLoading) return <div className="text-muted-foreground">A carregar…</div>;
+
 
   const submitted = (data?.routes ?? []).filter(
     (r: any) => r.settlement && r.settlement.status !== "aberta",

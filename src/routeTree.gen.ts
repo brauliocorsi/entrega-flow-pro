@@ -24,6 +24,7 @@ import { Route as AuthenticatedAdminVeiculosRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminUtilizadoresRouteImport } from './routes/_authenticated.admin.utilizadores'
 import { Route as AuthenticatedAdminTemplatesRouteImport } from './routes/_authenticated.admin.templates'
 import { Route as AuthenticatedAdminTaxasRouteImport } from './routes/_authenticated.admin.taxas'
+import { Route as AuthenticatedAdminPagamentosRouteImport } from './routes/_authenticated.admin.pagamentos'
 import { Route as AuthenticatedAdminOtimizacaoRouteImport } from './routes/_authenticated.admin.otimizacao'
 import { Route as AuthenticatedAdminExportarRouteImport } from './routes/_authenticated.admin.exportar'
 import { Route as AuthenticatedAdminEquipaRouteImport } from './routes/_authenticated.admin.equipa'
@@ -112,6 +113,12 @@ const AuthenticatedAdminTaxasRoute = AuthenticatedAdminTaxasRouteImport.update({
   path: '/admin/taxas',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminPagamentosRoute =
+  AuthenticatedAdminPagamentosRouteImport.update({
+    id: '/admin/pagamentos',
+    path: '/admin/pagamentos',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminOtimizacaoRoute =
   AuthenticatedAdminOtimizacaoRouteImport.update({
     id: '/admin/otimizacao',
@@ -152,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/admin/equipa': typeof AuthenticatedAdminEquipaRoute
   '/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
+  '/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
@@ -173,6 +181,7 @@ export interface FileRoutesByTo {
   '/admin/equipa': typeof AuthenticatedAdminEquipaRoute
   '/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
+  '/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
@@ -196,6 +205,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/equipa': typeof AuthenticatedAdminEquipaRoute
   '/_authenticated/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/_authenticated/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
+  '/_authenticated/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/_authenticated/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/_authenticated/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/_authenticated/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/admin/equipa'
     | '/admin/exportar'
     | '/admin/otimizacao'
+    | '/admin/pagamentos'
     | '/admin/taxas'
     | '/admin/templates'
     | '/admin/utilizadores'
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/admin/equipa'
     | '/admin/exportar'
     | '/admin/otimizacao'
+    | '/admin/pagamentos'
     | '/admin/taxas'
     | '/admin/templates'
     | '/admin/utilizadores'
@@ -262,6 +274,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/equipa'
     | '/_authenticated/admin/exportar'
     | '/_authenticated/admin/otimizacao'
+    | '/_authenticated/admin/pagamentos'
     | '/_authenticated/admin/taxas'
     | '/_authenticated/admin/templates'
     | '/_authenticated/admin/utilizadores'
@@ -389,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTaxasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/pagamentos': {
+      id: '/_authenticated/admin/pagamentos'
+      path: '/admin/pagamentos'
+      fullPath: '/admin/pagamentos'
+      preLoaderRoute: typeof AuthenticatedAdminPagamentosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/otimizacao': {
       id: '/_authenticated/admin/otimizacao'
       path: '/admin/otimizacao'
@@ -456,6 +476,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdminEquipaRoute: typeof AuthenticatedAdminEquipaRoute
   AuthenticatedAdminExportarRoute: typeof AuthenticatedAdminExportarRoute
   AuthenticatedAdminOtimizacaoRoute: typeof AuthenticatedAdminOtimizacaoRoute
+  AuthenticatedAdminPagamentosRoute: typeof AuthenticatedAdminPagamentosRoute
   AuthenticatedAdminTaxasRoute: typeof AuthenticatedAdminTaxasRoute
   AuthenticatedAdminTemplatesRoute: typeof AuthenticatedAdminTemplatesRoute
   AuthenticatedAdminUtilizadoresRoute: typeof AuthenticatedAdminUtilizadoresRoute
@@ -473,6 +494,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminEquipaRoute: AuthenticatedAdminEquipaRoute,
   AuthenticatedAdminExportarRoute: AuthenticatedAdminExportarRoute,
   AuthenticatedAdminOtimizacaoRoute: AuthenticatedAdminOtimizacaoRoute,
+  AuthenticatedAdminPagamentosRoute: AuthenticatedAdminPagamentosRoute,
   AuthenticatedAdminTaxasRoute: AuthenticatedAdminTaxasRoute,
   AuthenticatedAdminTemplatesRoute: AuthenticatedAdminTemplatesRoute,
   AuthenticatedAdminUtilizadoresRoute: AuthenticatedAdminUtilizadoresRoute,

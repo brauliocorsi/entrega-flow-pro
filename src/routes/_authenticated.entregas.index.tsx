@@ -174,6 +174,12 @@ function MyDayPage() {
                 )}
               </div>
 
+              {r.status !== "concluida" && active.length > 1 && (
+                <div className="p-3 border-b bg-muted/20">
+                  <CourierOrderBlock route={r} deliveries={active} />
+                </div>
+              )}
+
 
               <div className="divide-y">
                 {r.deliveries.map((d: any) => {

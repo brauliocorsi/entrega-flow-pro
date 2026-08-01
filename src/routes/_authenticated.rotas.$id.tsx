@@ -555,7 +555,8 @@ function RouteDetail() {
   const isClosed = r.status === "fechada" || r.status === "concluida";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24">
+      {canForecast && !isClosed && r.deliveries_count > 0 && <CloseRouteBar routeId={r.id} />}
       <Link to="/rotas" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
         <ArrowLeft className="h-4 w-4" /> Todas as rotas
       </Link>

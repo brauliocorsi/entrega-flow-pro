@@ -162,7 +162,32 @@ export function buildClosureObservations(args: {
   return lines.join("\n");
 }
 
-/** Atualiza situação, pagamentos e observações de uma venda no GestãoClick. */
+async function sendJson(
+  method: "POST" | "PUT",
+  url: string,
+  headers: Record<string, string>,
+  body: unknown,
+) {
+  const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`GestãoClick ${method} ${res.status}: ${text.slice(0, 200)}`);
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    throw new Error("GestãoClick devolveu resposta inválida (não-JSON)");
+  }
+}
+
+/** Marcador único por recebimento, para não duplicar em reenvios. */
+function receiptDescription(codigo: string, method: string, amount: number, date: string) {
+  return `Venda nº ${codigo} · ${method} · ${money(amount).toFixed(2)} € · entrega ${date}`;
+}
+
+/**
+ * Atualiza situação e observações da venda e regista os recebimentos no financeiro.
+ * Nota: a API de vendas do GestãoClick ignora o bloco `pagamentos` em updates,
+ * por isso os valores recebidos são lançados via /api/recebimentos.
+ */
 export async function updateGestaoClickVendaClosure(args: {
   vendaId: string;
   situacaoLabel: string;
@@ -186,73 +211,107 @@ export async function updateGestaoClickVendaClosure(args: {
       return { ok: false, error: `Situação "${args.situacaoLabel}" não encontrada no GestãoClick` };
     }
 
-    const pagamentos: any[] = [];
+    const clienteId = String(venda.cliente_id ?? "");
+    const codigo = String(venda.codigo ?? args.vendaId);
     const existingPayments: any[] = Array.isArray(venda.pagamentos) ? venda.pagamentos : [];
-    const paymentTemplate = existingPayments[0]?.pagamento ?? existingPayments[0] ?? {};
+    const planoContasId =
+      (existingPayments[0]?.pagamento ?? existingPayments[0] ?? {})?.plano_contas_id ?? null;
+
+    // 1) Situação + observações na venda
+    const prevObs = String(venda.observacoes ?? "").trim();
+    const body: Record<string, unknown> = {
+      cliente_id: venda.cliente_id,
+      situacao_id: Number(situacaoId) || situacaoId,
+      observacoes: prevObs ? `${prevObs}\n\n${args.observacoes}` : args.observacoes,
+    };
+    await sendJson("PUT", `${base}/api/vendas/${encodeURIComponent(args.vendaId)}`, headers, body);
+
+    // 2) Recebimentos no financeiro (um por método), sem duplicar
+    let alreadyLaunched: string[] = [];
+    if (clienteId) {
+      const list = await getJson(
+        `${base}/api/recebimentos?cliente_id=${encodeURIComponent(clienteId)}`,
+        headers,
+      );
+      const rows: any[] = Array.isArray(list?.data) ? list.data : [];
+      alreadyLaunched = rows.map((r) => norm(String(r?.descricao ?? "")));
+    }
+
+    const created: string[] = [];
     for (const p of args.payments) {
       const amount = money(Number(p.amount));
       if (amount <= 0) continue;
       const formaId = await resolveFormaPagamentoId(p.method_name);
       if (!formaId) {
-        return { ok: false, error: `Forma de pagamento "${p.method_name}" não encontrada no GestãoClick` };
+        return {
+          ok: false,
+          error: `Forma de pagamento "${p.method_name}" não encontrada no GestãoClick`,
+        };
       }
       const date = (p.created_at ?? new Date().toISOString()).slice(0, 10);
-      pagamentos.push({
-        pagamento: {
-          data_vencimento: date,
-          data_pagamento: date,
-          valor: amount,
-          forma_pagamento_id: Number(formaId) || formaId,
-          plano_contas_id: paymentTemplate?.plano_contas_id
-            ? Number(paymentTemplate.plano_contas_id) || paymentTemplate.plano_contas_id
-            : undefined,
-          liquidado: "pg",
-          observacao: `Recebido na entrega — ${p.method_name}`,
-        },
+      const descricao = receiptDescription(codigo, p.method_name, amount, date);
+      if (alreadyLaunched.includes(norm(descricao))) continue;
+      if (!clienteId) {
+        return { ok: false, error: "Venda sem cliente associado no GestãoClick" };
+      }
+      await sendJson("POST", `${base}/api/recebimentos`, headers, {
+        descricao,
+        valor: amount.toFixed(2),
+        forma_pagamento_id: Number(formaId) || formaId,
+        ...(planoContasId ? { plano_contas_id: Number(planoContasId) || planoContasId } : {}),
+        entidade: "C",
+        cliente_id: Number(clienteId) || clienteId,
+        liquidado: "1",
+        data_vencimento: date,
+        data_liquidacao: date,
+        data_competencia: date,
+        venda_id: Number(args.vendaId) || args.vendaId,
       });
+      created.push(descricao);
     }
 
-    const prevObs = String(venda.observacoes ?? "").trim();
-    const body: Record<string, unknown> = {
-      ...venda,
-      observacoes: prevObs ? `${prevObs}\n\n${args.observacoes}` : args.observacoes,
-    };
-    body["situacao_id"] = Number(situacaoId) || situacaoId;
-    if (pagamentos.length > 0) body["pagamentos"] = pagamentos;
-    if (!body["cliente_id"] && venda.cliente_id) body["cliente_id"] = venda.cliente_id;
-
-    const res = await fetch(`${base}/api/vendas/${encodeURIComponent(args.vendaId)}`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      return { ok: false, error: `GestãoClick PUT ${res.status}: ${text.slice(0, 250)}` };
-    }
-
+    // 3) Verificação
     const verified = await getJson(
       `${base}/api/vendas/${encodeURIComponent(args.vendaId)}`,
       headers,
     );
     const saved: any = verified?.data ?? verified ?? null;
-    const savedSituation = String(saved?.situacao_id ?? "");
-    const savedPayments: any[] = Array.isArray(saved?.pagamentos) ? saved.pagamentos : [];
-    const expectedTotal = money(args.payments.reduce((sum, p) => sum + Number(p.amount), 0));
-    const savedTotal = money(
-      savedPayments.reduce((sum, row) => sum + Number((row?.pagamento ?? row)?.valor ?? 0), 0),
-    );
-    if (savedSituation !== String(situacaoId)) {
+    if (String(saved?.situacao_id ?? "") !== String(situacaoId)) {
       return { ok: false, error: `GestãoClick não aplicou a situação "${args.situacaoLabel}"` };
     }
-    if (expectedTotal > 0 && Math.abs(savedTotal - expectedTotal) > 0.01) {
-      return {
-        ok: false,
-        error: `GestãoClick não aplicou os pagamentos (esperado ${eur(expectedTotal)}, gravado ${eur(savedTotal)})`,
-      };
+
+    const expectedTotal = money(args.payments.reduce((sum, p) => sum + Number(p.amount), 0));
+    if (expectedTotal > 0 && clienteId) {
+      const list = await getJson(
+        `${base}/api/recebimentos?cliente_id=${encodeURIComponent(clienteId)}`,
+        headers,
+      );
+      const rows: any[] = Array.isArray(list?.data) ? list.data : [];
+      const wanted = args.payments
+        .filter((p) => money(Number(p.amount)) > 0)
+        .map((p) =>
+          norm(
+            receiptDescription(
+              codigo,
+              p.method_name,
+              money(Number(p.amount)),
+              (p.created_at ?? new Date().toISOString()).slice(0, 10),
+            ),
+          ),
+        );
+      const savedDescriptions = rows.map((r) => norm(String(r?.descricao ?? "")));
+      const missing = wanted.filter((w) => !savedDescriptions.includes(w));
+      if (missing.length > 0) {
+        return {
+          ok: false,
+          error: `GestãoClick não registou ${missing.length} recebimento(s) desta venda`,
+        };
+      }
     }
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Falha ao atualizar GestãoClick" };
   }
 }
+

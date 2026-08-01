@@ -131,11 +131,13 @@ function RouteSimulationSection({
 
 
   const stops: Stop[] = useMemo(() => {
-    if (optData?.optimizedOrder && optData.optimizedOrder.length === rawStops.length) {
-      return optData.optimizedOrder.map((i) => rawStops[i]).filter(Boolean);
+    const invalid = rawStops.filter((s) => !validStops.includes(s));
+    if (optData?.optimizedOrder && optData.optimizedOrder.length === validStops.length) {
+      return [...optData.optimizedOrder.map((i) => validStops[i]).filter(Boolean), ...invalid];
     }
-    return rawStops;
-  }, [rawStops, optData]);
+    return [...validStops, ...invalid];
+  }, [rawStops, validStops, optData]);
+
 
   const legs = optData?.legs ?? [];
 

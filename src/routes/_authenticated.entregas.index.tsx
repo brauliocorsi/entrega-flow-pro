@@ -94,7 +94,11 @@ function MyDayPage() {
             (a: number, d: any) => a + computeDeliveryTotals(d).remainingValue,
             0,
           );
+          const cashInHand = r.payments
+            .filter((p: any) => String(p.method_name ?? "").toLowerCase().includes("dinheiro"))
+            .reduce((a: number, p: any) => a + Number(p.amount), 0);
           const pct = active.length ? (done.length / active.length) * 100 : 0;
+
 
           return (
             <Card key={r.id} className="overflow-hidden">

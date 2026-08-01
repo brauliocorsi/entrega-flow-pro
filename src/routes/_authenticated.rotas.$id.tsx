@@ -39,7 +39,26 @@ import {
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2, Wallet, Download, History as HistoryIcon } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2, Wallet, Download, History as HistoryIcon, AlertTriangle } from "lucide-react";
+
+/** Etiqueta de origem do valor: GestãoClick vs calculado nesta app. */
+function SourceTag({ kind }: { kind: "gc" | "payload" | "calc" }) {
+  const map = {
+    gc: { label: "GC", title: "Valor gravado, vindo do GestãoClick", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+    payload: { label: "GC", title: "Valor do último snapshot do GestãoClick", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+    calc: { label: "Σ", title: "Calculado nesta app a partir dos itens", cls: "bg-slate-100 text-slate-600 border-slate-200" },
+  } as const;
+  const m = map[kind];
+  return (
+    <span
+      title={m.title}
+      className={`inline-flex items-center rounded border px-1 text-[9px] leading-4 font-medium ${m.cls}`}
+    >
+      {m.label}
+    </span>
+  );
+}
+
 import { generateRouteForecast, listRouteForecasts } from "@/lib/forecasts.functions";
 import { downloadForecastPdf } from "@/lib/forecast-pdf";
 import { formatDateTimePT } from "@/lib/format";
@@ -773,10 +792,17 @@ function DeliveryCard({
   const itemsTotal = productsTotal + assemblyTotal + deliveryTotal;
   // Entregas antigas foram gravadas sem totais: cair para a soma dos itens.
   const payloadTotal = Number(payload.total_value ?? 0);
+  const totalSource: "gc" | "payload" | "calc" =
+    Number(d.total_value) > 0 ? "gc" : payloadTotal > 0 ? "payload" : "calc";
   const totalValue =
-    Number(d.total_value) > 0 ? Number(d.total_value) : payloadTotal > 0 ? payloadTotal : itemsTotal;
+    totalSource === "gc" ? Number(d.total_value) : totalSource === "payload" ? payloadTotal : itemsTotal;
+  const paidSource: "gc" | "payload" = Number(d.paid_value) > 0 ? "gc" : "payload";
   const paidValue = Number(d.paid_value) > 0 ? Number(d.paid_value) : Number(payload.paid_value ?? 0);
   const remainingValue = Math.max(totalValue - paidValue, 0);
+  // Discrepância entre o total registado e a soma dos itens
+  const totalMismatch =
+    itemsTotal > 0 && totalSource !== "calc" && Math.abs(itemsTotal - totalValue) > 0.01;
+
   const totalQty = productItems.reduce((acc, i) => acc + Number(i?.quantity ?? 0), 0);
   const accent = hasAssembly
     ? "border-l-violet-500 bg-violet-50/40"
@@ -931,40 +957,66 @@ function DeliveryCard({
                 )}
                 {items.length > 0 && (
                   <div className="mt-2 pt-2 border-t space-y-0.5 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Produtos</span>
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        Produtos <SourceTag kind="calc" />
+                      </span>
                       <span className="tabular-nums">{formatEUR(productsTotal)}</span>
                     </div>
                     {assemblyTotal > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Montagem</span>
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          Montagem <SourceTag kind="calc" />
+                        </span>
                         <span className="tabular-nums">{formatEUR(assemblyTotal)}</span>
                       </div>
                     )}
                     {deliveryTotal > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Entrega</span>
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          Entrega <SourceTag kind="calc" />
+                        </span>
                         <span className="tabular-nums">{formatEUR(deliveryTotal)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between font-semibold border-t pt-0.5">
-                      <span>Total</span>
+                    <div className="flex justify-between items-center gap-2 font-semibold border-t pt-0.5">
+                      <span className="flex items-center gap-1">
+                        Total <SourceTag kind={totalSource} />
+                      </span>
                       <span className="tabular-nums">{formatEUR(totalValue)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Pago</span>
+                    {totalMismatch && (
+                      <div className="flex items-start gap-1 rounded bg-amber-50 border border-amber-200 px-1.5 py-1 text-[11px] text-amber-800">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                        <span>
+                          Divergência: soma dos itens {formatEUR(itemsTotal)} ≠ total registado{" "}
+                          {formatEUR(totalValue)} (diferença {formatEUR(Math.abs(itemsTotal - totalValue))}).
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        Pago <SourceTag kind={paidSource} />
+                      </span>
                       <span className="tabular-nums text-emerald-700">{formatEUR(paidValue)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Por receber</span>
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        Por receber <SourceTag kind="calc" />
+                      </span>
                       <span
                         className={`tabular-nums ${remainingValue > 0 ? "text-rose-600 font-semibold" : ""}`}
                       >
                         {formatEUR(remainingValue)}
                       </span>
                     </div>
+                    <div className="pt-1 text-[10px] text-muted-foreground">
+                      <span className="font-medium">GC</span> = valor vindo do GestãoClick ·{" "}
+                      <span className="font-medium">Σ</span> = calculado nesta app
+                    </div>
                   </div>
                 )}
+
 
                 {productItems.length === 0 && assemblyItems.length === 0 && (
                   <div className="flex items-center justify-between gap-2">

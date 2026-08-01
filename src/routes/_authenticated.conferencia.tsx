@@ -13,6 +13,8 @@ import { formatEUR, formatDatePT, zipPrefix } from "@/lib/format";
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT } from "@/lib/constants";
 import { toast } from "sonner";
 import { Search, Calculator, Calendar, Info, MapPin, Wallet } from "lucide-react";
+import { PrestacaoContas } from "@/components/PrestacaoContas";
+
 
 export const Route = createFileRoute("/_authenticated/conferencia")({
   head: () => ({ meta: [{ title: "Conferência de Valores — UP Agenda" }] }),

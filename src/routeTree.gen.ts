@@ -17,6 +17,7 @@ import { Route as AuthenticatedConferenciaRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAgendarRouteImport } from './routes/_authenticated.agendar'
 import { Route as AuthenticatedEntregasIndexRouteImport } from './routes/_authenticated.entregas.index'
 import { Route as AuthenticatedComprasIndexRouteImport } from './routes/_authenticated.compras.index'
+import { Route as AuthenticatedRotasIdRouteImport } from './routes/_authenticated.rotas.$id'
 import { Route as AuthenticatedEntregasEnvelopesRouteImport } from './routes/_authenticated.entregas.envelopes'
 import { Route as AuthenticatedEntregasDeliveryIdRouteImport } from './routes/_authenticated.entregas.$deliveryId'
 import { Route as AuthenticatedComprasNovaRouteImport } from './routes/_authenticated.compras.nova'
@@ -77,6 +78,11 @@ const AuthenticatedComprasIndexRoute =
     path: '/compras/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedRotasIdRoute = AuthenticatedRotasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedRotasRoute,
+} as any)
 const AuthenticatedEntregasEnvelopesRoute =
   AuthenticatedEntregasEnvelopesRouteImport.update({
     id: '/entregas/envelopes',
@@ -150,9 +156,9 @@ const AuthenticatedAdminAssistenciasRoute =
   } as any)
 const AuthenticatedRotasIdIndexRoute =
   AuthenticatedRotasIdIndexRouteImport.update({
-    id: '/$id/',
-    path: '/$id/',
-    getParentRoute: () => AuthenticatedRotasRoute,
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedRotasIdRoute,
   } as any)
 const AuthenticatedEntregasCaixaIndexRoute =
   AuthenticatedEntregasCaixaIndexRouteImport.update({
@@ -168,9 +174,9 @@ const ApiPublicCronGenerateRoutesRoute =
   } as any)
 const AuthenticatedRotasIdFecharRoute =
   AuthenticatedRotasIdFecharRouteImport.update({
-    id: '/$id/fechar',
-    path: '/$id/fechar',
-    getParentRoute: () => AuthenticatedRotasRoute,
+    id: '/fechar',
+    path: '/fechar',
+    getParentRoute: () => AuthenticatedRotasIdRoute,
   } as any)
 const AuthenticatedEntregasCaixaRouteIdRoute =
   AuthenticatedEntregasCaixaRouteIdRouteImport.update({
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/compras/nova': typeof AuthenticatedComprasNovaRoute
   '/entregas/$deliveryId': typeof AuthenticatedEntregasDeliveryIdRoute
   '/entregas/envelopes': typeof AuthenticatedEntregasEnvelopesRoute
+  '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/compras/': typeof AuthenticatedComprasIndexRoute
   '/entregas/': typeof AuthenticatedEntregasIndexRoute
   '/entregas/caixa/$routeId': typeof AuthenticatedEntregasCaixaRouteIdRoute
@@ -251,6 +258,7 @@ export interface FileRoutesById {
   '/_authenticated/compras/nova': typeof AuthenticatedComprasNovaRoute
   '/_authenticated/entregas/$deliveryId': typeof AuthenticatedEntregasDeliveryIdRoute
   '/_authenticated/entregas/envelopes': typeof AuthenticatedEntregasEnvelopesRoute
+  '/_authenticated/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/_authenticated/compras/': typeof AuthenticatedComprasIndexRoute
   '/_authenticated/entregas/': typeof AuthenticatedEntregasIndexRoute
   '/_authenticated/entregas/caixa/$routeId': typeof AuthenticatedEntregasCaixaRouteIdRoute
@@ -279,6 +287,7 @@ export interface FileRouteTypes {
     | '/compras/nova'
     | '/entregas/$deliveryId'
     | '/entregas/envelopes'
+    | '/rotas/$id'
     | '/compras/'
     | '/entregas/'
     | '/entregas/caixa/$routeId'
@@ -332,6 +341,7 @@ export interface FileRouteTypes {
     | '/_authenticated/compras/nova'
     | '/_authenticated/entregas/$deliveryId'
     | '/_authenticated/entregas/envelopes'
+    | '/_authenticated/rotas/$id'
     | '/_authenticated/compras/'
     | '/_authenticated/entregas/'
     | '/_authenticated/entregas/caixa/$routeId'
@@ -405,6 +415,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/compras/'
       preLoaderRoute: typeof AuthenticatedComprasIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/rotas/$id': {
+      id: '/_authenticated/rotas/$id'
+      path: '/$id'
+      fullPath: '/rotas/$id'
+      preLoaderRoute: typeof AuthenticatedRotasIdRouteImport
+      parentRoute: typeof AuthenticatedRotasRoute
     }
     '/_authenticated/entregas/envelopes': {
       id: '/_authenticated/entregas/envelopes'
@@ -492,10 +509,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/rotas/$id/': {
       id: '/_authenticated/rotas/$id/'
-      path: '/$id'
+      path: '/'
       fullPath: '/rotas/$id/'
       preLoaderRoute: typeof AuthenticatedRotasIdIndexRouteImport
-      parentRoute: typeof AuthenticatedRotasRoute
+      parentRoute: typeof AuthenticatedRotasIdRoute
     }
     '/_authenticated/entregas/caixa/': {
       id: '/_authenticated/entregas/caixa/'
@@ -513,10 +530,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/rotas/$id/fechar': {
       id: '/_authenticated/rotas/$id/fechar'
-      path: '/$id/fechar'
+      path: '/fechar'
       fullPath: '/rotas/$id/fechar'
       preLoaderRoute: typeof AuthenticatedRotasIdFecharRouteImport
-      parentRoute: typeof AuthenticatedRotasRoute
+      parentRoute: typeof AuthenticatedRotasIdRoute
     }
     '/_authenticated/entregas/caixa/$routeId': {
       id: '/_authenticated/entregas/caixa/$routeId'
@@ -528,14 +545,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedRotasRouteChildren {
+interface AuthenticatedRotasIdRouteChildren {
   AuthenticatedRotasIdFecharRoute: typeof AuthenticatedRotasIdFecharRoute
   AuthenticatedRotasIdIndexRoute: typeof AuthenticatedRotasIdIndexRoute
 }
 
-const AuthenticatedRotasRouteChildren: AuthenticatedRotasRouteChildren = {
+const AuthenticatedRotasIdRouteChildren: AuthenticatedRotasIdRouteChildren = {
   AuthenticatedRotasIdFecharRoute: AuthenticatedRotasIdFecharRoute,
   AuthenticatedRotasIdIndexRoute: AuthenticatedRotasIdIndexRoute,
+}
+
+const AuthenticatedRotasIdRouteWithChildren =
+  AuthenticatedRotasIdRoute._addFileChildren(AuthenticatedRotasIdRouteChildren)
+
+interface AuthenticatedRotasRouteChildren {
+  AuthenticatedRotasIdRoute: typeof AuthenticatedRotasIdRouteWithChildren
+}
+
+const AuthenticatedRotasRouteChildren: AuthenticatedRotasRouteChildren = {
+  AuthenticatedRotasIdRoute: AuthenticatedRotasIdRouteWithChildren,
 }
 
 const AuthenticatedRotasRouteWithChildren =
@@ -599,3 +627,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

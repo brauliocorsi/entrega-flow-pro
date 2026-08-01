@@ -270,20 +270,23 @@ function RouteSimulationMap({
   const selectedIdx = stops.findIndex((s) => s.id === selectedId);
   const selectedStop = selectedIdx >= 0 ? stops[selectedIdx] : null;
 
+  const mapStops = useMemo(() => stops.filter((s) => (s.full ?? "").trim().length >= 5), [stops]);
+
   const simulationInput = useMemo(() => {
-    if (stops.length === 0) return null;
+    if (mapStops.length === 0) return null;
     return {
       origin: WAREHOUSE_ADDRESS,
       destination: WAREHOUSE_ADDRESS,
-      intermediates: stops.map((stop) => stop.full),
+      intermediates: mapStops.map((stop) => stop.full.trim().slice(0, 255)),
     };
-  }, [stops]);
+  }, [mapStops]);
 
   const { data, isLoading, error } = useQuery<RouteSimulation>({
-    queryKey: ["route-simulation", stops.map((s) => s.id).join(",")],
+    queryKey: ["route-simulation", mapStops.map((s) => s.id).join(",")],
     enabled: Boolean(simulationInput),
     queryFn: () => simulationFn({ data: simulationInput! }),
   });
+
 
   useEffect(() => {
     if (!mapsKey || !mapRef.current) return;

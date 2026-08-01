@@ -522,7 +522,7 @@ function RouteSimulationMap({
 }
 
 
-export const Route = createFileRoute("/_authenticated/rotas/$id")({
+export const Route = createFileRoute("/_authenticated/rotas/$id/")({
   component: RouteDetail,
 });
 

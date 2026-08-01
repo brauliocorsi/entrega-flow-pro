@@ -630,7 +630,13 @@ export type Database = {
       routes: {
         Row: {
           assistant: string | null
+          closed_at: string | null
+          closed_by: string | null
+          closed_by_name: string | null
+          closed_by_role: string | null
           color: string
+          conferred_at: string | null
+          conferred_by_name: string | null
           corridor: Json
           created_at: string
           current_volume_m3: number
@@ -651,7 +657,13 @@ export type Database = {
         }
         Insert: {
           assistant?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_by_name?: string | null
+          closed_by_role?: string | null
           color?: string
+          conferred_at?: string | null
+          conferred_by_name?: string | null
           corridor?: Json
           created_at?: string
           current_volume_m3?: number
@@ -672,7 +684,13 @@ export type Database = {
         }
         Update: {
           assistant?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_by_name?: string | null
+          closed_by_role?: string | null
           color?: string
+          conferred_at?: string | null
+          conferred_by_name?: string | null
           corridor?: Json
           created_at?: string
           current_volume_m3?: number

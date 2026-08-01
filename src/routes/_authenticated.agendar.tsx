@@ -587,23 +587,27 @@ function AgendarPage() {
                       <TableHead className="hidden sm:table-cell">Situação</TableHead>
                       <TableHead className="hidden md:table-cell">Data</TableHead>
                       <TableHead className="text-right">Acções</TableHead>
+                      <TableHead className="w-8"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {availableQuery.isLoading && (
-                      <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">A carregar…</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-6">A carregar…</TableCell></TableRow>
                     )}
-                    {!availableQuery.isLoading && (availableQuery.data?.orders.length ?? 0) === 0 && (
-                      <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">Sem vendas disponíveis.</TableCell></TableRow>
+                    {!availableQuery.isLoading && visibleOrders.length === 0 && (
+                      <TableRow><TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-6">Sem vendas disponíveis.</TableCell></TableRow>
                     )}
-                    {availableOrders.map((o) => {
+                    {visibleOrders.map((o) => {
                       const k = cp2(o.zip_code);
                       const cluster = k ? clusterByCp2.get(k) : undefined;
                       const isSelected = selected.has(o.order_number);
                       const isSuggested =
                         !isSelected && selectedCp2.size > 0 && k !== null && selectedCp2.has(k);
                       const canSelect = !o.alreadyScheduled && !!o.zip_code;
+                      const tone = situationTone(o.situation);
+                      const isOpen = expanded === o.order_number;
                       return (
+                        <>
                         <TableRow
                           key={o.order_number}
                           className={`${o.alreadyScheduled ? "opacity-60" : ""} ${
@@ -629,8 +633,16 @@ function AgendarPage() {
                               </div>
                             ) : null}
                           </TableCell>
-                          <TableCell className="font-mono text-xs">{o.order_number}</TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell
+                            className="font-mono text-xs cursor-pointer"
+                            onClick={() => toggleExpanded(o.order_number)}
+                          >
+                            {o.order_number}
+                          </TableCell>
+                          <TableCell
+                            className="font-medium cursor-pointer"
+                            onClick={() => toggleExpanded(o.order_number)}
+                          >
                             <div className="flex items-center gap-1 flex-wrap">
                               {o.customer_name}
                               {isSuggested && (
@@ -647,7 +659,10 @@ function AgendarPage() {
                           </TableCell>
                           <TableCell className="text-right tabular-nums">{formatEUR(o.total_value)}</TableCell>
                           <TableCell className="hidden sm:table-cell">
-                            <Badge variant="outline" className="text-[10px]">{o.situation}</Badge>
+                            <Badge className={`text-[10px] font-medium ${tone.badge}`}>
+                              <span className={`inline-block h-2 w-2 rounded-full mr-1 ${tone.dot}`} />
+                              {o.situation}
+                            </Badge>
                           </TableCell>
                           <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                             {o.date ? formatDatePT(o.date) : "—"}
@@ -674,9 +689,32 @@ function AgendarPage() {
                               </Button>
                             )}
                           </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7"
+                              aria-label={isOpen ? "Fechar detalhes" : "Ver detalhes"}
+                              onClick={() => toggleExpanded(o.order_number)}
+                            >
+                              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </Button>
+                          </TableCell>
                         </TableRow>
+                        {isOpen && (
+                          <TableRow key={`${o.order_number}-details`} className="hover:bg-transparent">
+                            <TableCell colSpan={10} className="p-0">
+                              <OrderDetailsPanel
+                                result={details[o.order_number]}
+                                loading={detailLoading === o.order_number}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        </>
                       );
                     })}
+
                   </TableBody>
                 </Table>
               </div>

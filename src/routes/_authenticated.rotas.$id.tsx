@@ -638,16 +638,32 @@ function RouteDetail() {
                 label: `#${d.order_number} · ${d.customer_name}`,
                 full: buildStopAddress(d.address, d.zip_code, d.city),
               }));
+              const manualOrder = activeDeliveries.some((d: any) => d.stop_order != null);
 
               return (
-                <RouteSimulationSection
-                  rawStops={rawStops}
-                  selectedId={selectedId}
-                  setSelectedId={setSelectedId}
-                  selectStop={selectStop}
-                />
+                <>
+                  <OrdemEntregasEditor
+                    routeId={r.id}
+                    deliveries={activeDeliveries.map((d: any) => ({
+                      id: d.id,
+                      order_number: d.order_number,
+                      customer_name: d.customer_name,
+                      address: d.address,
+                    }))}
+                    locked={false}
+                    invalidateKeys={[["route-deliveries", r.id], ["scheduled-deliveries", r.id]]}
+                  />
+                  <RouteSimulationSection
+                    rawStops={rawStops}
+                    manualOrder={manualOrder}
+                    selectedId={selectedId}
+                    setSelectedId={setSelectedId}
+                    selectStop={selectStop}
+                  />
+                </>
               );
             })()}
+
 
             <Tabs defaultValue="ativas" className="mt-6">
               <TabsList>

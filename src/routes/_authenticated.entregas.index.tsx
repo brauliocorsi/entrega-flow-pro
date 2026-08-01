@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { formatEUR, formatDatePT } from "@/lib/format";
+import { computeDeliveryTotals } from "@/lib/delivery-totals";
 import { DELIVERY_TYPE_LABEL } from "@/lib/constants";
 import { Truck, MapPin, Phone, ChevronRight, CheckCircle2, CircleDashed } from "lucide-react";
 

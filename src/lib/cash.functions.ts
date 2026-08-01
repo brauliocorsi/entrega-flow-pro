@@ -416,8 +416,11 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
           expenses_total: expTotal,
           in_hand: round2(cashIn - expTotal),
           orders,
+          payments_total: ps.length,
+          pending_confirmations: ps.filter((p: any) => !p.confirmed).length,
           forecast_total: round2(orders.reduce((a: number, o: any) => a + o.forecast, 0)),
           realized_total: round2(orders.reduce((a: number, o: any) => a + o.realized, 0)),
+
           other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
             .filter((m) => !isCash(m.method_name))
             .map((m) => ({ ...m, confirmed: confirmed.get(m.method_name) ?? false })),

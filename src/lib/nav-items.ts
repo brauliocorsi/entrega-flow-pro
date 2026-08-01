@@ -11,6 +11,8 @@ import {
   Truck,
   Wrench,
   Wallet,
+  PackageCheck,
+
   type LucideIcon,
 } from "lucide-react";
 

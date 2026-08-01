@@ -102,6 +102,43 @@ export const updateRouteStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateRouteDate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        route_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: roleData } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "logistico"]);
+    if (!roleData || roleData.length === 0) {
+      throw new Error("Apenas administradores ou logística podem alterar a data da rota");
+    }
+    const { data: route, error: readErr } = await context.supabase
+      .from("routes")
+      .select("id, status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+    if (!route) throw new Error("Rota não encontrada");
+    if (route.status === "concluida") throw new Error("Não é possível alterar a data de uma rota concluída");
+
+    const { error } = await context.supabase
+      .from("routes")
+      .update({ route_date: data.route_date })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 export const updateRouteFleet = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>

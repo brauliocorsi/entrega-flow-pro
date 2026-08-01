@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getRouteSimulation, getRouteWithDeliveries, listRoutes, updateRouteFleet } from "@/lib/routes.functions";
+import { getRouteSimulation, getRouteWithDeliveries, listRoutes, updateRouteFleet, updateRouteDate } from "@/lib/routes.functions";
 import { listVehicles, listStaff } from "@/lib/fleet.functions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
@@ -560,7 +560,11 @@ function RouteDetail() {
               <h1 className="text-2xl font-bold">{r.zone}</h1>
               <Badge className={ROUTE_STATUS_TONE[r.status]}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
             </div>
-            <p className="text-sm text-muted-foreground">{WEEKDAYS_PT[d.getDay()]}, {formatDatePT(r.route_date)} · {r.driver ?? "Motorista por atribuir"}</p>
+            <div className="text-sm text-muted-foreground flex items-center gap-1.5 flex-wrap">
+              <span>{WEEKDAYS_PT[d.getDay()]}, {formatDatePT(r.route_date)}</span>
+              <RouteDateEditor route={r} />
+              <span>· {r.driver ?? "Motorista por atribuir"}</span>
+            </div>
             <p className="text-xs text-muted-foreground mt-1">CP: {(r.zip_prefixes ?? []).join(", ") || "—"}</p>
           </div>
           <div className="flex gap-2">
@@ -1224,6 +1228,68 @@ function DeliveryCard({
         </AlertDialogContent>
       </AlertDialog>
     </Card>
+  );
+}
+
+function RouteDateEditor({ route }: { route: any }) {
+  const { role } = useAuth();
+  const qc = useQueryClient();
+  const fnUpdateDate = useServerFn(updateRouteDate);
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState<string>(route.route_date);
+  const [saving, setSaving] = useState(false);
+
+  const canEdit = (role === "admin" || role === "logistico") && route.status !== "concluida";
+  if (!canEdit) return null;
+
+  async function save() {
+    setSaving(true);
+    try {
+      await fnUpdateDate({ data: { id: route.id, route_date: date } });
+      toast.success("Data da rota atualizada");
+      setOpen(false);
+      await qc.invalidateQueries();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao alterar a data");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-6 px-1.5 text-xs"
+        onClick={() => {
+          setDate(route.route_date);
+          setOpen(true);
+        }}
+      >
+        <Pencil className="h-3 w-3 mr-1" /> Editar data
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar data da rota</DialogTitle>
+            <DialogDescription>
+              As entregas associadas passam a estar agendadas para a nova data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs text-muted-foreground">Nova data</label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={save} disabled={saving || !date || date === route.route_date}>
+              {saving ? "A guardar…" : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

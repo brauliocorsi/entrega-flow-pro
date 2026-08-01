@@ -225,6 +225,65 @@ export type Database = {
         }
         Relationships: []
       }
+      route_cash_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          created_by: string
+          created_by_name: string | null
+          description: string
+          id: string
+          receipt_path: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          route_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          created_by: string
+          created_by_name?: string | null
+          description: string
+          id?: string
+          receipt_path: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          route_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string
+          created_by_name?: string | null
+          description?: string
+          id?: string
+          receipt_path?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          route_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_cash_expenses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       route_corridor_stops: {
         Row: {
           city_label: string
@@ -301,6 +360,74 @@ export type Database = {
           total_services?: number
         }
         Relationships: []
+      }
+      route_settlements: {
+        Row: {
+          cash_declared: number
+          cash_expected: number
+          created_at: string
+          envelope_code: string
+          expenses_total: number
+          id: string
+          methods: Json
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewed_by_name: string | null
+          route_id: string
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          cash_declared?: number
+          cash_expected?: number
+          created_at?: string
+          envelope_code: string
+          expenses_total?: number
+          id?: string
+          methods?: Json
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_by_name?: string | null
+          route_id: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cash_declared?: number
+          cash_expected?: number
+          created_at?: string
+          envelope_code?: string
+          expenses_total?: number
+          id?: string
+          methods?: Json
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_by_name?: string | null
+          route_id?: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_settlements_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: true
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       route_templates: {
         Row: {

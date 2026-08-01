@@ -59,6 +59,9 @@ export type Database = {
       delivery_payments: {
         Row: {
           amount: number
+          confirmed: boolean
+          confirmed_at: string | null
+          confirmed_by: string | null
           created_at: string
           delivery_id: string
           id: string
@@ -72,6 +75,9 @@ export type Database = {
         }
         Insert: {
           amount: number
+          confirmed?: boolean
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string
           delivery_id: string
           id?: string
@@ -85,6 +91,9 @@ export type Database = {
         }
         Update: {
           amount?: number
+          confirmed?: boolean
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           created_at?: string
           delivery_id?: string
           id?: string

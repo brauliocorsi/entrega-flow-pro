@@ -29,6 +29,9 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { to: "/entregas", label: "O meu dia", short: "Hoje", icon: Truck, group: "principal", roles: ["entregador", "admin", "logistico"] },
+  { to: "/entregas/caixa", label: "Caixa", short: "Caixa", icon: Wallet, group: "principal", roles: ["entregador", "admin", "logistico"] },
+  { to: "/entregas/envelopes", label: "Envelopes", short: "Envel.", icon: PackageCheck, group: "principal", roles: ["entregador", "admin", "logistico"] },
+
   { to: "/rotas", label: "Rotas", icon: Calendar, group: "principal" },
   { to: "/agendar", label: "Agendar", icon: Plus, group: "principal" },
   { to: "/conferencia", label: "Conferência", short: "Conf.", icon: Calculator, group: "principal" },

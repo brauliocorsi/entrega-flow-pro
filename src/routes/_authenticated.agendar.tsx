@@ -287,6 +287,16 @@ function AgendarPage() {
         setStep(2);
         return;
       }
+      if (res.existingActiveDelivery) {
+        const d = res.existingActiveDelivery.routes?.route_date as string | undefined;
+        toast.warning(
+          `A encomenda #${orderNum} já está agendada${d ? ` para ${formatDatePT(d)}` : ""}${
+            res.existingActiveDelivery.routes?.zone
+              ? ` na rota ${res.existingActiveDelivery.routes.zone}`
+              : ""
+          }. Podes transferi-la para outra rota.`,
+        );
+      }
       if (res.order.has_assembly && minutes < 60) setMinutes(60);
       setTab("numero");
       setStep(3);

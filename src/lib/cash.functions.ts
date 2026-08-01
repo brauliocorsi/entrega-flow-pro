@@ -351,14 +351,22 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
     const ids = (routes ?? []).map((r: any) => r.id);
     if (ids.length === 0) return { date, routes: [] };
 
-    const [{ data: payments }, { data: expenses }, { data: settlements }] = await Promise.all([
-      context.supabase
-        .from("delivery_payments")
-        .select("route_id, method_name, amount")
-        .in("route_id", ids),
-      context.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
-      context.supabase.from("route_settlements").select("*").in("route_id", ids),
-    ]);
+    const [{ data: payments }, { data: expenses }, { data: settlements }, { data: deliveries }] =
+      await Promise.all([
+        context.supabase
+          .from("delivery_payments")
+          .select("route_id, delivery_id, method_name, amount")
+          .in("route_id", ids),
+        context.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
+        context.supabase.from("route_settlements").select("*").in("route_id", ids),
+        context.supabase
+          .from("scheduled_deliveries")
+          .select(
+            "id, route_id, order_number, customer_name, status, outcome, total_value, paid_value, remaining_value, order_payload",
+          )
+          .in("route_id", ids)
+          .order("order_number", { ascending: true }),
+      ]);
 
     return {
       date,
@@ -379,6 +387,9 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
         const confirmed = new Map<string, boolean>(
           ((st?.methods as any[]) ?? []).map((m: any) => [m.method_name, !!m.confirmed]),
         );
+        const orders = (deliveries ?? [])
+          .filter((d: any) => d.route_id === r.id)
+          .map((d: any) => buildOrderCompare(d, ps));
         return {
           ...r,
           settlement: st,
@@ -386,6 +397,9 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
           cash_in: cashIn,
           expenses_total: expTotal,
           in_hand: round2(cashIn - expTotal),
+          orders,
+          forecast_total: round2(orders.reduce((a: number, o: any) => a + o.forecast, 0)),
+          realized_total: round2(orders.reduce((a: number, o: any) => a + o.realized, 0)),
           other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
             .filter((m) => !isCash(m.method_name))
             .map((m) => ({ ...m, confirmed: confirmed.get(m.method_name) ?? false })),

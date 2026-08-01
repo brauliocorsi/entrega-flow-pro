@@ -72,6 +72,10 @@ function MyDayPage() {
         </p>
       </div>
 
+      <CourierSummary />
+
+
+
       {!data || data.routes.length === 0 ? (
         <Card className="p-8 text-center space-y-2">
           <p className="font-medium">Sem rotas atribuídas para hoje.</p>

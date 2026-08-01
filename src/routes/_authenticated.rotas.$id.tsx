@@ -773,10 +773,17 @@ function DeliveryCard({
   const itemsTotal = productsTotal + assemblyTotal + deliveryTotal;
   // Entregas antigas foram gravadas sem totais: cair para a soma dos itens.
   const payloadTotal = Number(payload.total_value ?? 0);
+  const totalSource: "gc" | "payload" | "calc" =
+    Number(d.total_value) > 0 ? "gc" : payloadTotal > 0 ? "payload" : "calc";
   const totalValue =
-    Number(d.total_value) > 0 ? Number(d.total_value) : payloadTotal > 0 ? payloadTotal : itemsTotal;
+    totalSource === "gc" ? Number(d.total_value) : totalSource === "payload" ? payloadTotal : itemsTotal;
+  const paidSource: "gc" | "payload" = Number(d.paid_value) > 0 ? "gc" : "payload";
   const paidValue = Number(d.paid_value) > 0 ? Number(d.paid_value) : Number(payload.paid_value ?? 0);
   const remainingValue = Math.max(totalValue - paidValue, 0);
+  // Discrepância entre o total registado e a soma dos itens
+  const totalMismatch =
+    itemsTotal > 0 && totalSource !== "calc" && Math.abs(itemsTotal - totalValue) > 0.01;
+
   const totalQty = productItems.reduce((acc, i) => acc + Number(i?.quantity ?? 0), 0);
   const accent = hasAssembly
     ? "border-l-violet-500 bg-violet-50/40"

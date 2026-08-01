@@ -761,11 +761,28 @@ function DeliveryCard({
     assemblyItems.length > 0 ||
     (d.notes && /montagem|montar|instala/i.test(d.notes));
   const productItems = items.filter((i) => i?.kind !== "entrega" && i?.kind !== "montagem");
+  const deliveryItems = items.filter((i) => i?.kind === "entrega");
+  const sum = (arr: any[]) =>
+    arr.reduce(
+      (acc, i) => acc + Number(i?.total ?? Number(i?.quantity ?? 1) * Number(i?.price ?? 0)),
+      0,
+    );
+  const productsTotal = sum(productItems);
+  const assemblyTotal = sum(assemblyItems);
+  const deliveryTotal = sum(deliveryItems);
+  const itemsTotal = productsTotal + assemblyTotal + deliveryTotal;
+  // Entregas antigas foram gravadas sem totais: cair para a soma dos itens.
+  const payloadTotal = Number(payload.total_value ?? 0);
+  const totalValue =
+    Number(d.total_value) > 0 ? Number(d.total_value) : payloadTotal > 0 ? payloadTotal : itemsTotal;
+  const paidValue = Number(d.paid_value) > 0 ? Number(d.paid_value) : Number(payload.paid_value ?? 0);
+  const remainingValue = Math.max(totalValue - paidValue, 0);
   const totalQty = productItems.reduce((acc, i) => acc + Number(i?.quantity ?? 0), 0);
   const accent = hasAssembly
     ? "border-l-violet-500 bg-violet-50/40"
     : "border-l-sky-500 bg-sky-50/30";
   const locality = [d.city, d.zip_code].filter(Boolean).join(" · ");
+
 
   const save = useMutation({
     mutationFn: async () => {

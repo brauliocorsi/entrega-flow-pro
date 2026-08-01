@@ -353,7 +353,7 @@ function RoutesIndex() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Pesquisar por código, zona ou motorista…"
+              placeholder="Pesquisar por nº de encomenda, código, zona ou motorista…"
               className="pl-8"
             />
           </div>

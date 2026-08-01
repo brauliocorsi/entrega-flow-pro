@@ -39,7 +39,26 @@ import {
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT, WAREHOUSE_ADDRESS } from "@/lib/constants";
 import { formatDatePT, formatEUR } from "@/lib/format";
 import { toast } from "sonner";
-import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2, Wallet, Download, History as HistoryIcon } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2, Wallet, Download, History as HistoryIcon, AlertTriangle } from "lucide-react";
+
+/** Etiqueta de origem do valor: GestãoClick vs calculado nesta app. */
+function SourceTag({ kind }: { kind: "gc" | "payload" | "calc" }) {
+  const map = {
+    gc: { label: "GC", title: "Valor gravado, vindo do GestãoClick", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+    payload: { label: "GC", title: "Valor do último snapshot do GestãoClick", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+    calc: { label: "Σ", title: "Calculado nesta app a partir dos itens", cls: "bg-slate-100 text-slate-600 border-slate-200" },
+  } as const;
+  const m = map[kind];
+  return (
+    <span
+      title={m.title}
+      className={`inline-flex items-center rounded border px-1 text-[9px] leading-4 font-medium ${m.cls}`}
+    >
+      {m.label}
+    </span>
+  );
+}
+
 import { generateRouteForecast, listRouteForecasts } from "@/lib/forecasts.functions";
 import { downloadForecastPdf } from "@/lib/forecast-pdf";
 import { formatDateTimePT } from "@/lib/format";

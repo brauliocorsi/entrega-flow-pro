@@ -431,12 +431,22 @@ export const closeRoute = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: route, error: rSelErr } = await context.supabase
       .from("routes")
-      .select("id, status")
+      .select("id, status, conferred_at")
       .eq("id", data.routeId)
       .maybeSingle();
     if (rSelErr) throw new Error(rSelErr.message);
     if (!route) throw new Error("Rota não encontrada ou sem acesso");
-    if (route.status === "concluida") throw new Error("Esta rota já foi fechada");
+
+    const { data: roleRows } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    const roles = (roleRows ?? []).map((r: any) => r.role as string);
+    const isAdmin = roles.includes("admin") || roles.includes("logistico");
+
+    if ((route as any).conferred_at) throw new Error("Esta rota já foi conferida e fechada");
+    if (route.status === "concluida" && !isAdmin)
+      throw new Error("Esta rota já foi fechada — aguarda conferência do administrador");
 
     for (const o of data.outcomes) {
       if (NEEDS_JUSTIFICATION.has(o.outcome) && !(o.outcome_notes ?? "").trim()) {
@@ -459,14 +469,41 @@ export const closeRoute = createServerFn({ method: "POST" })
         .eq("id", o.delivery_id);
       if (error) throw new Error(error.message);
     }
+
+    const { data: prof } = await context.supabase
+      .from("profiles")
+      .select("display_name, email")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    const who = (prof as any)?.display_name || (prof as any)?.email || null;
+    const now = new Date().toISOString();
+
+    const patch: Record<string, unknown> = { status: "concluida" };
+    if (isAdmin) {
+      patch['conferred_at'] = now;
+      patch['conferred_by_name'] = who;
+      if (!route.status || route.status !== "concluida") {
+        patch['closed_at'] = now;
+        patch['closed_by'] = context.userId;
+        patch['closed_by_name'] = who;
+        patch['closed_by_role'] = roles.includes("admin") ? "admin" : "logistico";
+      }
+    } else {
+      patch['closed_at'] = now;
+      patch['closed_by'] = context.userId;
+      patch['closed_by_name'] = who;
+      patch['closed_by_role'] = "entregador";
+    }
+
     const { error: rErr } = await context.supabase
       .from("routes")
-      .update({ status: "concluida" })
+      .update(patch as any)
       .eq("id", data.routeId);
     if (rErr) throw new Error(rErr.message);
     const pending = data.outcomes.filter((o) => o.outcome !== "entregue").length;
-    return { ok: true, pending };
+    return { ok: true, pending, conferred: isAdmin };
   });
+
 
 export const listPendingReschedules = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

@@ -1002,10 +1002,11 @@ function DeliveryCard({
           )}
         </div>
         <div className="text-right shrink-0 space-y-1" onClick={(e) => e.stopPropagation()}>
-          <div className="text-sm font-semibold">{formatEUR(d.total_value)}</div>
-          {Number(d.remaining_value) > 0 && (
-            <div className="text-xs text-rose-600">Falta {formatEUR(d.remaining_value)}</div>
+          <div className="text-sm font-semibold">{formatEUR(totalValue)}</div>
+          {remainingValue > 0 && (
+            <div className="text-xs text-rose-600">Falta {formatEUR(remainingValue)}</div>
           )}
+
           {editing ? (
             <div className="flex flex-col items-end gap-1.5 mt-1">
               <div className="flex items-center gap-1">

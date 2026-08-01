@@ -35,9 +35,18 @@ function AuthenticatedLayout() {
     );
   }
 
+  const courierBlocked =
+    role === "entregador" &&
+    !COURIER_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + "/"));
+
   return (
     <AppShell role={role} email={user.email ?? ""} onSignOut={() => signOut()}>
-      <Outlet />
+      {courierBlocked ? (
+        <div className="p-6 text-sm text-muted-foreground">A redirecionar…</div>
+      ) : (
+        <Outlet />
+      )}
     </AppShell>
   );
+
 }

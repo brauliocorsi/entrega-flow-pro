@@ -376,11 +376,22 @@ export const refreshDeliveryPayload = createServerFn({ method: "POST" })
       observations: o.observations ?? null,
       status: o.status ?? null,
       date: o.date ?? null,
+      total_value: o.total_value ?? 0,
+      paid_value: o.paid_value ?? 0,
+      shipping: o.shipping ?? 0,
+      discount: o.discount ?? 0,
     };
+    const itemsSum = (o.items ?? []).reduce((acc, i) => acc + Number(i?.total ?? 0), 0);
+    const total = Number(o.total_value) > 0 ? Number(o.total_value) : itemsSum;
     const { error: uErr } = await context.supabase
       .from("scheduled_deliveries")
-      .update({ order_payload: payload as any })
+      .update({
+        order_payload: payload as any,
+        total_value: total,
+        paid_value: Number(o.paid_value ?? 0),
+      })
       .eq("id", data.id);
+
     if (uErr) throw new Error(uErr.message);
     return { ok: true, items: payload.items.length };
   });

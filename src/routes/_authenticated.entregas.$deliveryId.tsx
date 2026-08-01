@@ -209,8 +209,10 @@ function CourierDeliveryPage() {
 
   const d: any = data.delivery;
   const paid = data.payments.reduce((a: number, p: any) => a + Number(p.amount), 0);
-  const remaining = Math.max(Number(d.total_value ?? 0) - Number(d.paid_value ?? 0), 0);
+  const totals = computeDeliveryTotals(d);
+  const remaining = totals.remainingValue;
   const produtos = productList(d.order_payload);
+
 
   return (
     <div className="space-y-4 pb-8">

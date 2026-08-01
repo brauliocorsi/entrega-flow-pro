@@ -6,10 +6,10 @@
 export type ClosureOutcome = "entregue" | "entregue_parcial" | "reagendado" | "cancelado";
 
 export const CLOSURE_SITUACAO_LABEL: Record<ClosureOutcome, string> = {
-  entregue: "Produto Entregue",
+  entregue: "Pedido entregue",
   entregue_parcial: "Entrega Parcial",
-  reagendado: "Reagendada",
-  cancelado: "Cancelada",
+  reagendado: "Reagendamento",
+  cancelado: "Cancelado",
 };
 
 function creds() {
@@ -89,7 +89,7 @@ async function resolveSituacaoId(label: string): Promise<string | null> {
 
 function methodCandidates(method: string): string[] {
   const m = norm(method);
-  if (m.includes("mb way") || m.includes("mbway")) return ["mb way", "mbway"];
+  if (m.includes("mb way") || m.includes("mbway")) return ["multibanco mv", "mb way", "mbway"];
   if (m.includes("multibanco") || m === "mb") return ["multibanco", "mb"];
   if (m.includes("transfer")) return ["transferencia", "transferência", "transferencia bancaria"];
   if (m.includes("dinheiro") || m.includes("numer")) return ["dinheiro", "numerario"];
@@ -103,16 +103,14 @@ async function resolveFormaPagamentoId(method: string): Promise<string | null> {
     const json = await getJson(`${base}/api/formas_pagamentos`, headers);
     const arr: any[] = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
     const wanted = methodCandidates(method);
-    let fallback: string | null = null;
     for (const row of arr) {
-      const fp = row?.forma_pagamento ?? row;
+      const fp = row?.FormasPagamento ?? row?.forma_pagamento ?? row;
       const name = norm(String(fp?.nome ?? ""));
-      if (!fallback && fp?.id) fallback = String(fp.id);
       if (wanted.some((w) => name === w || name.includes(w))) {
         return fp?.id ? String(fp.id) : null;
       }
     }
-    return fallback;
+    return null;
   } catch {
     return null;
   }
@@ -184,18 +182,33 @@ export async function updateGestaoClickVendaClosure(args: {
     }
 
     const situacaoId = await resolveSituacaoId(args.situacaoLabel);
+    if (!situacaoId) {
+      return { ok: false, error: `Situação "${args.situacaoLabel}" não encontrada no GestãoClick` };
+    }
 
     const pagamentos: any[] = [];
+    const existingPayments: any[] = Array.isArray(venda.pagamentos) ? venda.pagamentos : [];
+    const paymentTemplate = existingPayments[0]?.pagamento ?? existingPayments[0] ?? {};
     for (const p of args.payments) {
       const amount = money(Number(p.amount));
       if (amount <= 0) continue;
       const formaId = await resolveFormaPagamentoId(p.method_name);
+      if (!formaId) {
+        return { ok: false, error: `Forma de pagamento "${p.method_name}" não encontrada no GestãoClick` };
+      }
       const date = (p.created_at ?? new Date().toISOString()).slice(0, 10);
       pagamentos.push({
-        data_vencimento: date,
-        valor: amount,
-        forma_pagamento_id: formaId ? Number(formaId) || formaId : undefined,
-        observacao: `Recebido na entrega — ${p.method_name}`,
+        pagamento: {
+          data_vencimento: date,
+          data_pagamento: date,
+          valor: amount,
+          forma_pagamento_id: Number(formaId) || formaId,
+          plano_contas_id: paymentTemplate?.plano_contas_id
+            ? Number(paymentTemplate.plano_contas_id) || paymentTemplate.plano_contas_id
+            : undefined,
+          liquidado: "pg",
+          observacao: `Recebido na entrega — ${p.method_name}`,
+        },
       });
     }
 
@@ -204,7 +217,7 @@ export async function updateGestaoClickVendaClosure(args: {
       ...venda,
       observacoes: prevObs ? `${prevObs}\n\n${args.observacoes}` : args.observacoes,
     };
-    if (situacaoId) body["situacao_id"] = situacaoId;
+    body["situacao_id"] = Number(situacaoId) || situacaoId;
     if (pagamentos.length > 0) body["pagamentos"] = pagamentos;
     if (!body["cliente_id"] && venda.cliente_id) body["cliente_id"] = venda.cliente_id;
 
@@ -216,6 +229,27 @@ export async function updateGestaoClickVendaClosure(args: {
     if (!res.ok) {
       const text = await res.text();
       return { ok: false, error: `GestãoClick PUT ${res.status}: ${text.slice(0, 250)}` };
+    }
+
+    const verified = await getJson(
+      `${base}/api/vendas/${encodeURIComponent(args.vendaId)}`,
+      headers,
+    );
+    const saved: any = verified?.data ?? verified ?? null;
+    const savedSituation = String(saved?.situacao_id ?? "");
+    const savedPayments: any[] = Array.isArray(saved?.pagamentos) ? saved.pagamentos : [];
+    const expectedTotal = money(args.payments.reduce((sum, p) => sum + Number(p.amount), 0));
+    const savedTotal = money(
+      savedPayments.reduce((sum, row) => sum + Number((row?.pagamento ?? row)?.valor ?? 0), 0),
+    );
+    if (savedSituation !== String(situacaoId)) {
+      return { ok: false, error: `GestãoClick não aplicou a situação "${args.situacaoLabel}"` };
+    }
+    if (expectedTotal > 0 && Math.abs(savedTotal - expectedTotal) > 0.01) {
+      return {
+        ok: false,
+        error: `GestãoClick não aplicou os pagamentos (esperado ${eur(expectedTotal)}, gravado ${eur(savedTotal)})`,
+      };
     }
     return { ok: true };
   } catch (e) {

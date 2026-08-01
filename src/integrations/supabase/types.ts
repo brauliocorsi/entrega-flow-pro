@@ -56,6 +56,70 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          delivery_id: string
+          id: string
+          method_id: string | null
+          method_name: string
+          notes: string | null
+          received_by: string
+          received_by_name: string | null
+          route_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          delivery_id: string
+          id?: string
+          method_id?: string | null
+          method_name: string
+          notes?: string | null
+          received_by: string
+          received_by_name?: string | null
+          route_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          delivery_id?: string
+          id?: string
+          method_id?: string | null
+          method_name?: string
+          notes?: string | null
+          received_by?: string
+          received_by_name?: string | null
+          route_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_payments_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_payments_method_id_fkey"
+            columns: ["method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_payments_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       imported_purchases: {
         Row: {
           created_at: string
@@ -103,6 +167,33 @@ export type Database = {
           supplier_document?: string | null
           supplier_name?: string | null
           total_value?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_methods: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
           updated_at?: string
         }
         Relationships: []
@@ -429,6 +520,72 @@ export type Database = {
           },
         ]
       }
+      service_requests: {
+        Row: {
+          created_at: string
+          customer_name: string | null
+          delivery_id: string | null
+          description: string
+          id: string
+          opened_by: string
+          opened_by_name: string | null
+          order_number: string
+          photos: string[]
+          product_name: string
+          resolution_notes: string | null
+          route_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name?: string | null
+          delivery_id?: string | null
+          description: string
+          id?: string
+          opened_by: string
+          opened_by_name?: string | null
+          order_number: string
+          photos?: string[]
+          product_name: string
+          resolution_notes?: string | null
+          route_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string | null
+          delivery_id?: string | null
+          description?: string
+          id?: string
+          opened_by?: string
+          opened_by_name?: string | null
+          order_number?: string
+          photos?: string[]
+          product_name?: string
+          resolution_notes?: string | null
+          route_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_requests_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff: {
         Row: {
           active: boolean
@@ -439,6 +596,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           active?: boolean
@@ -449,6 +607,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           active?: boolean
@@ -459,6 +618,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -525,13 +685,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_route_courier: {
+        Args: { _route_id: string; _user_id: string }
+        Returns: boolean
+      }
+      recompute_delivery_paid: {
+        Args: { _delivery_id: string }
+        Returns: undefined
+      }
       recompute_route_counters: {
         Args: { _route_id: string }
         Returns: undefined
       }
     }
     Enums: {
-      app_role: "admin" | "vendedor" | "logistico"
+      app_role: "admin" | "vendedor" | "logistico" | "entregador"
       delivery_outcome: "entregue" | "nao_entregue" | "entregue_parcial"
       delivery_status:
         | "agendado"
@@ -674,7 +842,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "vendedor", "logistico"],
+      app_role: ["admin", "vendedor", "logistico", "entregador"],
       delivery_outcome: ["entregue", "nao_entregue", "entregue_parcial"],
       delivery_status: [
         "agendado",

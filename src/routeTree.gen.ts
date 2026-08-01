@@ -15,16 +15,20 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRotasRouteImport } from './routes/_authenticated.rotas'
 import { Route as AuthenticatedConferenciaRouteImport } from './routes/_authenticated.conferencia'
 import { Route as AuthenticatedAgendarRouteImport } from './routes/_authenticated.agendar'
+import { Route as AuthenticatedEntregasIndexRouteImport } from './routes/_authenticated.entregas.index'
 import { Route as AuthenticatedComprasIndexRouteImport } from './routes/_authenticated.compras.index'
 import { Route as AuthenticatedRotasIdRouteImport } from './routes/_authenticated.rotas.$id'
+import { Route as AuthenticatedEntregasDeliveryIdRouteImport } from './routes/_authenticated.entregas.$deliveryId'
 import { Route as AuthenticatedComprasNovaRouteImport } from './routes/_authenticated.compras.nova'
 import { Route as AuthenticatedAdminVeiculosRouteImport } from './routes/_authenticated.admin.veiculos'
 import { Route as AuthenticatedAdminUtilizadoresRouteImport } from './routes/_authenticated.admin.utilizadores'
 import { Route as AuthenticatedAdminTemplatesRouteImport } from './routes/_authenticated.admin.templates'
 import { Route as AuthenticatedAdminTaxasRouteImport } from './routes/_authenticated.admin.taxas'
+import { Route as AuthenticatedAdminPagamentosRouteImport } from './routes/_authenticated.admin.pagamentos'
 import { Route as AuthenticatedAdminOtimizacaoRouteImport } from './routes/_authenticated.admin.otimizacao'
 import { Route as AuthenticatedAdminExportarRouteImport } from './routes/_authenticated.admin.exportar'
 import { Route as AuthenticatedAdminEquipaRouteImport } from './routes/_authenticated.admin.equipa'
+import { Route as AuthenticatedAdminAssistenciasRouteImport } from './routes/_authenticated.admin.assistencias'
 import { Route as ApiPublicCronGenerateRoutesRouteImport } from './routes/api/public/cron/generate-routes'
 import { Route as AuthenticatedRotasIdFecharRouteImport } from './routes/_authenticated.rotas.$id.fechar'
 
@@ -58,6 +62,12 @@ const AuthenticatedAgendarRoute = AuthenticatedAgendarRouteImport.update({
   path: '/agendar',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedEntregasIndexRoute =
+  AuthenticatedEntregasIndexRouteImport.update({
+    id: '/entregas/',
+    path: '/entregas/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedComprasIndexRoute =
   AuthenticatedComprasIndexRouteImport.update({
     id: '/compras/',
@@ -69,6 +79,12 @@ const AuthenticatedRotasIdRoute = AuthenticatedRotasIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedRotasRoute,
 } as any)
+const AuthenticatedEntregasDeliveryIdRoute =
+  AuthenticatedEntregasDeliveryIdRouteImport.update({
+    id: '/entregas/$deliveryId',
+    path: '/entregas/$deliveryId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedComprasNovaRoute =
   AuthenticatedComprasNovaRouteImport.update({
     id: '/compras/nova',
@@ -98,6 +114,12 @@ const AuthenticatedAdminTaxasRoute = AuthenticatedAdminTaxasRouteImport.update({
   path: '/admin/taxas',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminPagamentosRoute =
+  AuthenticatedAdminPagamentosRouteImport.update({
+    id: '/admin/pagamentos',
+    path: '/admin/pagamentos',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminOtimizacaoRoute =
   AuthenticatedAdminOtimizacaoRouteImport.update({
     id: '/admin/otimizacao',
@@ -114,6 +136,12 @@ const AuthenticatedAdminEquipaRoute =
   AuthenticatedAdminEquipaRouteImport.update({
     id: '/admin/equipa',
     path: '/admin/equipa',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdminAssistenciasRoute =
+  AuthenticatedAdminAssistenciasRouteImport.update({
+    id: '/admin/assistencias',
+    path: '/admin/assistencias',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const ApiPublicCronGenerateRoutesRoute =
@@ -135,16 +163,20 @@ export interface FileRoutesByFullPath {
   '/agendar': typeof AuthenticatedAgendarRoute
   '/conferencia': typeof AuthenticatedConferenciaRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/admin/assistencias': typeof AuthenticatedAdminAssistenciasRoute
   '/admin/equipa': typeof AuthenticatedAdminEquipaRoute
   '/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
+  '/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
   '/admin/veiculos': typeof AuthenticatedAdminVeiculosRoute
   '/compras/nova': typeof AuthenticatedComprasNovaRoute
+  '/entregas/$deliveryId': typeof AuthenticatedEntregasDeliveryIdRoute
   '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/compras/': typeof AuthenticatedComprasIndexRoute
+  '/entregas/': typeof AuthenticatedEntregasIndexRoute
   '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
@@ -154,16 +186,20 @@ export interface FileRoutesByTo {
   '/agendar': typeof AuthenticatedAgendarRoute
   '/conferencia': typeof AuthenticatedConferenciaRoute
   '/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/admin/assistencias': typeof AuthenticatedAdminAssistenciasRoute
   '/admin/equipa': typeof AuthenticatedAdminEquipaRoute
   '/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
+  '/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
   '/admin/veiculos': typeof AuthenticatedAdminVeiculosRoute
   '/compras/nova': typeof AuthenticatedComprasNovaRoute
+  '/entregas/$deliveryId': typeof AuthenticatedEntregasDeliveryIdRoute
   '/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/compras': typeof AuthenticatedComprasIndexRoute
+  '/entregas': typeof AuthenticatedEntregasIndexRoute
   '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
@@ -175,16 +211,20 @@ export interface FileRoutesById {
   '/_authenticated/agendar': typeof AuthenticatedAgendarRoute
   '/_authenticated/conferencia': typeof AuthenticatedConferenciaRoute
   '/_authenticated/rotas': typeof AuthenticatedRotasRouteWithChildren
+  '/_authenticated/admin/assistencias': typeof AuthenticatedAdminAssistenciasRoute
   '/_authenticated/admin/equipa': typeof AuthenticatedAdminEquipaRoute
   '/_authenticated/admin/exportar': typeof AuthenticatedAdminExportarRoute
   '/_authenticated/admin/otimizacao': typeof AuthenticatedAdminOtimizacaoRoute
+  '/_authenticated/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/_authenticated/admin/taxas': typeof AuthenticatedAdminTaxasRoute
   '/_authenticated/admin/templates': typeof AuthenticatedAdminTemplatesRoute
   '/_authenticated/admin/utilizadores': typeof AuthenticatedAdminUtilizadoresRoute
   '/_authenticated/admin/veiculos': typeof AuthenticatedAdminVeiculosRoute
   '/_authenticated/compras/nova': typeof AuthenticatedComprasNovaRoute
+  '/_authenticated/entregas/$deliveryId': typeof AuthenticatedEntregasDeliveryIdRoute
   '/_authenticated/rotas/$id': typeof AuthenticatedRotasIdRouteWithChildren
   '/_authenticated/compras/': typeof AuthenticatedComprasIndexRoute
+  '/_authenticated/entregas/': typeof AuthenticatedEntregasIndexRoute
   '/_authenticated/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
 }
@@ -196,16 +236,20 @@ export interface FileRouteTypes {
     | '/agendar'
     | '/conferencia'
     | '/rotas'
+    | '/admin/assistencias'
     | '/admin/equipa'
     | '/admin/exportar'
     | '/admin/otimizacao'
+    | '/admin/pagamentos'
     | '/admin/taxas'
     | '/admin/templates'
     | '/admin/utilizadores'
     | '/admin/veiculos'
     | '/compras/nova'
+    | '/entregas/$deliveryId'
     | '/rotas/$id'
     | '/compras/'
+    | '/entregas/'
     | '/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
   fileRoutesByTo: FileRoutesByTo
@@ -215,16 +259,20 @@ export interface FileRouteTypes {
     | '/agendar'
     | '/conferencia'
     | '/rotas'
+    | '/admin/assistencias'
     | '/admin/equipa'
     | '/admin/exportar'
     | '/admin/otimizacao'
+    | '/admin/pagamentos'
     | '/admin/taxas'
     | '/admin/templates'
     | '/admin/utilizadores'
     | '/admin/veiculos'
     | '/compras/nova'
+    | '/entregas/$deliveryId'
     | '/rotas/$id'
     | '/compras'
+    | '/entregas'
     | '/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
   id:
@@ -235,16 +283,20 @@ export interface FileRouteTypes {
     | '/_authenticated/agendar'
     | '/_authenticated/conferencia'
     | '/_authenticated/rotas'
+    | '/_authenticated/admin/assistencias'
     | '/_authenticated/admin/equipa'
     | '/_authenticated/admin/exportar'
     | '/_authenticated/admin/otimizacao'
+    | '/_authenticated/admin/pagamentos'
     | '/_authenticated/admin/taxas'
     | '/_authenticated/admin/templates'
     | '/_authenticated/admin/utilizadores'
     | '/_authenticated/admin/veiculos'
     | '/_authenticated/compras/nova'
+    | '/_authenticated/entregas/$deliveryId'
     | '/_authenticated/rotas/$id'
     | '/_authenticated/compras/'
+    | '/_authenticated/entregas/'
     | '/_authenticated/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
   fileRoutesById: FileRoutesById
@@ -300,6 +352,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAgendarRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/entregas/': {
+      id: '/_authenticated/entregas/'
+      path: '/entregas'
+      fullPath: '/entregas/'
+      preLoaderRoute: typeof AuthenticatedEntregasIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/compras/': {
       id: '/_authenticated/compras/'
       path: '/compras'
@@ -313,6 +372,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/rotas/$id'
       preLoaderRoute: typeof AuthenticatedRotasIdRouteImport
       parentRoute: typeof AuthenticatedRotasRoute
+    }
+    '/_authenticated/entregas/$deliveryId': {
+      id: '/_authenticated/entregas/$deliveryId'
+      path: '/entregas/$deliveryId'
+      fullPath: '/entregas/$deliveryId'
+      preLoaderRoute: typeof AuthenticatedEntregasDeliveryIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/compras/nova': {
       id: '/_authenticated/compras/nova'
@@ -349,6 +415,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTaxasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/pagamentos': {
+      id: '/_authenticated/admin/pagamentos'
+      path: '/admin/pagamentos'
+      fullPath: '/admin/pagamentos'
+      preLoaderRoute: typeof AuthenticatedAdminPagamentosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/otimizacao': {
       id: '/_authenticated/admin/otimizacao'
       path: '/admin/otimizacao'
@@ -368,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/equipa'
       fullPath: '/admin/equipa'
       preLoaderRoute: typeof AuthenticatedAdminEquipaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/assistencias': {
+      id: '/_authenticated/admin/assistencias'
+      path: '/admin/assistencias'
+      fullPath: '/admin/assistencias'
+      preLoaderRoute: typeof AuthenticatedAdminAssistenciasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/api/public/cron/generate-routes': {
@@ -413,30 +493,38 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAgendarRoute: typeof AuthenticatedAgendarRoute
   AuthenticatedConferenciaRoute: typeof AuthenticatedConferenciaRoute
   AuthenticatedRotasRoute: typeof AuthenticatedRotasRouteWithChildren
+  AuthenticatedAdminAssistenciasRoute: typeof AuthenticatedAdminAssistenciasRoute
   AuthenticatedAdminEquipaRoute: typeof AuthenticatedAdminEquipaRoute
   AuthenticatedAdminExportarRoute: typeof AuthenticatedAdminExportarRoute
   AuthenticatedAdminOtimizacaoRoute: typeof AuthenticatedAdminOtimizacaoRoute
+  AuthenticatedAdminPagamentosRoute: typeof AuthenticatedAdminPagamentosRoute
   AuthenticatedAdminTaxasRoute: typeof AuthenticatedAdminTaxasRoute
   AuthenticatedAdminTemplatesRoute: typeof AuthenticatedAdminTemplatesRoute
   AuthenticatedAdminUtilizadoresRoute: typeof AuthenticatedAdminUtilizadoresRoute
   AuthenticatedAdminVeiculosRoute: typeof AuthenticatedAdminVeiculosRoute
   AuthenticatedComprasNovaRoute: typeof AuthenticatedComprasNovaRoute
+  AuthenticatedEntregasDeliveryIdRoute: typeof AuthenticatedEntregasDeliveryIdRoute
   AuthenticatedComprasIndexRoute: typeof AuthenticatedComprasIndexRoute
+  AuthenticatedEntregasIndexRoute: typeof AuthenticatedEntregasIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAgendarRoute: AuthenticatedAgendarRoute,
   AuthenticatedConferenciaRoute: AuthenticatedConferenciaRoute,
   AuthenticatedRotasRoute: AuthenticatedRotasRouteWithChildren,
+  AuthenticatedAdminAssistenciasRoute: AuthenticatedAdminAssistenciasRoute,
   AuthenticatedAdminEquipaRoute: AuthenticatedAdminEquipaRoute,
   AuthenticatedAdminExportarRoute: AuthenticatedAdminExportarRoute,
   AuthenticatedAdminOtimizacaoRoute: AuthenticatedAdminOtimizacaoRoute,
+  AuthenticatedAdminPagamentosRoute: AuthenticatedAdminPagamentosRoute,
   AuthenticatedAdminTaxasRoute: AuthenticatedAdminTaxasRoute,
   AuthenticatedAdminTemplatesRoute: AuthenticatedAdminTemplatesRoute,
   AuthenticatedAdminUtilizadoresRoute: AuthenticatedAdminUtilizadoresRoute,
   AuthenticatedAdminVeiculosRoute: AuthenticatedAdminVeiculosRoute,
   AuthenticatedComprasNovaRoute: AuthenticatedComprasNovaRoute,
+  AuthenticatedEntregasDeliveryIdRoute: AuthenticatedEntregasDeliveryIdRoute,
   AuthenticatedComprasIndexRoute: AuthenticatedComprasIndexRoute,
+  AuthenticatedEntregasIndexRoute: AuthenticatedEntregasIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -452,13 +540,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

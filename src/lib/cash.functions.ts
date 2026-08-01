@@ -479,9 +479,10 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
         const confirmed = new Map<string, boolean>(
           ((st?.methods as any[]) ?? []).map((m: any) => [m.method_name, !!m.confirmed]),
         );
+        const rsrs = (srs ?? []).filter((s: any) => s.route_id === r.id);
         const orders = (deliveries ?? [])
           .filter((d: any) => d.route_id === r.id)
-          .map((d: any) => buildOrderCompare(d, ps));
+          .map((d: any) => buildOrderCompare(d, ps, rsrs));
         return {
           ...r,
           settlement: st,

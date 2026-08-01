@@ -424,6 +424,7 @@ export interface AvailableOrderDTO {
   alreadyScheduled: boolean;
   scheduledRouteId: string | null;
   scheduledRouteDate: string | null;
+  scheduledRouteZone: string | null;
 }
 
 export interface ListAvailableOrdersResult {
@@ -588,6 +589,7 @@ export const listAvailableOrders = createServerFn({ method: "POST" })
               situation: sit.nome,
               date: v?.data ?? v?.data_venda ?? v?.cadastrado_em ?? null,
               alreadyScheduled: false,
+              scheduledRouteZone: null,
               scheduledRouteId: null,
               scheduledRouteDate: null,
             });
@@ -643,14 +645,15 @@ export const listAvailableOrders = createServerFn({ method: "POST" })
       if (codes.length > 0) {
         const { data: scheduled } = await context.supabase
           .from("scheduled_deliveries")
-          .select("order_number, route_id, status, routes:route_id(route_date)")
+          .select("order_number, route_id, status, routes:route_id(route_date, zone)")
           .in("order_number", codes)
           .in("status", ["agendado", "confirmado"]);
-        const sm = new Map<string, { route_id: string; route_date: string | null }>();
+        const sm = new Map<string, { route_id: string; route_date: string | null; zone: string | null }>();
         for (const s of scheduled ?? []) {
           sm.set(String(s.order_number), {
             route_id: String(s.route_id),
             route_date: (s as any).routes?.route_date ?? null,
+            zone: (s as any).routes?.zone ?? null,
           });
         }
         list = list.map((o) => {
@@ -661,6 +664,7 @@ export const listAvailableOrders = createServerFn({ method: "POST" })
             alreadyScheduled: true,
             scheduledRouteId: sx.route_id,
             scheduledRouteDate: sx.route_date,
+            scheduledRouteZone: sx.zone,
           };
         });
       }

@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useRouter, useRouterState } from "@tanst
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { listRoutes, mergeRoutes, deleteRoute } from "@/lib/routes.functions";
+import { listRoutes, mergeRoutes, deleteRoute, searchDeliveriesByOrder } from "@/lib/routes.functions";
 import { listPendingReschedules } from "@/lib/deliveries.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
@@ -217,6 +217,15 @@ function RoutesIndex() {
     });
   }, [rows, search, zoneFilter, dateFrom, dateTo, codes]);
 
+  const searchTrim = search.trim();
+  const searchDeliveriesFn = useServerFn(searchDeliveriesByOrder);
+  const { data: deliveryMatches = [], isFetching: matchesLoading } = useQuery({
+    queryKey: ["delivery-search", searchTrim],
+    queryFn: () => searchDeliveriesFn({ data: { query: searchTrim } }),
+    enabled: searchTrim.length >= 2,
+    staleTime: 15_000,
+  });
+
   const hasFilters = search || zoneFilter !== "all" || dateFrom || dateTo;
   const clearFilters = () => {
     setSearch("");
@@ -353,7 +362,7 @@ function RoutesIndex() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Pesquisar por código, zona ou motorista…"
+              placeholder="Pesquisar por nº de encomenda, código, zona ou motorista…"
               className="pl-8"
             />
           </div>
@@ -383,6 +392,54 @@ function RoutesIndex() {
           </div>
         )}
       </Card>
+
+      {search.trim().length >= 2 && (
+        <Card className="p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Package className="h-4 w-4 text-primary" />
+            <p className="text-sm font-medium">
+              Agendamentos para “{search.trim()}”
+              {deliveryMatches.length > 0 && (
+                <span className="text-muted-foreground font-normal"> · {deliveryMatches.length}</span>
+              )}
+            </p>
+          </div>
+          {matchesLoading ? (
+            <p className="text-sm text-muted-foreground">A pesquisar…</p>
+          ) : deliveryMatches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma nota de encomenda encontrada em rotas.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {deliveryMatches.map((d: (typeof deliveryMatches)[number]) => {
+                const active = d.status === "agendado" || d.status === "confirmado";
+                return (
+                  <div
+                    key={d.id}
+                    className="flex flex-wrap items-center gap-2 rounded-md border p-2 text-sm"
+                  >
+                    <span className="font-mono font-semibold">#{d.order_number}</span>
+                    <span className="text-muted-foreground truncate max-w-[200px]">{d.customer_name}</span>
+                    <Badge variant={active ? "default" : "secondary"} className="text-[10px]">
+                      {d.status}
+                    </Badge>
+                    <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      {d.route_date ? formatDatePT(d.route_date) : "—"}
+                      <MapPin className="h-3.5 w-3.5" />
+                      {d.route_zone ?? "—"}
+                    </span>
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/rotas/$id" params={{ id: d.route_id }}>Ver rota</Link>
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="text-center text-muted-foreground py-12">A carregar…</div>

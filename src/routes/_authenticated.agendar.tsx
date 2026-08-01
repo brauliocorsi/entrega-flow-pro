@@ -287,6 +287,16 @@ function AgendarPage() {
         setStep(2);
         return;
       }
+      if (res.existingActiveDelivery) {
+        const d = res.existingActiveDelivery.routes?.route_date as string | undefined;
+        toast.warning(
+          `A encomenda #${orderNum} já está agendada${d ? ` para ${formatDatePT(d)}` : ""}${
+            res.existingActiveDelivery.routes?.zone
+              ? ` na rota ${res.existingActiveDelivery.routes.zone}`
+              : ""
+          }. Podes transferi-la para outra rota.`,
+        );
+      }
       if (res.order.has_assembly && minutes < 60) setMinutes(60);
       setTab("numero");
       setStep(3);
@@ -671,10 +681,25 @@ function AgendarPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             {o.alreadyScheduled ? (
-                              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
-                                <CalendarClock className="h-3 w-3 mr-1" />
-                                {o.scheduledRouteDate ? formatDatePT(o.scheduledRouteDate) : "Agendado"}
-                              </Badge>
+                              <div className="flex flex-col items-end gap-1">
+                                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                                  <CalendarClock className="h-3 w-3 mr-1" />
+                                  Já em rota
+                                  {o.scheduledRouteDate ? ` · ${formatDatePT(o.scheduledRouteDate)}` : ""}
+                                </Badge>
+                                {o.scheduledRouteId && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 px-2 text-[11px]"
+                                    onClick={() =>
+                                      navigate({ to: "/rotas/$id", params: { id: o.scheduledRouteId! } })
+                                    }
+                                  >
+                                    {o.scheduledRouteZone ?? "Ver rota"}
+                                  </Button>
+                                )}
+                              </div>
                             ) : !o.zip_code ? (
                               <Badge variant="outline" className="text-destructive border-destructive/40 text-[10px]">
                                 CP em falta

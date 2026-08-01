@@ -217,6 +217,15 @@ function RoutesIndex() {
     });
   }, [rows, search, zoneFilter, dateFrom, dateTo, codes]);
 
+  const searchTrim = search.trim();
+  const searchDeliveriesFn = useServerFn(searchDeliveriesByOrder);
+  const { data: deliveryMatches = [], isFetching: matchesLoading } = useQuery({
+    queryKey: ["delivery-search", searchTrim],
+    queryFn: () => searchDeliveriesFn({ data: { query: searchTrim } }),
+    enabled: searchTrim.length >= 2,
+    staleTime: 15_000,
+  });
+
   const hasFilters = search || zoneFilter !== "all" || dateFrom || dateTo;
   const clearFilters = () => {
     setSearch("");

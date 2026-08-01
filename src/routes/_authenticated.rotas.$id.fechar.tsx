@@ -103,7 +103,9 @@ function CloseRoutePage() {
   const realizedTotal = Number(cash?.realized_total ?? 0);
   const diffTotal = realizedTotal - forecastTotal;
 
-  const alreadyClosed = r.status === "concluida";
+  const alreadyClosed = !!r.conferred_at;
+  const closedByCourier = r.status === "concluida" && !r.conferred_at;
+
 
   const counts = Object.values(entries).reduce<Record<string, number>>((acc, e) => {
     acc[e.outcome] = (acc[e.outcome] ?? 0) + 1;

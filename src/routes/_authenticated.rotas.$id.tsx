@@ -124,11 +124,13 @@ function buildStopAddress(address: string, zip?: string | null, city?: string | 
 
 function RouteSimulationSection({
   rawStops,
+  manualOrder = false,
   selectedId,
   setSelectedId,
   selectStop,
 }: {
   rawStops: Stop[];
+  manualOrder?: boolean;
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
   selectStop: (id: string | null) => void;
@@ -152,11 +154,13 @@ function RouteSimulationSection({
 
   const stops: Stop[] = useMemo(() => {
     const invalid = rawStops.filter((s) => !validStops.includes(s));
-    if (optData?.optimizedOrder && optData.optimizedOrder.length === validStops.length) {
+    // Com ordem manual definida, o trajeto segue essa sequência em vez da otimizada.
+    if (!manualOrder && optData?.optimizedOrder && optData.optimizedOrder.length === validStops.length) {
       return [...optData.optimizedOrder.map((i) => validStops[i]).filter(Boolean), ...invalid];
     }
     return [...validStops, ...invalid];
-  }, [rawStops, validStops, optData]);
+  }, [rawStops, validStops, optData, manualOrder]);
+
 
 
   const legs = optData?.legs ?? [];

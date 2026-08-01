@@ -89,7 +89,7 @@ async function resolveSituacaoId(label: string): Promise<string | null> {
 
 function methodCandidates(method: string): string[] {
   const m = norm(method);
-  if (m.includes("mb way") || m.includes("mbway")) return ["mb way", "mbway"];
+  if (m.includes("mb way") || m.includes("mbway")) return ["multibanco mv", "mb way", "mbway"];
   if (m.includes("multibanco") || m === "mb") return ["multibanco", "mb"];
   if (m.includes("transfer")) return ["transferencia", "transferência", "transferencia bancaria"];
   if (m.includes("dinheiro") || m.includes("numer")) return ["dinheiro", "numerario"];
@@ -103,16 +103,14 @@ async function resolveFormaPagamentoId(method: string): Promise<string | null> {
     const json = await getJson(`${base}/api/formas_pagamentos`, headers);
     const arr: any[] = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
     const wanted = methodCandidates(method);
-    let fallback: string | null = null;
     for (const row of arr) {
       const fp = row?.FormasPagamento ?? row?.forma_pagamento ?? row;
       const name = norm(String(fp?.nome ?? ""));
-      if (!fallback && fp?.id) fallback = String(fp.id);
       if (wanted.some((w) => name === w || name.includes(w))) {
         return fp?.id ? String(fp.id) : null;
       }
     }
-    return fallback;
+    return null;
   } catch {
     return null;
   }

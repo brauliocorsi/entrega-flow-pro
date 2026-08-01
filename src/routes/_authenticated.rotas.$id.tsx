@@ -1231,6 +1231,68 @@ function DeliveryCard({
   );
 }
 
+function RouteDateEditor({ route }: { route: any }) {
+  const { role } = useAuth();
+  const qc = useQueryClient();
+  const fnUpdateDate = useServerFn(updateRouteDate);
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState<string>(route.route_date);
+  const [saving, setSaving] = useState(false);
+
+  const canEdit = (role === "admin" || role === "logistico") && route.status !== "concluida";
+  if (!canEdit) return null;
+
+  async function save() {
+    setSaving(true);
+    try {
+      await fnUpdateDate({ data: { id: route.id, route_date: date } });
+      toast.success("Data da rota atualizada");
+      setOpen(false);
+      await qc.invalidateQueries();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao alterar a data");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-6 px-1.5 text-xs"
+        onClick={() => {
+          setDate(route.route_date);
+          setOpen(true);
+        }}
+      >
+        <Pencil className="h-3 w-3 mr-1" /> Editar data
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar data da rota</DialogTitle>
+            <DialogDescription>
+              As entregas associadas passam a estar agendadas para a nova data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-xs text-muted-foreground">Nova data</label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={save} disabled={saving || !date || date === route.route_date}>
+              {saving ? "A guardar…" : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function FleetEditor({ route }: { route: any }) {
   const { role } = useAuth();
   const qc = useQueryClient();

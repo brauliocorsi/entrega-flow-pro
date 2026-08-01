@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyDay } from "@/lib/courier.functions";
+import { getMyCashRoutes } from "@/lib/cash.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import {
   XCircle,
   Navigation,
   Wallet,
+  PackageCheck,
 } from "lucide-react";
 
 
@@ -71,6 +73,18 @@ function MyDayPage() {
           {data ? formatDatePT(data.date) : ""}
         </p>
       </div>
+
+      <CourierSummary
+        pendingDeliveries={(data?.routes ?? []).reduce(
+          (a: number, r: any) =>
+            a +
+            r.deliveries.filter((d: any) => d.status !== "cancelado" && !d.outcome).length,
+          0,
+        )}
+      />
+
+
+
 
       {!data || data.routes.length === 0 ? (
         <Card className="p-8 text-center space-y-2">
@@ -239,6 +253,59 @@ function MyDayPage() {
           );
         })
       )}
+    </div>
+  );
+}
+
+/** Resumo separado: entregas pendentes, caixa em mãos e envelopes por conferir. */
+function CourierSummary({ pendingDeliveries }: { pendingDeliveries: number }) {
+  const fn = useServerFn(getMyCashRoutes);
+  const { data } = useQuery({
+    queryKey: ["my-cash-routes"],
+    queryFn: () => fn({ data: { days: 90 } }),
+  });
+
+  const pendingEnvelopes = (data?.routes ?? []).filter(
+    (r: any) => r.settlement && r.settlement.status === "entregue",
+  );
+  const pendingEnvelopeValue = pendingEnvelopes.reduce(
+    (a: number, r: any) => a + Number(r.settlement.cash_declared),
+    0,
+  );
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <Card className="p-4">
+        <div className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">
+          <CircleDashed className="h-3.5 w-3.5" /> Por entregar hoje
+        </div>
+        <div className="text-2xl font-bold">{pendingDeliveries}</div>
+      </Card>
+
+      <Link to="/entregas/caixa" className="block">
+        <Card className="p-4 hover:bg-muted/50 transition-colors">
+          <div className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">
+            <Wallet className="h-3.5 w-3.5" /> Em mãos
+          </div>
+          <div className="text-2xl font-bold text-emerald-600">
+            {formatEUR(data?.total_in_hand ?? 0)}
+          </div>
+        </Card>
+      </Link>
+
+      <Link to="/entregas/envelopes" className="block">
+        <Card className="p-4 hover:bg-muted/50 transition-colors">
+          <div className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">
+            <PackageCheck className="h-3.5 w-3.5" /> Envelopes por conferir
+          </div>
+          <div className="text-2xl font-bold text-amber-600">
+            {formatEUR(pendingEnvelopeValue)}
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            {pendingEnvelopes.length} entregue(s)
+          </div>
+        </Card>
+      </Link>
     </div>
   );
 }

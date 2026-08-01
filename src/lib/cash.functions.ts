@@ -589,12 +589,16 @@ function buildOrderCompare(d: any, routePayments: any[], serviceRequests: any[] 
   // O previsto é o valor a receber na rota ANTES dos recebimentos registados:
   // paid_value já inclui os pagamentos da rota, por isso somamos o realizado de volta.
   const forecast = round2(Math.max(totals.totalValue - (totals.paidValue - realized), 0));
+  const srs = (serviceRequests ?? []).filter((s: any) => s.delivery_id === d.id);
   return {
     id: d.id,
     order_number: d.order_number,
     customer_name: d.customer_name,
     status: d.status,
     outcome: d.outcome,
+    outcome_notes: d.outcome_notes ?? null,
+    service_requests: srs.map((s: any) => ({ id: s.id, status: s.status, description: s.description })),
+    has_service_request: srs.length > 0,
     total_value: round2(totals.totalValue),
     forecast,
     realized,

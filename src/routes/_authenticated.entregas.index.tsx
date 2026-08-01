@@ -72,7 +72,15 @@ function MyDayPage() {
         </p>
       </div>
 
-      <CourierSummary />
+      <CourierSummary
+        pendingDeliveries={(data?.routes ?? []).reduce(
+          (a: number, r: any) =>
+            a +
+            r.deliveries.filter((d: any) => d.status !== "cancelado" && !d.outcome).length,
+          0,
+        )}
+      />
+
 
 
 

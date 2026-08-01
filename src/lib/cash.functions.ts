@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { computeDeliveryTotals } from "@/lib/delivery-totals";
 
 const CASH_METHOD = "dinheiro";
 
@@ -483,5 +484,251 @@ export const getMyCashRoutes = createServerFn({ method: "GET" })
       total_in_hand: round2(
         rows.filter((r) => !r.settlement || r.settlement.status === "aberta").reduce((a, r) => a + r.in_hand, 0),
       ),
+    };
+  });
+
+/** Previsto (a receber) vs realizado (recebido) de uma nota de encomenda. */
+function buildOrderCompare(d: any, routePayments: any[]) {
+  const totals = computeDeliveryTotals(d);
+  const ps = routePayments.filter((p: any) => p.delivery_id === d.id);
+  const realized = round2(ps.reduce((a: number, p: any) => a + Number(p.amount), 0));
+  const byMethod = new Map<string, number>();
+  for (const p of ps) {
+    byMethod.set(p.method_name, round2((byMethod.get(p.method_name) ?? 0) + Number(p.amount)));
+  }
+  const forecast = round2(totals.remainingValue);
+  return {
+    id: d.id,
+    order_number: d.order_number,
+    customer_name: d.customer_name,
+    status: d.status,
+    outcome: d.outcome,
+    total_value: round2(totals.totalValue),
+    forecast,
+    realized,
+    diff: round2(realized - forecast),
+    methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount })),
+  };
+}
+
+async function assertManager(ctx: any) {
+  const list = await roles(ctx);
+  if (!list.includes("admin") && !list.includes("logistico")) {
+    throw new Error("Sem permissão para ver a caixa global");
+  }
+}
+
+/** Agrega rotas + pagamentos + despesas + envelopes num período. */
+async function loadOperation(ctx: any, days: number) {
+  const from = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  const { data: routes, error } = await ctx.supabase
+    .from("routes")
+    .select("id, zone, route_date, driver, assistant, status, color")
+    .gte("route_date", from)
+    .order("route_date", { ascending: false });
+  if (error) throw new Error(error.message);
+  const ids = (routes ?? []).map((r: any) => r.id);
+  if (ids.length === 0) return { routes: [], payments: [], expenses: [], settlements: [] };
+
+  const [{ data: payments }, { data: expenses }, { data: settlements }] = await Promise.all([
+    ctx.supabase
+      .from("delivery_payments")
+      .select("id, route_id, delivery_id, method_name, amount, received_by_name, created_at")
+      .in("route_id", ids),
+    ctx.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
+    ctx.supabase.from("route_settlements").select("*").in("route_id", ids),
+  ]);
+  return {
+    routes: routes ?? [],
+    payments: payments ?? [],
+    expenses: expenses ?? [],
+    settlements: settlements ?? [],
+  };
+}
+
+function routeCash(r: any, payments: any[], expenses: any[], settlements: any[]) {
+  const ps = payments.filter((p: any) => p.route_id === r.id);
+  const es = expenses.filter((e: any) => e.route_id === r.id);
+  const st = settlements.find((s: any) => s.route_id === r.id) ?? null;
+  const cashIn = round2(
+    ps.filter((p: any) => isCash(p.method_name)).reduce((a: number, p: any) => a + Number(p.amount), 0),
+  );
+  const expTotal = round2(
+    es.filter((e: any) => e.status !== "rejeitada").reduce((a: number, e: any) => a + Number(e.amount), 0),
+  );
+  const byMethod = new Map<string, number>();
+  for (const p of ps) {
+    byMethod.set(p.method_name, round2((byMethod.get(p.method_name) ?? 0) + Number(p.amount)));
+  }
+  const confirmed = new Map<string, boolean>(
+    ((st?.methods as any[]) ?? []).map((m: any) => [m.method_name, !!m.confirmed]),
+  );
+  return {
+    route: r,
+    settlement: st,
+    payments: ps,
+    expenses: es,
+    cash_in: cashIn,
+    expenses_total: expTotal,
+    in_hand: round2(cashIn - expTotal),
+    total_received: round2(ps.reduce((a: number, p: any) => a + Number(p.amount), 0)),
+    other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
+      .filter((m) => !isCash(m.method_name))
+      .map((m) => ({ ...m, confirmed: confirmed.get(m.method_name) ?? false })),
+  };
+}
+
+/** Admin/logística: caixa de todos os funcionários de entrega. */
+export const getAllCashByStaff = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ days: z.number().int().min(1).max(180).optional() }).default({}).parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertManager(context);
+    const days = data.days ?? 45;
+    const { routes, payments, expenses, settlements } = await loadOperation(context, days);
+
+    type Bucket = {
+      name: string;
+      in_hand: number;
+      cash_in: number;
+      expenses_total: number;
+      open_routes: number;
+      pending_expenses: number;
+      routes: any[];
+    };
+    const buckets = new Map<string, Bucket>();
+
+    for (const r of routes) {
+      const c = routeCash(r, payments, expenses, settlements);
+      const isOpen = !c.settlement || c.settlement.status === "aberta";
+      const people = [r.driver, r.assistant].filter(Boolean) as string[];
+      const label = people.length > 0 ? people.join(" · ") : "Sem responsável";
+      const key = norm(label);
+      const b =
+        buckets.get(key) ??
+        ({
+          name: label,
+          in_hand: 0,
+          cash_in: 0,
+          expenses_total: 0,
+          open_routes: 0,
+          pending_expenses: 0,
+          routes: [],
+        } as Bucket);
+      b.cash_in = round2(b.cash_in + c.cash_in);
+      b.expenses_total = round2(b.expenses_total + c.expenses_total);
+      if (isOpen) {
+        b.in_hand = round2(b.in_hand + c.in_hand);
+        b.open_routes += 1;
+      }
+      b.pending_expenses += c.expenses.filter((e: any) => e.status === "pendente").length;
+      b.routes.push({
+        ...r,
+        settlement: c.settlement,
+        cash_in: c.cash_in,
+        expenses_total: c.expenses_total,
+        in_hand: c.in_hand,
+        total_received: c.total_received,
+        other_methods: c.other_methods,
+        is_open: isOpen,
+        entries: c.payments.map((p: any) => ({
+          id: p.id,
+          method_name: p.method_name,
+          amount: Number(p.amount),
+          received_by_name: p.received_by_name,
+          created_at: p.created_at,
+        })),
+        exits: c.expenses.map((e: any) => ({
+          id: e.id,
+          category: e.category,
+          amount: Number(e.amount),
+          description: e.description,
+          status: e.status,
+          created_by_name: e.created_by_name,
+          created_at: e.created_at,
+          receipt_path: e.receipt_path,
+        })),
+      });
+      buckets.set(key, b);
+    }
+
+    const staffRows = Array.from(buckets.values()).sort((a, b) => b.in_hand - a.in_hand);
+    return {
+      days,
+      staff: staffRows,
+      total_in_hand: round2(staffRows.reduce((a, s) => a + s.in_hand, 0)),
+      total_cash_in: round2(staffRows.reduce((a, s) => a + s.cash_in, 0)),
+      total_expenses: round2(staffRows.reduce((a, s) => a + s.expenses_total, 0)),
+      pending_expenses: staffRows.reduce((a, s) => a + s.pending_expenses, 0),
+    };
+  });
+
+/** Admin/logística: todos os envelopes com responsáveis, saídas e previsto/realizado. */
+export const getAllSettlements = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ days: z.number().int().min(1).max(365).optional() }).default({}).parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertManager(context);
+    const days = data.days ?? 60;
+    const { routes, payments, expenses, settlements } = await loadOperation(context, days);
+    const withEnvelope = routes.filter((r: any) =>
+      settlements.some((s: any) => s.route_id === r.id && s.status !== "aberta"),
+    );
+    const ids = withEnvelope.map((r: any) => r.id);
+
+    let deliveries: any[] = [];
+    if (ids.length > 0) {
+      const { data: ds } = await context.supabase
+        .from("scheduled_deliveries")
+        .select(
+          "id, route_id, order_number, customer_name, status, outcome, total_value, paid_value, remaining_value, order_payload",
+        )
+        .in("route_id", ids)
+        .order("order_number", { ascending: true });
+      deliveries = ds ?? [];
+    }
+
+    const rows = withEnvelope.map((r: any) => {
+      const c = routeCash(r, payments, expenses, settlements);
+      const ps = c.payments;
+      const orders = deliveries
+        .filter((d: any) => d.route_id === r.id)
+        .map((d: any) => buildOrderCompare(d, ps));
+      return {
+        ...r,
+        settlement: c.settlement,
+        cash_in: c.cash_in,
+        expenses_total: c.expenses_total,
+        in_hand: c.in_hand,
+        total_received: c.total_received,
+        other_methods: c.other_methods,
+        orders_count: orders.length,
+        forecast_total: round2(orders.reduce((a: number, o: any) => a + o.forecast, 0)),
+        realized_total: round2(orders.reduce((a: number, o: any) => a + o.realized, 0)),
+        exits: c.expenses.map((e: any) => ({
+          id: e.id,
+          category: e.category,
+          amount: Number(e.amount),
+          description: e.description,
+          status: e.status,
+          created_by_name: e.created_by_name,
+          created_at: e.created_at,
+        })),
+      };
+    });
+
+    return {
+      days,
+      settlements: rows,
+      pending_total: round2(
+        rows
+          .filter((r: any) => r.settlement?.status === "entregue")
+          .reduce((a: number, r: any) => a + Number(r.settlement.cash_declared), 0),
+      ),
+      pending_count: rows.filter((r: any) => r.settlement?.status === "entregue").length,
     };
   });

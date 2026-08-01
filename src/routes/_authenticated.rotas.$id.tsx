@@ -554,20 +554,47 @@ function RouteDetail() {
   const pct = Math.min(100, (Number(r.current_volume_m3) / Number(r.max_capacity_m3)) * 100);
   const d = new Date(r.route_date + "T00:00:00");
   const isClosed = r.status === "fechada" || r.status === "concluida";
+  const conferred = !!(r as any).conferred_at;
+  const closedByCourier = r.status === "concluida" && !conferred;
+  const canClose = canForecast && !conferred && r.deliveries_count > 0;
 
   return (
     <div className="space-y-4 pb-24">
-      {canForecast && !isClosed && r.deliveries_count > 0 && <CloseRouteBar routeId={r.id} />}
+      {canClose && <CloseRouteBar routeId={r.id} pendingConference={closedByCourier} />}
       <Link to="/rotas" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
         <ArrowLeft className="h-4 w-4" /> Todas as rotas
       </Link>
 
+      {closedByCourier && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>
+            Rota fechada pelo entregador
+            {(r as any).closed_by_name ? ` (${(r as any).closed_by_name})` : ""}
+            {(r as any).closed_at
+              ? ` em ${new Date((r as any).closed_at).toLocaleString("pt-PT")}`
+              : ""}{" "}
+            — aguarda conferência do administrador.
+          </span>
+        </div>
+      )}
+
       <Card className="p-5">
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h1 className="text-2xl font-bold">{r.zone}</h1>
               <Badge className={ROUTE_STATUS_TONE[r.status]}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
+              {closedByCourier && (
+                <Badge variant="outline" className="border-amber-400 text-amber-800">
+                  Fechada pelo entregador · por conferir
+                </Badge>
+              )}
+              {conferred && (
+                <Badge variant="outline" className="border-emerald-400 text-emerald-800">
+                  Conferida
+                </Badge>
+              )}
             </div>
             <div className="text-sm text-muted-foreground flex items-center gap-1.5 flex-wrap">
               <span>{WEEKDAYS_PT[d.getDay()]}, {formatDatePT(r.route_date)}</span>
@@ -584,13 +611,17 @@ function RouteDetail() {
                 <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Agendar entrega</Button>
               </Link>
             )}
-            {canForecast && !isClosed && r.deliveries_count > 0 && (
+            {canClose && (
               <Link to="/rotas/$id/fechar" params={{ id: r.id }}>
-                <Button size="sm" variant="outline"><CheckCircle2 className="h-4 w-4 mr-1" /> Fechar rota</Button>
+                <Button size="sm" variant="outline">
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                  {closedByCourier ? "Conferir e fechar" : "Fechar rota"}
+                </Button>
               </Link>
             )}
           </div>
         </div>
+
         <div className="mt-4 grid sm:grid-cols-2 gap-4">
           <div>
             <div className="flex justify-between text-xs mb-1">
@@ -1621,7 +1652,7 @@ function ForecastHistoryButton({ routeId }: { routeId: string }) {
 }
 
 /** Barra fixa de fecho de rota (ADM/Logística) com previsto vs realizado. */
-function CloseRouteBar({ routeId }: { routeId: string }) {
+function CloseRouteBar({ routeId, pendingConference }: { routeId: string; pendingConference?: boolean }) {
   const fnCash = useServerFn(getRouteCash);
   const { data } = useQuery({
     queryKey: ["route-cash", routeId],
@@ -1649,7 +1680,8 @@ function CloseRouteBar({ routeId }: { routeId: string }) {
         </div>
         <Link to="/rotas/$id/fechar" params={{ id: routeId }}>
           <Button size="sm">
-            <CheckCircle2 className="h-4 w-4 mr-1" /> Fechar rota
+            <CheckCircle2 className="h-4 w-4 mr-1" />
+            {pendingConference ? "Conferir e fechar" : "Fechar rota"}
           </Button>
         </Link>
       </div>

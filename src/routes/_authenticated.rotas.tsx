@@ -567,7 +567,15 @@ function RouteCard({ r, code, highlight, isAdmin }: { r: any; code?: string; hig
                 )}
               </div>
             </div>
-            <Badge className={`${ROUTE_STATUS_TONE[r.status]} shrink-0`}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <Badge className={`${ROUTE_STATUS_TONE[r.status]} shrink-0`}>{ROUTE_STATUS_LABEL[r.status]}</Badge>
+              {r.status === "concluida" && !(r as any).conferred_at && (
+                <Badge variant="outline" className="border-amber-400 text-amber-800 text-[10px]">
+                  Por conferir
+                </Badge>
+              )}
+            </div>
+
           </div>
 
           <div className="mt-3 rounded-lg border bg-muted/40 p-2.5 grid grid-cols-3 gap-2">

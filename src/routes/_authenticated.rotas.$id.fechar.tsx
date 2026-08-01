@@ -103,7 +103,9 @@ function CloseRoutePage() {
   const realizedTotal = Number(cash?.realized_total ?? 0);
   const diffTotal = realizedTotal - forecastTotal;
 
-  const alreadyClosed = r.status === "concluida";
+  const alreadyClosed = !!r.conferred_at;
+  const closedByCourier = r.status === "concluida" && !r.conferred_at;
+
 
   const counts = Object.values(entries).reduce<Record<string, number>>((acc, e) => {
     acc[e.outcome] = (acc[e.outcome] ?? 0) + 1;
@@ -251,7 +253,10 @@ function CloseRoutePage() {
   if (alreadyClosed) {
     return (
       <Card className="p-8 text-center space-y-3">
-        <p className="font-medium">Esta rota já foi fechada.</p>
+        <p className="font-medium">Esta rota já foi conferida e fechada.</p>
+        {r.conferred_by_name && (
+          <p className="text-sm text-muted-foreground">Conferida por {r.conferred_by_name}</p>
+        )}
         <div className="flex gap-2 justify-center">
           <Link to="/rotas/$id" params={{ id }}>
             <Button variant="outline">Voltar ao detalhe</Button>
@@ -275,11 +280,26 @@ function CloseRoutePage() {
       </Link>
 
       <div>
-        <h1 className="text-2xl font-bold">Fechar rota — {r.zone}</h1>
+        <h1 className="text-2xl font-bold">
+          {closedByCourier ? "Conferir e fechar rota" : "Fechar rota"} — {r.zone}
+        </h1>
         <p className="text-sm text-muted-foreground">
           Confere previsto vs realizado de cada nota antes de fechar.
         </p>
       </div>
+
+      {closedByCourier && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>
+            Rota fechada pelo entregador
+            {r.closed_by_name ? ` (${r.closed_by_name})` : ""}
+            {r.closed_at ? ` em ${new Date(r.closed_at).toLocaleString("pt-PT")}` : ""} — aguarda a tua
+            conferência. Ao confirmar, os estados e recebimentos são enviados ao Gestão Click.
+          </span>
+        </div>
+      )}
+
 
       <Card className="p-4 grid grid-cols-3 gap-3 text-center">
         <Metric label="Previsto" value={forecastTotal} />

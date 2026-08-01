@@ -29,6 +29,7 @@ import { Route as AuthenticatedAdminOtimizacaoRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminExportarRouteImport } from './routes/_authenticated.admin.exportar'
 import { Route as AuthenticatedAdminEquipaRouteImport } from './routes/_authenticated.admin.equipa'
 import { Route as AuthenticatedAdminAssistenciasRouteImport } from './routes/_authenticated.admin.assistencias'
+import { Route as AuthenticatedEntregasCaixaIndexRouteImport } from './routes/_authenticated.entregas.caixa.index'
 import { Route as ApiPublicCronGenerateRoutesRouteImport } from './routes/api/public/cron/generate-routes'
 import { Route as AuthenticatedRotasIdFecharRouteImport } from './routes/_authenticated.rotas.$id.fechar'
 import { Route as AuthenticatedEntregasCaixaRouteIdRouteImport } from './routes/_authenticated.entregas.caixa.$routeId'
@@ -145,6 +146,12 @@ const AuthenticatedAdminAssistenciasRoute =
     path: '/admin/assistencias',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedEntregasCaixaIndexRoute =
+  AuthenticatedEntregasCaixaIndexRouteImport.update({
+    id: '/entregas/caixa/',
+    path: '/entregas/caixa/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const ApiPublicCronGenerateRoutesRoute =
   ApiPublicCronGenerateRoutesRouteImport.update({
     id: '/api/public/cron/generate-routes',
@@ -187,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/entregas/caixa/$routeId': typeof AuthenticatedEntregasCaixaRouteIdRoute
   '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
+  '/entregas/caixa/': typeof AuthenticatedEntregasCaixaIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -211,6 +219,7 @@ export interface FileRoutesByTo {
   '/entregas/caixa/$routeId': typeof AuthenticatedEntregasCaixaRouteIdRoute
   '/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
+  '/entregas/caixa': typeof AuthenticatedEntregasCaixaIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -237,6 +246,7 @@ export interface FileRoutesById {
   '/_authenticated/entregas/caixa/$routeId': typeof AuthenticatedEntregasCaixaRouteIdRoute
   '/_authenticated/rotas/$id/fechar': typeof AuthenticatedRotasIdFecharRoute
   '/api/public/cron/generate-routes': typeof ApiPublicCronGenerateRoutesRoute
+  '/_authenticated/entregas/caixa/': typeof AuthenticatedEntregasCaixaIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
     | '/entregas/caixa/$routeId'
     | '/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
+    | '/entregas/caixa/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/entregas/caixa/$routeId'
     | '/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
+    | '/entregas/caixa'
   id:
     | '__root__'
     | '/'
@@ -312,6 +324,7 @@ export interface FileRouteTypes {
     | '/_authenticated/entregas/caixa/$routeId'
     | '/_authenticated/rotas/$id/fechar'
     | '/api/public/cron/generate-routes'
+    | '/_authenticated/entregas/caixa/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -463,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAssistenciasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/entregas/caixa/': {
+      id: '/_authenticated/entregas/caixa/'
+      path: '/entregas/caixa'
+      fullPath: '/entregas/caixa/'
+      preLoaderRoute: typeof AuthenticatedEntregasCaixaIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/api/public/cron/generate-routes': {
       id: '/api/public/cron/generate-routes'
       path: '/api/public/cron/generate-routes'
@@ -527,6 +547,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedComprasIndexRoute: typeof AuthenticatedComprasIndexRoute
   AuthenticatedEntregasIndexRoute: typeof AuthenticatedEntregasIndexRoute
   AuthenticatedEntregasCaixaRouteIdRoute: typeof AuthenticatedEntregasCaixaRouteIdRoute
+  AuthenticatedEntregasCaixaIndexRoute: typeof AuthenticatedEntregasCaixaIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -548,6 +569,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedEntregasIndexRoute: AuthenticatedEntregasIndexRoute,
   AuthenticatedEntregasCaixaRouteIdRoute:
     AuthenticatedEntregasCaixaRouteIdRoute,
+  AuthenticatedEntregasCaixaIndexRoute: AuthenticatedEntregasCaixaIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -563,13 +585,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

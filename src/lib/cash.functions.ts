@@ -578,7 +578,7 @@ export const getMyCashRoutes = createServerFn({ method: "GET" })
   });
 
 /** Previsto (a receber) vs realizado (recebido) de uma nota de encomenda. */
-function buildOrderCompare(d: any, routePayments: any[]) {
+function buildOrderCompare(d: any, routePayments: any[], serviceRequests: any[] = []) {
   const totals = computeDeliveryTotals(d);
   const ps = routePayments.filter((p: any) => p.delivery_id === d.id);
   const realized = round2(ps.reduce((a: number, p: any) => a + Number(p.amount), 0));

@@ -42,15 +42,20 @@ function ConferenciaPage() {
       <Tabs defaultValue="envelopes">
         <TabsList>
           <TabsTrigger value="envelopes">Envelopes</TabsTrigger>
+          <TabsTrigger value="historico">Histórico</TabsTrigger>
           <TabsTrigger value="conciliacao">Conciliação bancária</TabsTrigger>
         </TabsList>
         <TabsContent value="envelopes" className="mt-3">
           <ConferenciaLista />
         </TabsContent>
+        <TabsContent value="historico" className="mt-3">
+          <HistoricoEnvelopes />
+        </TabsContent>
         <TabsContent value="conciliacao" className="mt-3">
           <ConciliacaoPanel />
         </TabsContent>
       </Tabs>
+
 
     </div>
   );

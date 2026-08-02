@@ -41,6 +41,7 @@ import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, DELIVERY_TYPE_LABEL, WEEKDAYS_PT
 import { formatDatePT, formatEUR } from "@/lib/format";
 import { RouteCashPanel } from "@/components/rotas/RouteCashPanel";
 import { OrdemEntregasEditor } from "@/components/rotas/OrdemEntregasEditor";
+import { RouteLockPanel } from "@/components/rotas/RouteLockPanel";
 
 import { toast } from "sonner";
 import { ArrowLeft, MapPin, Phone, Plus, CheckCircle2, Wrench, Truck, Route as RouteIcon, ChevronDown, Package, Pencil, Save, X, RefreshCw, ArrowRightLeft, Trash2, Wallet, Download, History as HistoryIcon, AlertTriangle } from "lucide-react";
@@ -715,6 +716,7 @@ function RouteDetail() {
 
               return (
                 <>
+                  <RouteLockPanel route={r} />
                   <OrdemEntregasEditor
                     routeId={r.id}
                     deliveries={activeDeliveries.map((d: any) => ({
@@ -724,7 +726,9 @@ function RouteDetail() {
                       address: d.address,
                       zip_code: d.zip_code,
                     }))}
-                    locked={false}
+                    locked={!!r.started_at}
+                    changedByName={r.order_changed_by_name}
+                    changedAt={r.order_changed_at}
                     invalidateKeys={[["route-deliveries", r.id], ["scheduled-deliveries", r.id]]}
                     onOrderChange={setPreviewOrder}
                   />

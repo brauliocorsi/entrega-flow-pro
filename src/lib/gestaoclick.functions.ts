@@ -8,6 +8,9 @@ export interface OrderItemDTO {
   price: number;
   total: number;
   kind: "produto" | "montagem" | "entrega" | "servico";
+  /** Código do produto no GestãoClick (para separação/stock). */
+  code?: string | null;
+  product_id?: string | null;
 }
 
 export interface OrderDTO {
@@ -97,6 +100,8 @@ export function normalizeOrder(
         price,
         total: Number(it?.valor_total ?? qty * price),
         kind: detectKind(desc),
+        code: String(it?.codigo ?? it?.codigo_produto ?? it?.produto_codigo ?? "") || null,
+        product_id: String(it?.produto_id ?? it?.id_produto ?? "") || null,
       };
     }),
     ...rawServices.map((wrap: any): OrderItemDTO => {

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertRouteUnlocked, getUserDisplayName, getUserRoles } from "./route-lock.server";
 
 const routeSimulationInput = z.object({
   origin: z.string().min(5).max(255),
@@ -79,7 +80,7 @@ export const getRouteWithDeliveries = createServerFn({ method: "GET" })
     return { route, deliveries: deliveries ?? [] };
   });
 
-/** Marca a rota como iniciada (bloqueia a reordenação pelo entregador). */
+/** Marca a rota como iniciada — bloqueia alterações para todos os perfis. */
 export const startRoute = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
@@ -94,18 +95,63 @@ export const startRoute = createServerFn({ method: "POST" })
     if (route.started_at) return { ok: true, started_at: route.started_at };
 
     const startedAt = new Date().toISOString();
+    const name = await getUserDisplayName(context);
     const { error: uErr } = await context.supabase
       .from("routes")
-      .update({ started_at: startedAt })
+      .update({ started_at: startedAt, started_by: context.userId, started_by_name: name })
       .eq("id", data.id);
     if (uErr) throw new Error(uErr.message);
     return { ok: true, started_at: startedAt };
   });
 
+/** Entregador sinaliza que terminou de organizar a sequência (não bloqueia nada). */
+export const markRouteReady = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), ready: z.boolean().default(true) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const name = await getUserDisplayName(context);
+    const { error } = await context.supabase
+      .from("routes")
+      .update({
+        order_ready_at: data.ready ? new Date().toISOString() : null,
+        order_ready_by_name: data.ready ? name : null,
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Só admin pode reverter o bloqueio de uma rota iniciada. */
+export const unlockRoute = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), reason: z.string().min(3).max(300) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const roles = await getUserRoles(context);
+    if (!roles.includes("admin")) throw new Error("Apenas administradores podem desbloquear a rota");
+    const name = await getUserDisplayName(context);
+    const { error } = await context.supabase
+      .from("routes")
+      .update({
+        started_at: null,
+        started_by: null,
+        started_by_name: null,
+        unlocked_at: new Date().toISOString(),
+        unlocked_by: context.userId,
+        unlocked_by_name: name,
+        unlock_reason: data.reason.trim(),
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 /**
  * Define a ordem manual das entregas de uma rota.
- * Entregador: só na sua rota e enquanto a rota não estiver iniciada.
- * Admin/logística: sempre.
+ * Bloqueada para todos os perfis assim que a rota é iniciada.
  */
 export const reorderDeliveries = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -118,13 +164,6 @@ export const reorderDeliveries = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { data: roleRows } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    const roles = (roleRows ?? []).map((r: any) => r.role as string);
-    const isManager = roles.includes("admin") || roles.includes("logistico");
-
     const { data: route, error: rErr } = await context.supabase
       .from("routes")
       .select("id, started_at, status")
@@ -133,13 +172,13 @@ export const reorderDeliveries = createServerFn({ method: "POST" })
     if (rErr) throw new Error(rErr.message);
     if (!route) throw new Error("Rota não encontrada");
 
-    if (!isManager) {
-      if (route.started_at) {
-        throw new Error("A rota já foi iniciada — a ordem das entregas já não pode ser alterada");
-      }
-      if (route.status === "concluida") {
-        throw new Error("Rota concluída — a ordem já não pode ser alterada");
-      }
+    if (route.started_at) {
+      throw new Error(
+        "Rota iniciada — a ordem das entregas já não pode ser alterada. Um administrador pode desbloqueá-la.",
+      );
+    }
+    if (route.status === "concluida") {
+      throw new Error("Rota concluída — a ordem já não pode ser alterada");
     }
 
     for (let i = 0; i < data.delivery_ids.length; i++) {
@@ -150,8 +189,20 @@ export const reorderDeliveries = createServerFn({ method: "POST" })
         .eq("route_id", data.route_id);
       if (error) throw new Error(error.message);
     }
+
+    const name = await getUserDisplayName(context);
+    await context.supabase
+      .from("routes")
+      .update({
+        order_changed_by: context.userId,
+        order_changed_by_name: name,
+        order_changed_at: new Date().toISOString(),
+      })
+      .eq("id", data.route_id);
+
     return { ok: true, count: data.delivery_ids.length };
   });
+
 
 
 export const updateRouteStatus = createServerFn({ method: "POST" })
@@ -199,6 +250,8 @@ export const updateRouteDate = createServerFn({ method: "POST" })
     if (!roleData || roleData.length === 0) {
       throw new Error("Apenas administradores ou logística podem alterar a data da rota");
     }
+    await assertRouteUnlocked(context, data.id);
+
     const { data: route, error: readErr } = await context.supabase
       .from("routes")
       .select("id, status")
@@ -238,6 +291,8 @@ export const updateRouteFleet = createServerFn({ method: "POST" })
     if (!roleData || roleData.length === 0) {
       throw new Error("Apenas administradores ou logística podem alterar a frota");
     }
+    await assertRouteUnlocked(context, data.id);
+
     const patch: { driver?: string | null; vehicle?: string | null; assistant?: string | null } = {};
     if (data.driver !== undefined) patch.driver = data.driver?.trim() || null;
     if (data.vehicle !== undefined) patch.vehicle = data.vehicle?.trim() || null;
@@ -413,6 +468,9 @@ export const mergeRoutes = createServerFn({ method: "POST" })
       throw new Error("A rota destino está fechada ou concluída");
     if (sources.some((r: any) => lockedStatuses.includes(r.status)))
       throw new Error("Uma das rotas a mesclar está fechada ou concluída");
+    if (routes.some((r: any) => r.started_at))
+      throw new Error("Uma das rotas já foi iniciada e está bloqueada a alterações");
+
 
     // Move deliveries
     const sourceIds = sources.map((r: any) => r.id);
@@ -490,6 +548,7 @@ export const deleteRoute = createServerFn({ method: "POST" })
     if (!route) throw new Error("Rota não encontrada");
     if (route.status === "concluida")
       throw new Error("Rotas concluídas não podem ser eliminadas");
+    await assertRouteUnlocked(context, data.id);
 
     const { count, error: cErr } = await context.supabase
       .from("scheduled_deliveries")

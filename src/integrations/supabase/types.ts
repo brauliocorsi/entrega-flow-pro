@@ -646,10 +646,21 @@ export type Database = {
           max_capacity_m3: number
           max_minutes: number
           notes: string | null
+          order_changed_at: string | null
+          order_changed_by: string | null
+          order_changed_by_name: string | null
+          order_ready_at: string | null
+          order_ready_by_name: string | null
           route_date: string
           started_at: string | null
+          started_by: string | null
+          started_by_name: string | null
           status: Database["public"]["Enums"]["route_status"]
           template_id: string | null
+          unlock_reason: string | null
+          unlocked_at: string | null
+          unlocked_by: string | null
+          unlocked_by_name: string | null
           updated_at: string
           vehicle: string | null
           zip_prefixes: string[]
@@ -673,10 +684,21 @@ export type Database = {
           max_capacity_m3?: number
           max_minutes?: number
           notes?: string | null
+          order_changed_at?: string | null
+          order_changed_by?: string | null
+          order_changed_by_name?: string | null
+          order_ready_at?: string | null
+          order_ready_by_name?: string | null
           route_date: string
           started_at?: string | null
+          started_by?: string | null
+          started_by_name?: string | null
           status?: Database["public"]["Enums"]["route_status"]
           template_id?: string | null
+          unlock_reason?: string | null
+          unlocked_at?: string | null
+          unlocked_by?: string | null
+          unlocked_by_name?: string | null
           updated_at?: string
           vehicle?: string | null
           zip_prefixes?: string[]
@@ -700,10 +722,21 @@ export type Database = {
           max_capacity_m3?: number
           max_minutes?: number
           notes?: string | null
+          order_changed_at?: string | null
+          order_changed_by?: string | null
+          order_changed_by_name?: string | null
+          order_ready_at?: string | null
+          order_ready_by_name?: string | null
           route_date?: string
           started_at?: string | null
+          started_by?: string | null
+          started_by_name?: string | null
           status?: Database["public"]["Enums"]["route_status"]
           template_id?: string | null
+          unlock_reason?: string | null
+          unlocked_at?: string | null
+          unlocked_by?: string | null
+          unlocked_by_name?: string | null
           updated_at?: string
           vehicle?: string | null
           zip_prefixes?: string[]

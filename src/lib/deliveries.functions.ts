@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { updateGestaoClickVendaSchedule, fetchOrder } from "./gestaoclick.functions";
 import { checkCorridor, type CorridorStop } from "./corridor.shared";
+import { assertRouteUnlocked } from "./route-lock.server";
 
 const ScheduleInput = z.object({
   route_id: z.string().uuid(),
@@ -45,6 +46,7 @@ export const scheduleDelivery = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!route) throw new Error("Rota não encontrada");
     if (["fechada", "concluida"].includes(route.status)) throw new Error("Esta rota já está fechada");
+    await assertRouteUnlocked(context, data.route_id);
 
     // ===== Validação de corredor (antes da capacidade) =====
     const corridor = (route.corridor as unknown as CorridorStop[] | null) ?? [];
@@ -190,6 +192,7 @@ export const releaseDeliveryFromRoute = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Entrega não encontrada");
+    await assertRouteUnlocked(context, row.route_id);
 
     // tenta obter gestaoclick id via fetchOrder
     let gcUpdate: { ok: boolean; error?: string } = { ok: false };
@@ -231,6 +234,8 @@ export const transferDeliveryToRoute = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Entrega não encontrada");
     if (row.route_id === data.newRouteId) throw new Error("A entrega já está nesta rota");
+    await assertRouteUnlocked(context, row.route_id);
+    await assertRouteUnlocked(context, data.newRouteId);
 
     const { data: newRoute } = await context.supabase
       .from("routes")

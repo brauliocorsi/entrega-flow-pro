@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyDay } from "@/lib/courier.functions";
-import { startRoute } from "@/lib/routes.functions";
+import { startRoute, markRouteReady } from "@/lib/routes.functions";
 import { OrdemEntregasEditor } from "@/components/rotas/OrdemEntregasEditor";
 import { toast } from "sonner";
 import { getMyCashRoutes } from "@/lib/cash.functions";
@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { formatEUR, formatDatePT } from "@/lib/format";
+import { formatEUR, formatDatePT, formatDateTimePT } from "@/lib/format";
 import { computeDeliveryTotals } from "@/lib/delivery-totals";
 import { deliveryOutcomeTone, openNavigation } from "@/lib/nav-link";
 import { DELIVERY_TYPE_LABEL } from "@/lib/constants";
@@ -29,6 +29,7 @@ import {
   Wallet,
   PackageCheck,
   Play,
+  Lock,
 } from "lucide-react";
 
 
@@ -335,13 +336,26 @@ function CourierSummary({ pendingDeliveries }: { pendingDeliveries: number }) {
 function CourierOrderBlock({ route, deliveries }: { route: any; deliveries: any[] }) {
   const qc = useQueryClient();
   const startFn = useServerFn(startRoute);
+  const readyFn = useServerFn(markRouteReady);
+  const [confirmStart, setConfirmStart] = useState(false);
+
   const startMut = useMutation({
     mutationFn: () => startFn({ data: { id: route.id } }),
     onSuccess: () => {
-      toast.success("Rota iniciada — ordem bloqueada");
+      toast.success("Rota iniciada — bloqueada a alterações");
+      setConfirmStart(false);
       qc.invalidateQueries({ queryKey: ["my-day"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao iniciar a rota"),
+  });
+
+  const readyMut = useMutation({
+    mutationFn: (ready: boolean) => readyFn({ data: { id: route.id, ready } }),
+    onSuccess: () => {
+      toast.success("Estado da ordem atualizado");
+      qc.invalidateQueries({ queryKey: ["my-day"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao atualizar"),
   });
 
   return (
@@ -356,19 +370,68 @@ function CourierOrderBlock({ route, deliveries }: { route: any; deliveries: any[
           zip_code: d.zip_code,
         }))}
         locked={!!route.started_at}
+        changedByName={route.order_changed_by_name}
+        changedAt={route.order_changed_at}
         invalidateKeys={[["my-day"]]}
       />
-      {!route.started_at && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="w-full"
-          disabled={startMut.isPending}
-          onClick={() => startMut.mutate()}
-        >
-          <Play className="h-4 w-4 mr-1" /> Iniciar rota (fixa a ordem)
-        </Button>
+
+      {route.started_at ? (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
+          <Lock className="h-3.5 w-3.5 inline mr-1" />
+          Rota em curso desde {formatDateTimePT(route.started_at)} — bloqueada a alterações.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {route.order_ready_at ? (
+            <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs flex items-center justify-between gap-2">
+              <span>
+                <CheckCircle2 className="h-3.5 w-3.5 inline mr-1" /> Ordem marcada como pronta
+                {route.order_ready_by_name ? ` por ${route.order_ready_by_name}` : ""}.
+              </span>
+              <Button size="sm" variant="ghost" className="h-7" onClick={() => readyMut.mutate(false)}>
+                Reabrir
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="w-full"
+              disabled={readyMut.isPending}
+              onClick={() => readyMut.mutate(true)}
+            >
+              <PackageCheck className="h-4 w-4 mr-1" /> Marcar ordem como pronta
+            </Button>
+          )}
+
+          {confirmStart ? (
+            <div className="rounded-md border p-3 space-y-2 text-xs">
+              <div className="font-medium">
+                Depois de iniciada, ninguém pode alterar a rota (ordem, entregas, motorista ou
+                data). Só um administrador pode desbloquear.
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  disabled={startMut.isPending}
+                  onClick={() => startMut.mutate()}
+                >
+                  Confirmar e iniciar
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmStart(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" className="w-full" onClick={() => setConfirmStart(true)}>
+              <Play className="h-4 w-4 mr-1" /> Iniciar rota (bloqueia alterações)
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );
 }
+

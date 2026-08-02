@@ -6,9 +6,80 @@ import { reorderDeliveries } from "@/lib/routes.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDown, ArrowUp, GripVertical, Lock, Save } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, Lock, Save, Route as RouteIcon } from "lucide-react";
 
-type Item = { id: string; order_number: string; customer_name: string; address?: string | null };
+type Item = {
+  id: string;
+  order_number: string;
+  customer_name: string;
+  address?: string | null;
+  zip_code?: string | null;
+};
+
+/** Extrai o CP como número (CP4 + CP3, ex: "4620-695" -> 4620695). */
+function zipValue(item: Item): number | null {
+  const src = `${item.zip_code ?? ""} ${item.address ?? ""}`;
+  const m = /(\d{4})[-\s]?(\d{3})?/.exec(src.replace(/\s+/g, " "));
+  if (!m) return null;
+  const cp4 = Number(m[1]);
+  const cp3 = m[2] ? Number(m[2]) : 0;
+  if (!Number.isFinite(cp4)) return null;
+  return cp4 * 1000 + cp3;
+}
+
+function dist(a: number, b: number) {
+  return Math.abs(a - b);
+}
+
+/** Vizinho mais próximo + 2-opt sobre a "distância" entre códigos postais. */
+function optimizeByZip(items: Item[]): Item[] {
+  const withZip = items.filter((i) => zipValue(i) !== null);
+  const noZip = items.filter((i) => zipValue(i) === null);
+  if (withZip.length < 3) return items;
+
+  const val = new Map(withZip.map((i) => [i.id, zipValue(i)!]));
+  // Começa pelo CP mais baixo (extremo do corredor).
+  const start = withZip.reduce((acc, i) => (val.get(i.id)! < val.get(acc.id)! ? i : acc), withZip[0]!);
+
+  const remaining = withZip.filter((i) => i.id !== start.id);
+  const order: Item[] = [start];
+  let current = start;
+  while (remaining.length) {
+    let bestIdx = 0;
+    let best = Infinity;
+    remaining.forEach((cand, idx) => {
+      const d = dist(val.get(current.id)!, val.get(cand.id)!);
+      if (d < best) {
+        best = d;
+        bestIdx = idx;
+      }
+    });
+    const [next] = remaining.splice(bestIdx, 1);
+    if (!next) break;
+    order.push(next);
+    current = next;
+  }
+
+  // 2-opt para reduzir o trajeto total.
+  const total = (arr: Item[]) =>
+    arr.reduce((sum, it, i) => (i === 0 ? 0 : sum + dist(val.get(arr[i - 1]!.id)!, val.get(it.id)!)), 0);
+  let improved = true;
+  let guard = 0;
+  while (improved && guard++ < 50) {
+    improved = false;
+    for (let i = 1; i < order.length - 1; i++) {
+      for (let j = i + 1; j < order.length; j++) {
+        const candidate = [...order.slice(0, i), ...order.slice(i, j + 1).reverse(), ...order.slice(j + 1)];
+        if (total(candidate) < total(order) - 0.0001) {
+          order.splice(0, order.length, ...candidate);
+          improved = true;
+        }
+      }
+    }
+  }
+
+  return [...order, ...noZip];
+}
 
 /**
  * Ordem manual das entregas de uma rota (arrastar ou setas).

@@ -52,8 +52,11 @@ function ServiceRequestsPage() {
   const qc = useQueryClient();
   const listFn = useServerFn(listServiceRequests);
   const updateFn = useServerFn(updateServiceRequest);
+  const openOsFn = useServerFn(openServiceOrderInGC);
   const [tab, setTab] = useState<"aberta" | "em_curso" | "resolvida" | "todas">("aberta");
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [preview, setPreview] = useState<any | null>(null);
+  const [sending, setSending] = useState(false);
 
   const allowed = role === "admin" || role === "logistico";
   const { data = [], isLoading } = useQuery({
@@ -75,13 +78,37 @@ function ServiceRequestsPage() {
 
   async function setStatus(id: string, status: "aberta" | "em_curso" | "resolvida") {
     try {
-      await updateFn({ data: { id, status, resolution_notes: notes[id] ?? null } });
-      toast.success("Assistência atualizada");
+      const res: any = await updateFn({ data: { id, status, resolution_notes: notes[id] ?? null } });
+      if (res?.gcSync?.ok) toast.success("Assistência atualizada e OS sincronizada no GestãoClick");
+      else if (res?.gcSync && !res.gcSync.ok)
+        toast.warning(`Assistência atualizada, mas a OS falhou: ${res.gcSync.error}`);
+      else toast.success("Assistência atualizada");
       qc.invalidateQueries({ queryKey: ["service-requests"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro");
     }
   }
+
+  async function sendToGC() {
+    if (!preview) return;
+    setSending(true);
+    try {
+      const res: any = await openOsFn({ data: { id: preview.id } });
+      toast.success(
+        res?.already
+          ? `OS ${res.gc_os_number ?? res.gc_os_id} atualizada no GestãoClick`
+          : `Ordem de serviço ${res.gc_os_number ?? res.gc_os_id} criada no GestãoClick`,
+      );
+      setPreview(null);
+      qc.invalidateQueries({ queryKey: ["service-requests"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao abrir a OS");
+      qc.invalidateQueries({ queryKey: ["service-requests"] });
+    } finally {
+      setSending(false);
+    }
+  }
+
 
   return (
     <div className="space-y-4">

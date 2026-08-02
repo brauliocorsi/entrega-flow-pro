@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyDay } from "@/lib/courier.functions";
-import { startRoute } from "@/lib/routes.functions";
+import { startRoute, markRouteReady } from "@/lib/routes.functions";
 import { OrdemEntregasEditor } from "@/components/rotas/OrdemEntregasEditor";
 import { toast } from "sonner";
 import { getMyCashRoutes } from "@/lib/cash.functions";
@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { formatEUR, formatDatePT } from "@/lib/format";
+import { formatEUR, formatDatePT, formatDateTimePT } from "@/lib/format";
 import { computeDeliveryTotals } from "@/lib/delivery-totals";
 import { deliveryOutcomeTone, openNavigation } from "@/lib/nav-link";
 import { DELIVERY_TYPE_LABEL } from "@/lib/constants";
@@ -29,6 +29,7 @@ import {
   Wallet,
   PackageCheck,
   Play,
+  Lock,
 } from "lucide-react";
 
 

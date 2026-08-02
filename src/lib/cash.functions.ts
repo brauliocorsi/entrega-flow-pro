@@ -580,7 +580,9 @@ export const getMyCashRoutes = createServerFn({ method: "GET" })
         pending_expenses: es.filter((e: any) => e.status === "pendente").length,
         cash_in: cashIn,
         expenses_total: expTotal,
-        in_hand: round2(cashIn - expTotal),
+        is_settled: isSettled(st),
+        net_cash: round2(cashIn - expTotal),
+        in_hand: isSettled(st) ? 0 : round2(cashIn - expTotal),
         other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
           .filter((m) => !isCash(m.method_name))
           .map((m) => ({ ...m, confirmed: confirmed.get(m.method_name) ?? false })),

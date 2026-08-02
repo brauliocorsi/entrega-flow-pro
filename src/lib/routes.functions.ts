@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertRouteUnlocked, getUserDisplayName, getUserRoles } from "./route-lock.server";
 
 const routeSimulationInput = z.object({
   origin: z.string().min(5).max(255),

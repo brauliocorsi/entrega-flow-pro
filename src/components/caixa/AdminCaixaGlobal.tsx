@@ -143,12 +143,18 @@ export function AdminCaixaGlobal() {
   );
 }
 
+function hasDiscrepancy(r: any) {
+  const diff = Number(r.realized_total ?? 0) - Number(r.forecast_total ?? 0);
+  return Math.abs(diff) >= 0.01;
+}
+
 function RouteCashRow({ route: r }: { route: any }) {
   const [open, setOpen] = useState(false);
   const diff = Number(r.realized_total ?? 0) - Number(r.forecast_total ?? 0);
+  const discrepancy = hasDiscrepancy(r);
 
   return (
-    <Card className="overflow-hidden">
+    <Card className={`overflow-hidden ${discrepancy ? "border-amber-300 ring-1 ring-amber-100" : ""}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -164,6 +170,12 @@ function RouteCashRow({ route: r }: { route: any }) {
             <Badge variant="outline" className={`text-[10px] ${STATE_TONE[r.cash_state]}`}>
               {STATE_LABEL[r.cash_state]}
             </Badge>
+            {discrepancy && (
+              <Badge className="border-amber-200 bg-amber-100 text-[10px] text-amber-800">
+                <AlertTriangle className="mr-1 h-3 w-3" />
+                Divergência {formatEUR(diff)}
+              </Badge>
+            )}
             {r.envelope_code && (
               <span className="font-mono text-[11px] text-muted-foreground">
                 {r.envelope_code}

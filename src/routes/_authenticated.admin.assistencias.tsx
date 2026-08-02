@@ -207,6 +207,21 @@ function ServiceRequestsPage() {
                     Última sincronização: {formatDateTimePT(s.gc_synced_at)}
                   </p>
                 )}
+                {s.scheduled_delivery_id && (
+                  <div className="rounded-md border border-sky-200 bg-sky-50 p-2 text-xs text-sky-900 flex items-center justify-between gap-2 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <CalendarPlus className="h-3.5 w-3.5" />
+                      Agendada em rota{" "}
+                      {s.scheduled_date ? `· ${formatDatePT(s.scheduled_date)}` : ""}
+                      {Number(s.charge_value) > 0
+                        ? ` · a receber ${Number(s.charge_value).toFixed(2)} €`
+                        : " · sem valor a receber"}
+                    </span>
+                    <Button size="sm" variant="ghost" onClick={() => handleUnschedule(s.id)}>
+                      Remover da rota
+                    </Button>
+                  </div>
+                )}
                 {s.status !== "resolvida" && (
                   <div className="space-y-2">
                     <Textarea
@@ -231,6 +246,11 @@ function ServiceRequestsPage() {
                       Marcar resolvida
                     </Button>
                   )}
+                  {!s.scheduled_delivery_id && (
+                    <Button size="sm" variant="secondary" onClick={() => setScheduling(s)}>
+                      <CalendarPlus className="h-4 w-4 mr-1" /> Agendar em rota
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant={s.gc_os_id ? "outline" : "default"}
@@ -240,6 +260,7 @@ function ServiceRequestsPage() {
                     {s.gc_os_id ? "Atualizar OS" : "Abrir assistência no GestãoClick"}
                   </Button>
                 </div>
+
               </CardContent>
             </Card>
           ))}

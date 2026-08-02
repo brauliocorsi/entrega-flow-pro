@@ -322,9 +322,236 @@ function ServiceRequestsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ScheduleAssistanceDialog
+        request={scheduling}
+        onClose={() => setScheduling(null)}
+        onDone={() => {
+          setScheduling(null);
+          qc.invalidateQueries({ queryKey: ["service-requests"] });
+          qc.invalidateQueries({ queryKey: ["routes"] });
+        }}
+      />
     </div>
   );
 }
+
+function ScheduleAssistanceDialog({
+  request,
+  onClose,
+  onDone,
+}: {
+  request: any | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const draftFn = useServerFn(getServiceRequestScheduleDraft);
+  const routesFn = useServerFn(listRoutes);
+  const scheduleFn = useServerFn(scheduleServiceRequest);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [routeId, setRouteId] = useState("");
+  const [type, setType] = useState<"recolha" | "troca" | "entrega" | "levantamento">("recolha");
+  const [address, setAddress] = useState("");
+  const [zip, setZip] = useState("");
+  const [city, setCity] = useState("");
+  const [phone, setPhone] = useState("");
+  const [charge, setCharge] = useState("0");
+  const [volume, setVolume] = useState("0");
+  const [minutes, setMinutes] = useState("20");
+  const [extra, setExtra] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const { data: draft } = useQuery({
+    queryKey: ["sr-draft", request?.id],
+    queryFn: () => draftFn({ data: { id: request.id } }),
+    enabled: !!request?.id,
+  });
+
+  const { data: routes = [] } = useQuery({
+    queryKey: ["routes", "assist", today],
+    queryFn: () => routesFn({ data: { from: today } }),
+    enabled: !!request?.id,
+  });
+
+  useEffect(() => {
+    if (!draft) return;
+    setAddress(draft.address ?? "");
+    setZip(draft.zip_code ?? "");
+    setCity(draft.city ?? "");
+    setPhone(draft.phone ?? "");
+    setCharge(String(Number(request?.charge_value ?? 0)));
+  }, [draft, request?.id]);
+
+  const openRoutes = (routes as any[]).filter(
+    (r) => !["fechada", "concluida"].includes(r.status),
+  );
+
+  async function submit() {
+    if (!request) return;
+    if (!routeId) return toast.error("Escolha a rota");
+    if (!address.trim()) return toast.error("Indique a morada");
+    setSaving(true);
+    try {
+      const res: any = await scheduleFn({
+        data: {
+          id: request.id,
+          route_id: routeId,
+          delivery_type: type,
+          address: address.trim(),
+          zip_code: zip.trim() || null,
+          city: city.trim() || null,
+          phone: phone.trim() || null,
+          charge_value: Number(charge) || 0,
+          volume_m3: Number(volume) || 0,
+          estimated_minutes: Number(minutes) || 20,
+          extra_notes: extra.trim() || null,
+        },
+      });
+      toast.success(`Assistência agendada na rota ${res.zone} (${formatDatePT(res.route_date)})`);
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao agendar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!request} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Agendar assistência numa rota</DialogTitle>
+          <DialogDescription>
+            A paragem levará toda a descrição da assistência para o entregador.
+          </DialogDescription>
+        </DialogHeader>
+        {request && (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-md bg-muted p-2 space-y-1">
+              <p className="font-medium">
+                #{request.order_number} · {request.customer_name}
+              </p>
+              <p className="text-xs">Produto: {request.product_name}</p>
+              <p className="text-xs whitespace-pre-wrap">{request.description}</p>
+              {Array.isArray(request.photos) && request.photos.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {request.photos.length} foto(s) anexada(s)
+                </p>
+              )}
+            </div>
+
+            <div className="grid gap-1">
+              <Label>Rota</Label>
+              <Select value={routeId} onValueChange={setRouteId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolher rota" />
+                </SelectTrigger>
+                <SelectContent>
+                  {openRoutes.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {formatDatePT(r.route_date)} · {r.zone} ·{" "}
+                      {Number(r.current_volume_m3).toFixed(1)}/
+                      {Number(r.max_capacity_m3).toFixed(1)} m³
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-1">
+                <Label>Tipo</Label>
+                <Select value={type} onValueChange={(v) => setType(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recolha">Recolha</SelectItem>
+                    <SelectItem value="troca">Troca</SelectItem>
+                    <SelectItem value="entrega">Entrega</SelectItem>
+                    <SelectItem value="levantamento">Levantamento</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1">
+                <Label className="flex items-center gap-1">
+                  <Euro className="h-3.5 w-3.5" /> Valor a receber
+                </Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={charge}
+                  onChange={(e) => setCharge(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-1">
+              <Label>Morada</Label>
+              <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="grid gap-1">
+                <Label>CP</Label>
+                <Input value={zip} onChange={(e) => setZip(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <Label>Localidade</Label>
+                <Input value={city} onChange={(e) => setCity(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <Label>Telefone</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-1">
+                <Label>Volume (m³)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={volume}
+                  onChange={(e) => setVolume(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label>Tempo (min)</Label>
+                <Input
+                  type="number"
+                  min="5"
+                  value={minutes}
+                  onChange={(e) => setMinutes(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-1">
+              <Label>Notas adicionais</Label>
+              <Textarea rows={2} value={extra} onChange={(e) => setExtra(e.target.value)} />
+            </div>
+            {Number(charge) > 0 && (
+              <p className="text-xs text-emerald-700">
+                O entregador verá esta paragem com {Number(charge).toFixed(2)} € a receber.
+              </p>
+            )}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+            Agendar na rota
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function Row({ label, value }: { label: string; value: string }) {
   return (

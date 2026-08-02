@@ -638,6 +638,9 @@ export type Database = {
           conferred_at: string | null
           conferred_by_name: string | null
           corridor: Json
+          courier_confirmed_at: string | null
+          courier_confirmed_by: string | null
+          courier_confirmed_by_name: string | null
           created_at: string
           current_volume_m3: number
           deliveries_count: number
@@ -651,6 +654,9 @@ export type Database = {
           order_changed_by_name: string | null
           order_ready_at: string | null
           order_ready_by_name: string | null
+          released_by_name: string | null
+          released_to_courier_at: string | null
+          released_to_courier_by: string | null
           route_date: string
           started_at: string | null
           started_by: string | null
@@ -676,6 +682,9 @@ export type Database = {
           conferred_at?: string | null
           conferred_by_name?: string | null
           corridor?: Json
+          courier_confirmed_at?: string | null
+          courier_confirmed_by?: string | null
+          courier_confirmed_by_name?: string | null
           created_at?: string
           current_volume_m3?: number
           deliveries_count?: number
@@ -689,6 +698,9 @@ export type Database = {
           order_changed_by_name?: string | null
           order_ready_at?: string | null
           order_ready_by_name?: string | null
+          released_by_name?: string | null
+          released_to_courier_at?: string | null
+          released_to_courier_by?: string | null
           route_date: string
           started_at?: string | null
           started_by?: string | null
@@ -714,6 +726,9 @@ export type Database = {
           conferred_at?: string | null
           conferred_by_name?: string | null
           corridor?: Json
+          courier_confirmed_at?: string | null
+          courier_confirmed_by?: string | null
+          courier_confirmed_by_name?: string | null
           created_at?: string
           current_volume_m3?: number
           deliveries_count?: number
@@ -727,6 +742,9 @@ export type Database = {
           order_changed_by_name?: string | null
           order_ready_at?: string | null
           order_ready_by_name?: string | null
+          released_by_name?: string | null
+          released_to_courier_at?: string | null
+          released_to_courier_by?: string | null
           route_date?: string
           started_at?: string | null
           started_by?: string | null
@@ -774,6 +792,9 @@ export type Database = {
           partial_items: Json | null
           phone: string | null
           remaining_value: number
+          removal_reason: string | null
+          removal_suggested_at: string | null
+          removal_suggested_by_name: string | null
           rescheduled_from_id: string | null
           route_id: string
           seller_id: string | null
@@ -806,6 +827,9 @@ export type Database = {
           partial_items?: Json | null
           phone?: string | null
           remaining_value?: number
+          removal_reason?: string | null
+          removal_suggested_at?: string | null
+          removal_suggested_by_name?: string | null
           rescheduled_from_id?: string | null
           route_id: string
           seller_id?: string | null
@@ -838,6 +862,9 @@ export type Database = {
           partial_items?: Json | null
           phone?: string | null
           remaining_value?: number
+          removal_reason?: string | null
+          removal_suggested_at?: string | null
+          removal_suggested_by_name?: string | null
           rescheduled_from_id?: string | null
           route_id?: string
           seller_id?: string | null

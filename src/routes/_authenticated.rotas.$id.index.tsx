@@ -1416,6 +1416,22 @@ function FleetEditor({ route }: { route: any }) {
     enabled: editing,
   });
 
+  // Rotas do mesmo dia, para impedir escalar a mesma pessoa em duas rotas.
+  const fnRoutes = useServerFn(listRoutes);
+  const { data: sameDayRoutes = [] } = useQuery({
+    queryKey: ["routes", "same-day", route.route_date],
+    queryFn: () => fnRoutes({ data: { from: route.route_date, to: route.route_date } }),
+    enabled: editing && !!route.route_date,
+  });
+  const normName = (v?: string | null) => (v ?? "").trim().toLowerCase();
+  const busyByName = new Map<string, string>();
+  for (const r of (sameDayRoutes as any[]) ?? []) {
+    if (r.id === route.id || r.status === "concluida") continue;
+    if (r.driver) busyByName.set(normName(r.driver), `motorista · ${r.zone}`);
+    if (r.assistant) busyByName.set(normName(r.assistant), `auxiliar · ${r.zone}`);
+  }
+  const busyLabel = (name: string) => busyByName.get(normName(name)) ?? null;
+
   const drivers = (staff as any[]).filter((s) => s.kind === "motorista" && s.active);
   // Motoristas também podem ser escalados como auxiliares de rota.
   const assistants = (staff as any[])
@@ -1470,9 +1486,14 @@ function FleetEditor({ route }: { route: any }) {
                 {driver && !drivers.some((d) => d.name === driver) && (
                   <SelectItem value={driver}>{driver} (atual)</SelectItem>
                 )}
-                {drivers.map((d) => (
-                  <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
-                ))}
+                {drivers.map((d) => {
+                  const busy = busyLabel(d.name);
+                  return (
+                    <SelectItem key={d.id} value={d.name} disabled={!!busy}>
+                      {d.name}{busy ? ` — ocupado (${busy})` : ""}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -1500,11 +1521,15 @@ function FleetEditor({ route }: { route: any }) {
                 {assistant && !assistants.some((d) => d.name === assistant) && (
                   <SelectItem value={assistant}>{assistant} (atual)</SelectItem>
                 )}
-                {assistants.map((d) => (
-                  <SelectItem key={d.id} value={d.name}>
-                    {d.name}{d.kind === "motorista" ? " (motorista)" : ""}
-                  </SelectItem>
-                ))}
+                {assistants.map((d) => {
+                  const busy = busyLabel(d.name);
+                  return (
+                    <SelectItem key={d.id} value={d.name} disabled={!!busy}>
+                      {d.name}{d.kind === "motorista" ? " (motorista)" : ""}
+                      {busy ? ` — ocupado (${busy})` : ""}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>

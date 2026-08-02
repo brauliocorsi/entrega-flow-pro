@@ -143,9 +143,14 @@ export function OrdemEntregasEditor({
             <Lock className="h-3 w-3 mr-1" /> Bloqueada
           </Badge>
         ) : (
-          <Button size="sm" className="h-8" disabled={!dirty || saveMut.isPending} onClick={() => saveMut.mutate()}>
-            <Save className="h-3.5 w-3.5 mr-1" /> Guardar ordem
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="h-8" onClick={recalc}>
+              <RouteIcon className="h-3.5 w-3.5 mr-1" /> Recalcular por CP
+            </Button>
+            <Button size="sm" className="h-8" disabled={!dirty || saveMut.isPending} onClick={() => saveMut.mutate()}>
+              <Save className="h-3.5 w-3.5 mr-1" /> Guardar ordem
+            </Button>
+          </div>
         )}
       </div>
 

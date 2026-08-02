@@ -114,6 +114,8 @@ async function buildCash(ctx: any, routeId: string) {
   );
 
   const orders = (deliveries ?? []).map((d: any) => buildOrderCompare(d, payments ?? []));
+  const settled = isSettled(settlement);
+  const netCash = round2(cashIn - expensesTotal);
 
   return {
     route,
@@ -122,7 +124,9 @@ async function buildCash(ctx: any, routeId: string) {
     settlement: settlement ?? null,
     cash_in: cashIn,
     expenses_total: expensesTotal,
-    in_hand: round2(cashIn - expensesTotal),
+    is_settled: settled,
+    net_cash: netCash,
+    in_hand: settled ? 0 : netCash,
     orders,
     forecast_total: round2(orders.reduce((a: number, o: any) => a + o.forecast, 0)),
     realized_total: round2(orders.reduce((a: number, o: any) => a + o.realized, 0)),

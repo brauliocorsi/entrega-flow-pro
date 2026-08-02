@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -7,13 +7,26 @@ import {
   listServiceRequests,
   updateServiceRequest,
   openServiceOrderInGC,
+  getServiceRequestScheduleDraft,
+  scheduleServiceRequest,
+  unscheduleServiceRequest,
 } from "@/lib/service-requests.functions";
+import { listRoutes } from "@/lib/routes.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +36,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDateTimePT, formatDatePT } from "@/lib/format";
-import { Wrench, ExternalLink, AlertTriangle, Loader2 } from "lucide-react";
+import { Wrench, ExternalLink, AlertTriangle, Loader2, CalendarPlus, Euro } from "lucide-react";
+
 
 
 export const Route = createFileRoute("/_authenticated/admin/assistencias")({

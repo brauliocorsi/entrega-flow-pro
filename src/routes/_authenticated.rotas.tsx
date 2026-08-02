@@ -255,38 +255,56 @@ function RoutesIndex() {
         </Card>
       )}
 
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Rotas de entrega</h1>
-          <p className="text-sm text-muted-foreground">
-            {hasFilters ? `${filtered.length} de ${rows.length}` : `${rows.length}`} rotas planeadas
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {(isAdmin || role === "logistico") && (
-            <Button variant="default" size="sm" onClick={() => setImportOpen(true)}>
-              <CalendarClock className="h-4 w-4 mr-1" /> Importar marcações
-            </Button>
-          )}
-          {isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={openMerge}
-              disabled={mergeDates.length === 0}
-              title={mergeDates.length === 0 ? "Sem datas com 2+ rotas abertas" : "Mesclar rotas da mesma data"}
-            >
-              <Merge className="h-4 w-4 mr-1" /> Mesclar rotas
-            </Button>
-          )}
-          <Button variant={view === "lista" ? "default" : "outline"} size="sm" onClick={() => setView("lista")}>
-            <List className="h-4 w-4 mr-1" /> Lista
-          </Button>
-          <Button variant={view === "calendario" ? "default" : "outline"} size="sm" onClick={() => setView("calendario")}>
-            <CalendarIcon className="h-4 w-4 mr-1" /> Calendário
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={CalendarIcon}
+        title="Rotas de entrega"
+        description={`${hasFilters ? `${filtered.length} de ${rows.length}` : `${rows.length}`} rotas planeadas`}
+        actions={
+          <>
+            <div className="flex rounded-xl border border-border p-0.5">
+              <Button
+                variant={view === "lista" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 rounded-lg"
+                onClick={() => setView("lista")}
+              >
+                <List className="mr-1 h-4 w-4" /> Lista
+              </Button>
+              <Button
+                variant={view === "calendario" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 rounded-lg"
+                onClick={() => setView("calendario")}
+              >
+                <CalendarIcon className="mr-1 h-4 w-4" /> Calendário
+              </Button>
+            </div>
+            {(isAdmin || role === "logistico") && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8" aria-label="Mais ações">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setImportOpen(true)}>
+                    <CalendarClock className="mr-2 h-4 w-4" /> Importar marcações
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem
+                      onSelect={() => openMerge()}
+                      disabled={mergeDates.length === 0}
+                    >
+                      <Merge className="mr-2 h-4 w-4" /> Mesclar rotas
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </>
+        }
+      />
+
 
       <ImportarMarcacoesDialog open={importOpen} onOpenChange={setImportOpen} />
 

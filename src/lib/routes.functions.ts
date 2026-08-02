@@ -80,6 +80,51 @@ export const getRouteWithDeliveries = createServerFn({ method: "GET" })
     return { route, deliveries: deliveries ?? [] };
   });
 
+/** Admin/logística libertam a rota para revisão prévia do entregador. */
+export const releaseRouteToCourier = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), released: z.boolean().default(true) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const roles = await getUserRoles(context);
+    if (!roles.includes("admin") && !roles.includes("logistico")) {
+      throw new Error("Apenas administradores ou logística podem libertar a rota");
+    }
+    const name = await getUserDisplayName(context);
+    const patch = data.released
+      ? {
+          released_to_courier_at: new Date().toISOString(),
+          released_to_courier_by: context.userId,
+          released_by_name: name,
+        }
+      : {
+          released_to_courier_at: null,
+          released_to_courier_by: null,
+          released_by_name: null,
+          courier_confirmed_at: null,
+          courier_confirmed_by: null,
+          courier_confirmed_by_name: null,
+        };
+    const { error } = await context.supabase.from("routes").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    await resetCourierConfirmation(context, data.id);
+    return { ok: true };
+  });
+
+/** Anula a confirmação do entregador sempre que a rota é alterada depois dela. */
+async function resetCourierConfirmation(context: any, routeId: string) {
+  await context.supabase
+    .from("routes")
+    .update({
+      courier_confirmed_at: null,
+      courier_confirmed_by: null,
+      courier_confirmed_by_name: null,
+    })
+    .eq("id", routeId)
+    .not("courier_confirmed_at", "is", null);
+}
+
 /** Marca a rota como iniciada — bloqueia alterações para todos os perfis. */
 export const startRoute = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -199,6 +244,7 @@ export const reorderDeliveries = createServerFn({ method: "POST" })
         order_changed_at: new Date().toISOString(),
       })
       .eq("id", data.route_id);
+    await resetCourierConfirmation(context, data.route_id);
 
     return { ok: true, count: data.delivery_ids.length };
   });
@@ -266,6 +312,7 @@ export const updateRouteDate = createServerFn({ method: "POST" })
       .update({ route_date: data.route_date })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+    await resetCourierConfirmation(context, data.id);
     return { ok: true };
   });
 

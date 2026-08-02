@@ -233,11 +233,23 @@ function RouteDetail() {
             );
           })()}
         </div>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {[
+            { label: "Paragens", value: String(activeDeliveries.length) },
+            { label: "Entregues", value: `${doneCount}/${activeDeliveries.length}` },
+            { label: "Histórico", value: String(historyDeliveries.length) },
+          ].map((s) => (
+            <div key={s.label} className="rounded-xl border border-border bg-muted/30 p-2 text-center">
+              <div className="text-lg font-bold leading-tight">{s.value}</div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{s.label}</div>
+            </div>
+          ))}
+        </div>
         <div className="mt-3 text-xs text-muted-foreground">
           Ponto de partida: <span className="font-medium text-foreground">{WAREHOUSE_ADDRESS}</span>
         </div>
-        <FleetEditor route={r} />
       </Card>
+
 
       <Tabs defaultValue="entregas">
         <TabsList className="grid w-full grid-cols-4">

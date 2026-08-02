@@ -6,6 +6,8 @@ const routeSimulationInput = z.object({
   origin: z.string().min(5).max(255),
   destination: z.string().min(5).max(255),
   intermediates: z.array(z.string().min(5).max(255)).max(23).default([]),
+  /** false = respeita a ordem enviada (ordem manual), sem otimizar waypoints. */
+  optimize: z.boolean().default(true),
 });
 
 export const listRoutes = createServerFn({ method: "GET" })
@@ -255,7 +257,7 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
     const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!googleMapsApiKey) throw new Error("GOOGLE_MAPS_API_KEY em falta para calcular o trajeto");
 
-    const shouldOptimizeWaypointOrder = data.intermediates.length > 1;
+    const shouldOptimizeWaypointOrder = data.optimize !== false && data.intermediates.length > 1;
 
     const fieldMask = [
       "routes.distanceMeters",

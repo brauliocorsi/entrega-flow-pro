@@ -29,22 +29,24 @@ export const Route = createFileRoute("/_authenticated/conferencia")({
 
 function ConferenciaPage() {
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Calculator className="h-6 w-6" /> Conferência de Valores
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Envelopes e fecho de caixa por rota. Expande para conferir cada nota de encomenda, os
-          recebimentos por método e as saídas de caixa.
-        </p>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-4">
+      <PageHeader
+        icon={Calculator}
+        title="Conferência de Valores"
+        description="Envelopes e fecho de caixa por rota. Expande para conferir cada nota, os recebimentos por método e as saídas."
+      />
 
       <Tabs defaultValue="envelopes">
-        <TabsList>
-          <TabsTrigger value="envelopes">Envelopes</TabsTrigger>
-          <TabsTrigger value="historico">Histórico</TabsTrigger>
-          <TabsTrigger value="conciliacao">Conciliação bancária</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="envelopes" className="gap-1.5">
+            <PackageCheck className="h-4 w-4" /> Envelopes
+          </TabsTrigger>
+          <TabsTrigger value="historico" className="gap-1.5">
+            <History className="h-4 w-4" /> Histórico
+          </TabsTrigger>
+          <TabsTrigger value="conciliacao" className="gap-1.5">
+            <Landmark className="h-4 w-4" /> Conciliação
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="envelopes" className="mt-3">
           <ConferenciaLista />
@@ -56,8 +58,7 @@ function ConferenciaPage() {
           <ConciliacaoPanel />
         </TabsContent>
       </Tabs>
-
-
     </div>
   );
 }
+

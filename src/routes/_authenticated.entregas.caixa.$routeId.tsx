@@ -375,7 +375,7 @@ function CaixaRotaPage() {
         {!closed && (
           <Dialog open={envOpen} onOpenChange={setEnvOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full" onClick={() => setDeclared(String(data.in_hand))}>
+              <Button className="w-full" onClick={() => setDeclared(String(data.net_cash))}>
                 <PackageCheck className="h-4 w-4 mr-1" /> Fechar envelope
               </Button>
             </DialogTrigger>
@@ -395,7 +395,7 @@ function CaixaRotaPage() {
                   </div>
                   <div className="flex justify-between border-t pt-1">
                     <span>A depositar</span>
-                    <span className="font-bold text-emerald-600">{formatEUR(data.in_hand)}</span>
+                    <span className="font-bold text-emerald-600">{formatEUR(data.net_cash)}</span>
                   </div>
                 </div>
                 <div>

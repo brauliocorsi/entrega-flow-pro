@@ -141,7 +141,7 @@ function RouteSimulationSection({
   const simulationFn = useServerFn(getRouteSimulation);
   // Paragens sem morada utilizável rebentavam a validação e deixavam o mapa vazio.
   const validStops = useMemo(() => rawStops.filter((s) => (s.full ?? "").trim().length >= 5), [rawStops]);
-  const { data: optData } = useQuery<RouteSimulation>({
+  const { data: optData, isFetching: simFetching } = useQuery<RouteSimulation>({
     queryKey: ["route-simulation", validStops.map((s) => s.id).join(",")],
     enabled: validStops.length > 0,
     queryFn: () =>
@@ -190,7 +190,11 @@ function RouteSimulationSection({
                 <span className="font-medium text-foreground">{selectedStop.label}</span>
               </>
             ) : (
-              <>{stops.length} paragens · Armazém → entregas → Armazém · ordem otimizada por tempo</>
+              <>
+                {stops.length} paragens · Armazém → entregas → Armazém ·{" "}
+                {manualOrder ? "ordem manual definida" : "ordem otimizada por tempo"}
+                {simFetching && " · a atualizar…"}
+              </>
             )}
           </div>
         </div>
@@ -531,6 +535,8 @@ function RouteDetail() {
   const { role } = useAuth();
   const canForecast = role === "admin" || role === "logistico";
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Ordem que o utilizador está a editar (ainda não guardada) — alimenta a simulação em tempo real.
+  const [previewOrder, setPreviewOrder] = useState<string[]>([]);
   const selectStop = (next: string | null) => {
     setSelectedId(next);
     if (next && typeof document !== "undefined") {
@@ -672,12 +678,23 @@ function RouteDetail() {
         return (
           <>
             {activeDeliveries.length > 0 && (() => {
-              const rawStops: Stop[] = activeDeliveries.map((d: any) => ({
+              const baseStops: Stop[] = activeDeliveries.map((d: any) => ({
                 id: d.id,
                 label: `#${d.order_number} · ${d.customer_name}`,
                 full: buildStopAddress(d.address, d.zip_code, d.city),
               }));
-              const manualOrder = activeDeliveries.some((d: any) => d.stop_order != null);
+              // Reordena as paragens conforme a ordem em edição, sem esperar por "Guardar".
+              const rawStops: Stop[] =
+                previewOrder.length > 0
+                  ? [
+                      ...previewOrder
+                        .map((id) => baseStops.find((s) => s.id === id))
+                        .filter((s): s is Stop => !!s),
+                      ...baseStops.filter((s) => !previewOrder.includes(s.id)),
+                    ]
+                  : baseStops;
+              const savedManualOrder = activeDeliveries.some((d: any) => d.stop_order != null);
+              const manualOrder = savedManualOrder || previewOrder.length > 0;
 
               return (
                 <>
@@ -692,6 +709,7 @@ function RouteDetail() {
                     }))}
                     locked={false}
                     invalidateKeys={[["route-deliveries", r.id], ["scheduled-deliveries", r.id]]}
+                    onOrderChange={setPreviewOrder}
                   />
                   <RouteSimulationSection
                     rawStops={rawStops}

@@ -90,11 +90,14 @@ export function OrdemEntregasEditor({
   deliveries,
   locked,
   invalidateKeys = [],
+  onOrderChange,
 }: {
   routeId: string;
   deliveries: Item[];
   locked: boolean;
   invalidateKeys?: string[][];
+  /** Notifica a ordem atual (ainda não guardada) para simulação em tempo real. */
+  onOrderChange?: (ids: string[]) => void;
 }) {
   const qc = useQueryClient();
   const reorderFn = useServerFn(reorderDeliveries);
@@ -104,6 +107,12 @@ export function OrdemEntregasEditor({
   useEffect(() => {
     setItems(deliveries);
   }, [deliveries]);
+
+  useEffect(() => {
+    onOrderChange?.(items.map((i) => i.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+
 
   const dirty = items.map((i) => i.id).join(",") !== deliveries.map((i) => i.id).join(",");
 

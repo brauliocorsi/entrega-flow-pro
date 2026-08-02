@@ -864,6 +864,7 @@ export const getAllSettlements = createServerFn({ method: "GET" })
         total_received: c.total_received,
         other_methods: c.other_methods,
         orders_count: orders.length,
+        orders,
         forecast_total: round2(orders.reduce((a: number, o: any) => a + o.forecast, 0)),
         realized_total: round2(orders.reduce((a: number, o: any) => a + o.realized, 0)),
         exits: c.expenses.map((e: any) => ({

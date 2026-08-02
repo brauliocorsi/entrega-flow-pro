@@ -365,7 +365,8 @@ function RoutesIndex() {
 
 
       {/* Filtros avançados */}
-      <Card className="p-3">
+      <Card className="sticky top-14 z-20 p-3 backdrop-blur supports-[backdrop-filter]:bg-card/90">
+
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <div className="relative lg:col-span-2">
             <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />

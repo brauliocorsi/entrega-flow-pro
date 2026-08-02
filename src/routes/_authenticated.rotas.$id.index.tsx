@@ -141,7 +141,7 @@ function RouteSimulationSection({
   const simulationFn = useServerFn(getRouteSimulation);
   // Paragens sem morada utilizável rebentavam a validação e deixavam o mapa vazio.
   const validStops = useMemo(() => rawStops.filter((s) => (s.full ?? "").trim().length >= 5), [rawStops]);
-  const { data: optData } = useQuery<RouteSimulation>({
+  const { data: optData, isFetching: simFetching } = useQuery<RouteSimulation>({
     queryKey: ["route-simulation", validStops.map((s) => s.id).join(",")],
     enabled: validStops.length > 0,
     queryFn: () =>
@@ -190,7 +190,11 @@ function RouteSimulationSection({
                 <span className="font-medium text-foreground">{selectedStop.label}</span>
               </>
             ) : (
-              <>{stops.length} paragens · Armazém → entregas → Armazém · ordem otimizada por tempo</>
+              <>
+                {stops.length} paragens · Armazém → entregas → Armazém ·{" "}
+                {manualOrder ? "ordem manual definida" : "ordem otimizada por tempo"}
+                {simFetching && " · a atualizar…"}
+              </>
             )}
           </div>
         </div>

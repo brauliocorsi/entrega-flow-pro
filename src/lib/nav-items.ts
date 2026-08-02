@@ -12,6 +12,7 @@ import {
   Wrench,
   Wallet,
   PackageCheck,
+  ReceiptText,
 
   type LucideIcon,
 } from "lucide-react";

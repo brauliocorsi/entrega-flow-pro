@@ -1,19 +1,21 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
-import { getAllCashByStaff } from "@/lib/cash.functions";
+import { getAllCashByRoute } from "@/lib/cash.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { StatTile, FilterBar } from "@/components/ui-kit/PageHeader";
 import { formatEUR, formatDatePT, formatDateTimePT } from "@/lib/format";
 import {
-  Wallet,
   ChevronDown,
   ChevronRight,
   ArrowDownLeft,
   ArrowUpRight,
   User,
+  Search,
 } from "lucide-react";
 
 const EXPENSE_TONE: Record<string, string> = {
@@ -22,191 +24,268 @@ const EXPENSE_TONE: Record<string, string> = {
   rejeitada: "bg-rose-100 text-rose-800 border-rose-200",
 };
 
+const STATE_LABEL: Record<string, string> = {
+  aberto: "Caixa aberto",
+  entregue: "Envelope entregue",
+  conferido: "Conferido",
+};
+
+const STATE_TONE: Record<string, string> = {
+  aberto: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  entregue: "bg-amber-100 text-amber-800 border-amber-200",
+  conferido: "bg-sky-100 text-sky-800 border-sky-200",
+};
+
+type StateFilter = "todos" | "aberto" | "entregue" | "conferido";
+
+const FILTERS: { key: StateFilter; label: string }[] = [
+  { key: "todos", label: "Todos" },
+  { key: "aberto", label: "Abertos" },
+  { key: "entregue", label: "Por conferir" },
+  { key: "conferido", label: "Conferidos" },
+];
+
+/** Lista de caixas — um por rota — para admin/logística. */
 export function AdminCaixaGlobal() {
-  const fn = useServerFn(getAllCashByStaff);
+  const fn = useServerFn(getAllCashByRoute);
   const [days, setDays] = useState(45);
+  const [state, setState] = useState<StateFilter>("todos");
+  const [q, setQ] = useState("");
+
   const { data, isLoading } = useQuery({
-    queryKey: ["all-cash-by-staff", days],
+    queryKey: ["all-cash-by-route", days],
     queryFn: () => fn({ data: { days } }),
     refetchOnWindowFocus: true,
   });
 
-  if (isLoading) return <div className="text-muted-foreground">A carregar…</div>;
+  const routes = useMemo(() => {
+    const list = ((data?.routes ?? []) as any[]).filter((r) =>
+      state === "todos" ? true : r.cash_state === state,
+    );
+    const term = q.trim().toLowerCase();
+    if (!term) return list;
+    return list.filter((r) =>
+      [r.zone, r.responsible, r.envelope_code, r.route_date]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(term),
+    );
+  }, [data, state, q]);
 
-  const staff = data?.staff ?? [];
+  if (isLoading) return <div className="text-muted-foreground">A carregar…</div>;
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Metric label="Em mãos (total)" value={formatEUR(data?.total_in_hand ?? 0)} tone="text-emerald-600" />
-        <Metric label="Entradas dinheiro" value={formatEUR(data?.total_cash_in ?? 0)} />
-        <Metric label="Saídas" value={formatEUR(data?.total_expenses ?? 0)} tone="text-rose-600" />
-        <Metric label="Saídas por aprovar" value={String(data?.pending_expenses ?? 0)} tone="text-amber-600" />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <StatTile
+          label="Em mãos (caixas abertos)"
+          value={formatEUR(data?.total_in_hand ?? 0)}
+          tone="positive"
+        />
+        <StatTile label="Caixas abertos" value={String(data?.open_count ?? 0)} tone="warning" />
+        <StatTile label="Entradas dinheiro" value={formatEUR(data?.total_cash_in ?? 0)} />
+        <StatTile
+          label="Saídas"
+          value={formatEUR(data?.total_expenses ?? 0)}
+          tone="danger"
+        />
       </div>
 
-      <div className="flex gap-1.5">
-        {[15, 45, 90].map((d) => (
-          <Button
-            key={d}
-            size="sm"
-            variant={days === d ? "secondary" : "outline"}
-            className="h-7"
-            onClick={() => setDays(d)}
-          >
-            {d} dias
-          </Button>
-        ))}
-      </div>
+      <FilterBar>
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="h-9 pl-9"
+            placeholder="Pesquisar por zona, responsável ou envelope…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map((f) => (
+            <Button
+              key={f.key}
+              size="sm"
+              variant={state === f.key ? "secondary" : "outline"}
+              className="h-8 text-xs"
+              onClick={() => setState(f.key)}
+            >
+              {f.label}
+            </Button>
+          ))}
+          {[15, 45, 90].map((d) => (
+            <Button
+              key={d}
+              size="sm"
+              variant={days === d ? "default" : "ghost"}
+              className="h-8 text-xs"
+              onClick={() => setDays(d)}
+            >
+              {d}d
+            </Button>
+          ))}
+        </div>
+      </FilterBar>
 
-      {staff.length === 0 ? (
+      {routes.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">
-          Sem movimentos de caixa neste período.
+          Nenhum caixa corresponde aos filtros.
         </Card>
       ) : (
-        staff.map((s: any) => <StaffCard key={s.name} staff={s} />)
+        <div className="space-y-2">
+          {routes.map((r) => (
+            <RouteCashRow key={r.id} route={r} />
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-function Metric({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <Card className="p-3 text-center">
-      <div className="text-[11px] uppercase text-muted-foreground">{label}</div>
-      <div className={`text-lg font-bold ${tone ?? ""}`}>{value}</div>
-    </Card>
-  );
-}
-
-function StaffCard({ staff }: { staff: any }) {
+function RouteCashRow({ route: r }: { route: any }) {
   const [open, setOpen] = useState(false);
+  const diff = Number(r.realized_total ?? 0) - Number(r.forecast_total ?? 0);
+
   return (
-    <Card className="p-4 space-y-3">
+    <Card className="overflow-hidden">
       <button
         type="button"
-        className="w-full flex items-center justify-between gap-2 text-left"
         onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/50"
       >
-        <div className="min-w-0">
-          <div className="font-semibold flex items-center gap-2">
-            <User className="h-4 w-4 text-muted-foreground" />
-            {staff.name}
+        <span
+          className="h-8 w-1.5 shrink-0 rounded-full"
+          style={{ background: r.color ?? "#3b82f6" }}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate font-semibold">{r.zone}</span>
+            <Badge variant="outline" className={`text-[10px] ${STATE_TONE[r.cash_state]}`}>
+              {STATE_LABEL[r.cash_state]}
+            </Badge>
+            {r.envelope_code && (
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {r.envelope_code}
+              </span>
+            )}
           </div>
-          <div className="text-xs text-muted-foreground">
-            {staff.open_routes} rota(s) por prestar contas
-            {staff.pending_expenses > 0 ? ` · ${staff.pending_expenses} saída(s) por aprovar` : ""}
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <span>{formatDatePT(r.route_date)}</span>
+            <span>·</span>
+            <span className="inline-flex items-center gap-1">
+              <User className="h-3 w-3" /> {r.responsible}
+            </span>
+            {r.pending_expenses > 0 && (
+              <Badge className="border-amber-200 bg-amber-100 text-[10px] text-amber-800">
+                {r.pending_expenses} saída(s) por aprovar
+              </Badge>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="text-right">
-            <div className="text-[11px] uppercase text-muted-foreground">Em mãos</div>
-            <div className="font-bold text-emerald-600">{formatEUR(staff.in_hand)}</div>
-          </div>
-          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        <div className="shrink-0 text-right">
+          <div className="text-[11px] uppercase text-muted-foreground">Em mãos</div>
+          <div className="text-lg font-bold text-emerald-600">{formatEUR(r.in_hand)}</div>
         </div>
+        {open ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
       </button>
 
       {open && (
-        <div className="space-y-3 border-t pt-3">
-          {staff.routes.map((r: any) => (
-            <div key={r.id} className="rounded-lg border p-3 space-y-2">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="font-medium flex items-center gap-2">
-                  <span
-                    className="h-3 w-3 rounded-full shrink-0"
-                    style={{ background: r.color ?? "#3b82f6" }}
-                  />
-                  {r.zone}
-                  <span className="text-xs text-muted-foreground">{formatDatePT(r.route_date)}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Badge variant={r.is_open ? "outline" : "secondary"}>
-                    {r.is_open
-                      ? "Caixa aberta"
-                      : r.settlement?.status === "conferida"
-                        ? "Conferida"
-                        : "Envelope entregue"}
-                  </Badge>
-                  <Link to="/entregas/caixa/$routeId" params={{ routeId: r.id }}>
-                    <Button size="sm" variant="outline" className="h-7">
-                      Abrir
-                    </Button>
-                  </Link>
-                </div>
-              </div>
+        <div className="space-y-3 border-t p-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatTile label="Previsto" value={formatEUR(r.forecast_total ?? 0)} />
+            <StatTile
+              label="Realizado"
+              value={formatEUR(r.realized_total ?? 0)}
+              tone="positive"
+            />
+            <StatTile
+              label="Diferença"
+              value={formatEUR(diff)}
+              tone={Math.abs(diff) < 0.01 ? "default" : "warning"}
+            />
+            <StatTile label="Saídas" value={formatEUR(r.expenses_total)} tone="danger" />
+          </div>
 
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <div className="text-[11px] uppercase text-muted-foreground">Dinheiro</div>
-                  <div className="font-semibold text-sm">{formatEUR(r.cash_in)}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] uppercase text-muted-foreground">Saídas</div>
-                  <div className="font-semibold text-sm text-rose-600">
-                    − {formatEUR(r.expenses_total)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] uppercase text-muted-foreground">Em mãos</div>
-                  {r.is_settled ? (
-                    <div className="font-semibold text-sm">
-                      {formatEUR(0)}
-                      <span className="block text-[10px] font-normal text-muted-foreground">
-                        prestado {formatEUR(r.net_cash)}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="font-semibold text-sm text-emerald-600">{formatEUR(r.in_hand)}</div>
-                  )}
-                </div>
-              </div>
-
-              {r.entries.length > 0 && (
-                <div className="space-y-1">
-                  <div className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">
-                    <ArrowDownLeft className="h-3 w-3 text-emerald-600" /> Entradas
-                  </div>
-                  {r.entries.map((e: any) => (
-                    <div key={e.id} className="flex items-center justify-between text-xs">
-                      <span className="truncate">
-                        {e.method_name}
-                        {e.received_by_name ? ` · ${e.received_by_name}` : ""}
-                      </span>
-                      <span className="font-semibold tabular-nums">{formatEUR(e.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {r.exits.length > 0 && (
-                <div className="space-y-1">
-                  <div className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">
-                    <ArrowUpRight className="h-3 w-3 text-rose-600" /> Saídas
-                  </div>
-                  {r.exits.map((e: any) => (
-                    <div key={e.id} className="rounded-md border px-2 py-1.5 text-xs space-y-0.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium">{e.category}</span>
-                        <span className="flex items-center gap-1.5">
-                          <Badge className={`text-[10px] ${EXPENSE_TONE[e.status] ?? ""}`}>
-                            {e.status}
-                          </Badge>
-                          <span className="font-semibold text-rose-600 tabular-nums">
-                            − {formatEUR(e.amount)}
-                          </span>
-                        </span>
-                      </div>
-                      <div className="text-muted-foreground">
-                        {e.description}
-                        {e.created_by_name ? ` · por ${e.created_by_name}` : ""} ·{" "}
-                        {formatDateTimePT(e.created_at)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+          {r.other_methods?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {r.other_methods.map((m: any) => (
+                <Badge key={m.method_name} variant="outline" className="text-[11px]">
+                  {m.method_name}: {formatEUR(m.amount)}
+                  {m.confirmed ? " ✓" : " • por conciliar"}
+                </Badge>
+              ))}
             </div>
-          ))}
+          )}
+
+          <div>
+            <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase text-muted-foreground">
+              <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-600" /> Entradas
+            </div>
+            {r.entries.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem recebimentos.</p>
+            ) : (
+              <div className="divide-y">
+                {r.entries.map((e: any) => (
+                  <div key={e.id} className="flex items-center gap-2 py-1.5 text-sm">
+                    <span className="font-medium">{e.method_name}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {e.received_by_name ?? "—"} · {formatDateTimePT(e.created_at)}
+                    </span>
+                    <span className="ml-auto tabular-nums font-semibold">
+                      {formatEUR(e.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase text-muted-foreground">
+              <ArrowUpRight className="h-3.5 w-3.5 text-rose-600" /> Saídas
+            </div>
+            {r.exits.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem saídas registadas.</p>
+            ) : (
+              <div className="divide-y">
+                {r.exits.map((e: any) => (
+                  <div key={e.id} className="flex items-center gap-2 py-1.5 text-sm">
+                    <span className="font-medium">{e.category}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {e.description}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`ml-auto text-[10px] capitalize ${EXPENSE_TONE[e.status] ?? ""}`}
+                    >
+                      {e.status}
+                    </Badge>
+                    <span className="tabular-nums font-semibold text-rose-600">
+                      − {formatEUR(e.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link to="/entregas/caixa/$routeId" params={{ routeId: r.id }}>
+              <Button size="sm" variant="outline">
+                Abrir caixa da rota
+              </Button>
+            </Link>
+            <Link to="/rotas/$id" params={{ id: r.id }}>
+              <Button size="sm" variant="ghost">
+                Ver rota
+              </Button>
+            </Link>
+          </div>
         </div>
       )}
     </Card>

@@ -162,21 +162,47 @@ function CaixaRotaPage() {
         <div className="flex items-start justify-between gap-2">
           <div>
             <h1 className="text-lg font-bold flex items-center gap-2">
-              <Wallet className="h-5 w-5" /> Caixa · {data.route.zone}
+              <Wallet className="h-5 w-5" /> Caixa da rota · {data.route.zone}
             </h1>
-            <p className="text-sm text-muted-foreground">{formatDatePT(data.route.route_date)}</p>
+            <p className="text-sm text-muted-foreground">
+              {formatDatePT(data.route.route_date)}
+              {settlement ? ` · ${settlement.envelope_code}` : ""}
+            </p>
           </div>
-          {settlement && (
-            <Badge
-              className={
-                settlement.status === "conferida"
+          <Badge
+            className={
+              !settlement
+                ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                : settlement.status === "conferida"
                   ? "bg-sky-600 text-white border-sky-600"
                   : "bg-amber-500 text-white border-amber-500"
-              }
-            >
-              {settlement.status === "conferida" ? "Conferida" : "Envelope entregue"}
-            </Badge>
-          )}
+            }
+          >
+            {!settlement
+              ? "Caixa aberto"
+              : settlement.status === "conferida"
+                ? "Conferido"
+                : "Envelope entregue"}
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-lg border p-2">
+            <div className="text-[11px] uppercase text-muted-foreground">Previsto</div>
+            <div className="font-semibold tabular-nums">{formatEUR(data.forecast_total)}</div>
+          </div>
+          <div className="rounded-lg border p-2">
+            <div className="text-[11px] uppercase text-muted-foreground">Realizado</div>
+            <div className="font-semibold tabular-nums text-emerald-600">
+              {formatEUR(data.realized_total)}
+            </div>
+          </div>
+          <div className="rounded-lg border p-2">
+            <div className="text-[11px] uppercase text-muted-foreground">Diferença</div>
+            <div className="font-semibold tabular-nums">
+              {formatEUR(Number(data.realized_total) - Number(data.forecast_total))}
+            </div>
+          </div>
         </div>
 
         {data.is_settled ? (
@@ -184,8 +210,9 @@ function CaixaRotaPage() {
             <div className="text-xs uppercase text-muted-foreground">Em mãos (dinheiro)</div>
             <div className="text-3xl font-bold">{formatEUR(0)}</div>
             <div className="text-xs text-muted-foreground mt-1">
-              Caixa prestado e zerado · entregue {formatEUR(data.net_cash)} ({formatEUR(data.cash_in)}{" "}
-              recebido − {formatEUR(data.expenses_total)} despesas)
+              Caixa desta rota finalizado com a entrega do envelope · entregue{" "}
+              {formatEUR(data.net_cash)} ({formatEUR(data.cash_in)} recebido −{" "}
+              {formatEUR(data.expenses_total)} saídas). O próximo caixa é o da próxima rota.
             </div>
           </div>
         ) : (
@@ -193,10 +220,12 @@ function CaixaRotaPage() {
             <div className="text-xs uppercase text-muted-foreground">Em mãos (dinheiro)</div>
             <div className="text-3xl font-bold text-emerald-600">{formatEUR(data.in_hand)}</div>
             <div className="text-xs text-muted-foreground mt-1">
-              {formatEUR(data.cash_in)} recebido − {formatEUR(data.expenses_total)} despesas
+              {formatEUR(data.cash_in)} recebido − {formatEUR(data.expenses_total)} saídas · caixa
+              aberto até entregares o envelope
             </div>
           </div>
         )}
+
 
         {data.other_methods.length > 0 && (
           <div className="space-y-1.5">
@@ -231,7 +260,13 @@ function CaixaRotaPage() {
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Saídas de caixa</h2>
+          {closed && (
+            <span className="text-xs text-muted-foreground">
+              Caixa finalizado — sem novas saídas
+            </span>
+          )}
           {!closed && (
+
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
                 <Button size="sm">

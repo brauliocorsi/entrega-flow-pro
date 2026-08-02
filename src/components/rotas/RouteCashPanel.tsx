@@ -81,14 +81,15 @@ export function RouteCashPanel({ routeId }: { routeId: string }) {
             <Badge variant={st.status === "conferida" ? "default" : "secondary"}>
               Envelope {st.envelope_code} ·{" "}
               {st.status === "conferida"
-                ? "conferido"
+                ? "caixa conferido"
                 : st.status === "entregue"
-                  ? "entregue, por conferir"
-                  : "aberto"}
+                  ? "caixa finalizado, por conferir"
+                  : "caixa aberto"}
             </Badge>
           ) : (
-            <Badge variant="outline">Sem envelope</Badge>
+            <Badge variant="outline">Caixa aberto · sem envelope</Badge>
           )}
+
           <Button size="sm" variant="outline" className="h-8" onClick={() => setOpen((v) => !v)}>
             <ChevronDown
               className={`h-4 w-4 mr-1 transition-transform ${open ? "rotate-180" : ""}`}

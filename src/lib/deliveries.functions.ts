@@ -234,6 +234,8 @@ export const transferDeliveryToRoute = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Entrega não encontrada");
     if (row.route_id === data.newRouteId) throw new Error("A entrega já está nesta rota");
+    await assertRouteUnlocked(context, row.route_id);
+    await assertRouteUnlocked(context, data.newRouteId);
 
     const { data: newRoute } = await context.supabase
       .from("routes")

@@ -177,6 +177,7 @@ export const createRouteFromGcOrders = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!route) throw new Error("Rota não encontrada");
     if (["fechada", "concluida"].includes(route.status)) throw new Error("Esta rota já está fechada");
+    await assertRouteUnlocked(context, routeId);
 
     const { data: profile } = await context.supabase
       .from("profiles")

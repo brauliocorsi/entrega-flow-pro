@@ -91,6 +91,8 @@ export function OrdemEntregasEditor({
   locked,
   invalidateKeys = [],
   onOrderChange,
+  changedByName,
+  changedAt,
 }: {
   routeId: string;
   deliveries: Item[];
@@ -98,6 +100,9 @@ export function OrdemEntregasEditor({
   invalidateKeys?: string[][];
   /** Notifica a ordem atual (ainda não guardada) para simulação em tempo real. */
   onOrderChange?: (ids: string[]) => void;
+  /** Quem alterou a ordem pela última vez. */
+  changedByName?: string | null;
+  changedAt?: string | null;
 }) {
   const qc = useQueryClient();
   const reorderFn = useServerFn(reorderDeliveries);

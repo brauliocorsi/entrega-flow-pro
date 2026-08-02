@@ -209,33 +209,41 @@ export function OrdemEntregasEditor({
               if (dragIdx !== null && dragIdx !== i) move(dragIdx, i);
               setDragIdx(null);
             }}
-            className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm bg-background ${
-              locked ? "" : "cursor-grab active:cursor-grabbing"
-            } ${dragIdx === i ? "opacity-50" : ""}`}
+            className={`rounded-md border px-2 py-1.5 text-sm bg-background ${
+              dragIdx === i ? "opacity-50" : ""
+            }`}
           >
-            {!locked && <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />}
-            <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center shrink-0">
-              {i + 1}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="font-medium truncate">
-                #{d.order_number} · {d.customer_name}
-              </div>
-              {d.address && <div className="text-xs text-muted-foreground truncate">{d.address}</div>}
-            </div>
-            {!locked && (
-              <span className="flex shrink-0">
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, i - 1)}>
-                  <ArrowUp className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, i + 1)}>
-                  <ArrowDown className="h-3.5 w-3.5" />
-                </Button>
+            <div
+              className={`flex items-center gap-2 ${locked ? "" : "cursor-grab active:cursor-grabbing"}`}
+            >
+              {!locked && <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />}
+              <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center shrink-0">
+                {i + 1}
               </span>
-            )}
+              <div className="min-w-0 flex-1">
+                <div className="font-medium truncate">
+                  #{d.order_number} · {d.customer_name}
+                </div>
+                {d.address && (
+                  <div className="text-xs text-muted-foreground truncate">{d.address}</div>
+                )}
+              </div>
+              {!locked && (
+                <span className="flex shrink-0">
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, i - 1)}>
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, i + 1)}>
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </Button>
+                </span>
+              )}
+            </div>
+            {renderRowExtra && <div className="mt-1.5 pl-8">{renderRowExtra(d, i)}</div>}
           </li>
         ))}
       </ol>
+
     </Card>
   );
 }

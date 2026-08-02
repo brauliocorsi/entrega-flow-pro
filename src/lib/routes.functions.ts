@@ -1,7 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { assertRouteUnlocked, getUserDisplayName, getUserRoles } from "./route-lock.server";
+import {
+  assertRouteUnlocked,
+  getUserDisplayName,
+  getUserRoles,
+  resetCourierConfirmation,
+} from "./route-lock.server";
 
 const routeSimulationInput = z.object({
   origin: z.string().min(5).max(255),
@@ -108,22 +113,9 @@ export const releaseRouteToCourier = createServerFn({ method: "POST" })
         };
     const { error } = await context.supabase.from("routes").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
-    await resetCourierConfirmation(context, data.id);
     return { ok: true };
   });
 
-/** Anula a confirmação do entregador sempre que a rota é alterada depois dela. */
-async function resetCourierConfirmation(context: any, routeId: string) {
-  await context.supabase
-    .from("routes")
-    .update({
-      courier_confirmed_at: null,
-      courier_confirmed_by: null,
-      courier_confirmed_by_name: null,
-    })
-    .eq("id", routeId)
-    .not("courier_confirmed_at", "is", null);
-}
 
 /** Marca a rota como iniciada — bloqueia alterações para todos os perfis. */
 export const startRoute = createServerFn({ method: "POST" })
@@ -391,6 +383,7 @@ export const updateRouteFleet = createServerFn({ method: "POST" })
 
     const { error } = await context.supabase.from("routes").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
+    await resetCourierConfirmation(context, data.id);
     return { ok: true };
   });
 

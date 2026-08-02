@@ -82,6 +82,9 @@ function MinhaCaixa() {
   const open = (data?.routes ?? []).filter(
     (r: any) => !r.settlement || r.settlement.status === "aberta",
   );
+  const settled = (data?.routes ?? []).filter(
+    (r: any) => r.settlement && r.settlement.status !== "aberta",
+  );
 
   return (
     <div className="space-y-4">

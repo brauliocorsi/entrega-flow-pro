@@ -547,14 +547,21 @@ export const getMyCashRoutes = createServerFn({ method: "GET" })
     const ids = mine.map((r: any) => r.id);
     if (ids.length === 0) return { routes: [], total_in_hand: 0 };
 
-    const [{ data: payments }, { data: expenses }, { data: settlements }] = await Promise.all([
-      context.supabase
-        .from("delivery_payments")
-        .select("route_id, method_name, amount")
-        .in("route_id", ids),
-      context.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
-      context.supabase.from("route_settlements").select("*").in("route_id", ids),
-    ]);
+    const [{ data: payments }, { data: expenses }, { data: settlements }, { data: deliveries }] =
+      await Promise.all([
+        context.supabase
+          .from("delivery_payments")
+          .select("id, route_id, delivery_id, method_name, amount, confirmed")
+          .in("route_id", ids),
+        context.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
+        context.supabase.from("route_settlements").select("*").in("route_id", ids),
+        context.supabase
+          .from("scheduled_deliveries")
+          .select(
+            "id, route_id, order_number, customer_name, status, outcome, total_value, paid_value, remaining_value, order_payload",
+          )
+          .in("route_id", ids),
+      ]);
 
     const rows = mine.map((r: any) => {
       const ps = (payments ?? []).filter((p: any) => p.route_id === r.id);
@@ -576,6 +583,14 @@ export const getMyCashRoutes = createServerFn({ method: "GET" })
       return {
         ...r,
         settlement: st,
+        envelope_code: st?.envelope_code ?? null,
+        cash_state: !st
+          ? "aberto"
+          : st.status === "conferida"
+            ? "conferido"
+            : st.status === "entregue"
+              ? "entregue"
+              : "aberto",
         expenses_count: es.length,
         pending_expenses: es.filter((e: any) => e.status === "pendente").length,
         cash_in: cashIn,
@@ -583,6 +598,7 @@ export const getMyCashRoutes = createServerFn({ method: "GET" })
         is_settled: isSettled(st),
         net_cash: round2(cashIn - expTotal),
         in_hand: isSettled(st) ? 0 : round2(cashIn - expTotal),
+        ...routeForecast(r.id, deliveries ?? [], payments ?? []),
         other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
           .filter((m) => !isCash(m.method_name))
           .map((m) => ({ ...m, confirmed: confirmed.get(m.method_name) ?? false })),

@@ -125,6 +125,14 @@ export function OrdemEntregasEditor({
     setItems(next);
   }
 
+  function recalc() {
+    const next = optimizeByZip(items);
+    const changed = next.map((i) => i.id).join(",") !== items.map((i) => i.id).join(",");
+    setItems(next);
+    if (changed) toast.success("Ordem recalculada por proximidade de códigos postais");
+    else toast.info("A ordem atual já é a mais curta por código postal");
+  }
+
   if (items.length === 0) return null;
 
   return (

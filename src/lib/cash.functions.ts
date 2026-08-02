@@ -728,8 +728,8 @@ function routeCash(r: any, payments: any[], expenses: any[], settlements: any[])
   };
 }
 
-/** Admin/logística: caixa de todos os funcionários de entrega. */
-export const getAllCashByStaff = createServerFn({ method: "GET" })
+/** Admin/logística: um caixa por rota (entradas, saídas, previsto/realizado e envelope). */
+export const getAllCashByRoute = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z.object({ days: z.number().int().min(1).max(180).optional() }).default({}).parse(d ?? {}),
@@ -737,54 +737,38 @@ export const getAllCashByStaff = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     await assertManager(context);
     const days = data.days ?? 45;
-    const { routes, payments, expenses, settlements } = await loadOperation(context, days);
+    const { routes, payments, expenses, settlements, deliveries } = await loadOperation(
+      context,
+      days,
+    );
 
-    type Bucket = {
-      name: string;
-      in_hand: number;
-      cash_in: number;
-      expenses_total: number;
-      open_routes: number;
-      pending_expenses: number;
-      routes: any[];
-    };
-    const buckets = new Map<string, Bucket>();
-
-    for (const r of routes) {
+    const rows = routes.map((r: any) => {
       const c = routeCash(r, payments, expenses, settlements);
+      const f = routeForecast(r.id, deliveries, payments);
       const isOpen = !c.settlement || c.settlement.status === "aberta";
       const people = [r.driver, r.assistant].filter(Boolean) as string[];
-      const label = people.length > 0 ? people.join(" · ") : "Sem responsável";
-      const key = norm(label);
-      const b =
-        buckets.get(key) ??
-        ({
-          name: label,
-          in_hand: 0,
-          cash_in: 0,
-          expenses_total: 0,
-          open_routes: 0,
-          pending_expenses: 0,
-          routes: [],
-        } as Bucket);
-      b.cash_in = round2(b.cash_in + c.cash_in);
-      b.expenses_total = round2(b.expenses_total + c.expenses_total);
-      if (isOpen) {
-        b.in_hand = round2(b.in_hand + c.in_hand);
-        b.open_routes += 1;
-      }
-      b.pending_expenses += c.expenses.filter((e: any) => e.status === "pendente").length;
-      b.routes.push({
+      return {
         ...r,
+        responsible: people.length > 0 ? people.join(" · ") : "Sem responsável",
         settlement: c.settlement,
+        envelope_code: c.settlement?.envelope_code ?? null,
+        cash_state: !c.settlement
+          ? "aberto"
+          : c.settlement.status === "conferida"
+            ? "conferido"
+            : c.settlement.status === "entregue"
+              ? "entregue"
+              : "aberto",
         cash_in: c.cash_in,
         expenses_total: c.expenses_total,
         in_hand: c.in_hand,
         net_cash: c.net_cash,
         is_settled: c.is_settled,
+        is_open: isOpen,
         total_received: c.total_received,
         other_methods: c.other_methods,
-        is_open: isOpen,
+        pending_expenses: c.expenses.filter((e: any) => e.status === "pendente").length,
+        ...f,
         entries: c.payments.map((p: any) => ({
           id: p.id,
           method_name: p.method_name,
@@ -802,18 +786,18 @@ export const getAllCashByStaff = createServerFn({ method: "GET" })
           created_at: e.created_at,
           receipt_path: e.receipt_path,
         })),
-      });
-      buckets.set(key, b);
-    }
+      };
+    });
 
-    const staffRows = Array.from(buckets.values()).sort((a, b) => b.in_hand - a.in_hand);
+    const open = rows.filter((r: any) => r.is_open);
     return {
       days,
-      staff: staffRows,
-      total_in_hand: round2(staffRows.reduce((a, s) => a + s.in_hand, 0)),
-      total_cash_in: round2(staffRows.reduce((a, s) => a + s.cash_in, 0)),
-      total_expenses: round2(staffRows.reduce((a, s) => a + s.expenses_total, 0)),
-      pending_expenses: staffRows.reduce((a, s) => a + s.pending_expenses, 0),
+      routes: rows,
+      open_count: open.length,
+      total_in_hand: round2(open.reduce((a: number, r: any) => a + r.in_hand, 0)),
+      total_cash_in: round2(rows.reduce((a: number, r: any) => a + r.cash_in, 0)),
+      total_expenses: round2(rows.reduce((a: number, r: any) => a + r.expenses_total, 0)),
+      pending_expenses: rows.reduce((a: number, r: any) => a + r.pending_expenses, 0),
     };
   });
 

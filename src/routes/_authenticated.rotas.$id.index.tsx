@@ -111,6 +111,35 @@ function RouteDetail() {
   const closedByCourier = r.status === "concluida" && !conferred;
   const canClose = canForecast && !conferred && r.deliveries_count > 0;
 
+  const activeDeliveries = deliveries.filter(
+    (dd: any) => !["cancelado", "reagendado"].includes(dd.status),
+  );
+  const historyDeliveries = deliveries.filter((dd: any) =>
+    ["cancelado", "reagendado"].includes(dd.status),
+  );
+  const doneCount = activeDeliveries.filter((dd: any) => dd.status === "entregue").length;
+
+  const baseStops: Stop[] = activeDeliveries.map((dd: any) => ({
+    id: dd.id,
+    label: `#${dd.order_number} · ${dd.customer_name}`,
+    full: buildStopAddress(dd.address, dd.zip_code, dd.city),
+  }));
+  const rawStops: Stop[] =
+    previewOrder.length > 0
+      ? [
+          ...previewOrder
+            .map((sid) => baseStops.find((s) => s.id === sid))
+            .filter((s): s is Stop => !!s),
+          ...baseStops.filter((s) => !previewOrder.includes(s.id)),
+        ]
+      : baseStops;
+  const savedManualOrder = activeDeliveries.some((dd: any) => dd.stop_order != null);
+  const previewDiffers =
+    previewOrder.length > 0 &&
+    previewOrder.join(",") !== baseStops.map((s) => s.id).join(",");
+  const manualOrder = savedManualOrder || previewDiffers;
+
+
   return (
     <div className="space-y-4 pb-24">
       {canClose && <CloseRouteBar routeId={r.id} pendingConference={closedByCourier} />}

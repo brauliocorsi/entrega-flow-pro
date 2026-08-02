@@ -8,6 +8,9 @@ import { AdminCaixaGlobal } from "@/components/caixa/AdminCaixaGlobal";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader, StatTile } from "@/components/ui-kit/PageHeader";
 import { formatEUR, formatDatePT } from "@/lib/format";
 import { Wallet, ChevronRight, AlertTriangle } from "lucide-react";
 
@@ -19,6 +22,13 @@ export const Route = createFileRoute("/_authenticated/entregas/caixa/")({
         name: "description",
         content: "Valor em mãos por rota, despesas e envelopes por fechar.",
       },
+      { property: "og:title", content: "Caixa — UP Agenda" },
+      {
+        property: "og:description",
+        content: "Valor em mãos por rota, despesas e envelopes por fechar.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: CaixaIndexPage,
@@ -31,38 +41,38 @@ function CaixaIndexPage() {
   const scope = picked ?? (isManager ? "todos" : "minha");
 
   return (
-    <div className="space-y-4 pb-6 max-w-2xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Wallet className="h-6 w-6" /> Caixa
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {isManager && scope === "todos"
-            ? "Valores em mãos dos funcionários de entrega, entradas das rotas e saídas registadas."
-            : "Rotas com envelope por fechar e valor em dinheiro à tua responsabilidade."}
-        </p>
-      </div>
-
-      {isManager && (
-        <div className="flex gap-1.5">
-          <Button
-            size="sm"
-            variant={scope === "todos" ? "secondary" : "outline"}
-            className="h-7"
-            onClick={() => setScope("todos")}
-          >
-            Todos os funcionários
-          </Button>
-          <Button
-            size="sm"
-            variant={scope === "minha" ? "secondary" : "outline"}
-            className="h-7"
-            onClick={() => setScope("minha")}
-          >
-            A minha caixa
-          </Button>
-        </div>
-      )}
+    <div className="mx-auto max-w-2xl space-y-4 pb-6">
+      <PageHeader
+        icon={Wallet}
+        title="Caixa"
+        description={
+          isManager && scope === "todos"
+            ? "Valores em mãos da equipa, entradas das rotas e saídas registadas."
+            : "Rotas com envelope por fechar e dinheiro à tua responsabilidade."
+        }
+        actions={
+          isManager ? (
+            <div className="flex rounded-xl border border-border p-0.5">
+              <Button
+                size="sm"
+                variant={scope === "todos" ? "secondary" : "ghost"}
+                className="h-8 rounded-lg"
+                onClick={() => setScope("todos")}
+              >
+                Equipa
+              </Button>
+              <Button
+                size="sm"
+                variant={scope === "minha" ? "secondary" : "ghost"}
+                className="h-8 rounded-lg"
+                onClick={() => setScope("minha")}
+              >
+                A minha
+              </Button>
+            </div>
+          ) : undefined
+        }
+      />
 
       {isManager && scope === "todos" ? <AdminCaixaGlobal /> : <MinhaCaixa />}
     </div>
@@ -77,133 +87,140 @@ function MinhaCaixa() {
     refetchOnWindowFocus: true,
   });
 
-  if (isLoading) return <div className="text-muted-foreground">A carregar…</div>;
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-28 w-full rounded-2xl" />
+        <Skeleton className="h-24 w-full rounded-2xl" />
+        <Skeleton className="h-24 w-full rounded-2xl" />
+      </div>
+    );
+  }
 
-  const open = (data?.routes ?? []).filter(
-    (r: any) => !r.settlement || r.settlement.status === "aberta",
-  );
-  const settled = (data?.routes ?? []).filter(
-    (r: any) => r.settlement && r.settlement.status !== "aberta",
-  );
+  const routes = (data?.routes ?? []) as any[];
+  const open = routes.filter((r) => !r.settlement || r.settlement.status === "aberta");
+  const settled = routes.filter((r) => r.settlement && r.settlement.status !== "aberta");
+
+  const cashIn = open.reduce((a, r) => a + Number(r.cash_in ?? 0), 0);
+  const expenses = open.reduce((a, r) => a + Number(r.expenses_total ?? 0), 0);
 
   return (
     <div className="space-y-4">
-
-
       <Card className="p-5 text-center">
-        <div className="text-xs uppercase text-muted-foreground">Total em mãos</div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">Total em mãos</div>
         <div className="text-4xl font-bold text-emerald-600">
           {formatEUR(data?.total_in_hand ?? 0)}
         </div>
-        <div className="text-xs text-muted-foreground mt-1">
-          {open.length} rota(s) por prestar contas
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <StatTile label="Entradas" value={formatEUR(cashIn)} />
+          <StatTile label="Saídas" value={`− ${formatEUR(expenses)}`} tone="danger" />
+          <StatTile label="Por prestar" value={String(open.length)} tone="warning" />
         </div>
       </Card>
 
-      {open.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">
-          Não tens caixa em aberto. Bom trabalho!
-        </Card>
-      ) : (
-        open.map((r: any) => (
-          <Link
-            key={r.id}
-            to="/entregas/caixa/$routeId"
-            params={{ routeId: r.id }}
-            className="block"
-          >
-            <Card className="p-4 hover:bg-muted/50 transition-colors">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="font-semibold flex items-center gap-2">
-                    <span
-                      className="h-3 w-3 rounded-full shrink-0"
-                      style={{ background: r.color ?? "#3b82f6" }}
-                    />
-                    {r.zone}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatDatePT(r.route_date)}
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
+      <Tabs defaultValue="abertas">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="abertas">Por fechar ({open.length})</TabsTrigger>
+          <TabsTrigger value="fechadas">Fechadas ({settled.length})</TabsTrigger>
+        </TabsList>
 
-              <div className="grid grid-cols-3 gap-2 mt-3 text-center">
-                <div>
-                  <div className="text-[11px] uppercase text-muted-foreground">Dinheiro</div>
-                  <div className="font-semibold text-sm">{formatEUR(r.cash_in)}</div>
-                </div>
-                <div>
-                  <div className="text-[11px] uppercase text-muted-foreground">Despesas</div>
-                  <div className="font-semibold text-sm text-rose-600">
-                    − {formatEUR(r.expenses_total)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] uppercase text-muted-foreground">Em mãos</div>
-                  <div className="font-semibold text-sm text-emerald-600">
-                    {formatEUR(r.in_hand)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {r.other_methods.map((m: any) => (
-                  <Badge key={m.method_name} variant="outline" className="text-[10px]">
-                    {m.method_name}: {formatEUR(m.amount)}
-                  </Badge>
-                ))}
-                {r.pending_expenses > 0 && (
-                  <Badge className="text-[10px] bg-amber-100 text-amber-800 border-amber-200">
-                    <AlertTriangle className="h-3 w-3 mr-1" /> {r.pending_expenses} despesa(s) por
-                    aprovar
-                  </Badge>
-                )}
-              </div>
+        <TabsContent value="abertas" className="mt-3 space-y-2">
+          {open.length === 0 ? (
+            <Card className="p-8 text-center text-sm text-muted-foreground">
+              Não tens caixa em aberto. Bom trabalho!
             </Card>
-          </Link>
-        ))
-      )}
-
-      {settled.length > 0 && (
-        <div className="space-y-2 pt-2">
-          <div className="text-xs uppercase text-muted-foreground">
-            Histórico — caixas prestados ({settled.length})
-          </div>
-          {settled.map((r: any) => (
-            <Link
-              key={r.id}
-              to="/entregas/caixa/$routeId"
-              params={{ routeId: r.id }}
-              className="block"
-            >
-              <Card className="p-3 opacity-80 hover:opacity-100 transition-opacity">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="font-medium text-sm flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{ background: r.color ?? "#3b82f6" }}
-                      />
-                      {r.zone}
-                      <Badge variant="outline" className="text-[10px]">
-                        {r.settlement?.status === "conferida" ? "Conferida" : "Envelope entregue"}
-                      </Badge>
+          ) : (
+            open.map((r) => (
+              <Link
+                key={r.id}
+                to="/entregas/caixa/$routeId"
+                params={{ routeId: r.id }}
+                className="block"
+              >
+                <Card className="p-4 transition-colors hover:bg-muted/50">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 font-semibold">
+                        <span
+                          className="h-3 w-3 shrink-0 rounded-full"
+                          style={{ background: r.color ?? "#3b82f6" }}
+                        />
+                        <span className="truncate">{r.zone}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatDatePT(r.route_date)}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatDatePT(r.route_date)} · entregue {formatEUR(r.net_cash)} · em mãos{" "}
-                      {formatEUR(0)}
+                    <div className="flex shrink-0 items-center gap-2">
+                      <div className="text-right">
+                        <div className="text-[11px] uppercase text-muted-foreground">Em mãos</div>
+                        <div className="text-lg font-bold text-emerald-600">
+                          {formatEUR(r.in_hand)}
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
 
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                    <span>Dinheiro {formatEUR(r.cash_in)}</span>
+                    <span>·</span>
+                    <span className="text-rose-600">Despesas − {formatEUR(r.expenses_total)}</span>
+                    {r.other_methods?.map((m: any) => (
+                      <Badge key={m.method_name} variant="outline" className="text-[10px]">
+                        {m.method_name}: {formatEUR(m.amount)}
+                      </Badge>
+                    ))}
+                    {r.pending_expenses > 0 && (
+                      <Badge className="border-amber-200 bg-amber-100 text-[10px] text-amber-800">
+                        <AlertTriangle className="mr-1 h-3 w-3" /> {r.pending_expenses} por aprovar
+                      </Badge>
+                    )}
+                  </div>
+                </Card>
+              </Link>
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="fechadas" className="mt-3 space-y-2">
+          {settled.length === 0 ? (
+            <Card className="p-8 text-center text-sm text-muted-foreground">
+              Ainda não há caixas prestados.
+            </Card>
+          ) : (
+            settled.map((r) => (
+              <Link
+                key={r.id}
+                to="/entregas/caixa/$routeId"
+                params={{ routeId: r.id }}
+                className="block"
+              >
+                <Card className="p-3 opacity-80 transition-opacity hover:opacity-100">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ background: r.color ?? "#3b82f6" }}
+                        />
+                        <span className="truncate">{r.zone}</span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {r.settlement?.status === "conferida" ? "Conferida" : "Entregue"}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatDatePT(r.route_date)} · entregue {formatEUR(r.net_cash)}
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </div>
+                </Card>
+              </Link>
+            ))
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

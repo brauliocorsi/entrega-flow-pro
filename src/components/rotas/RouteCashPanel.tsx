@@ -95,10 +95,45 @@ export function RouteCashPanel({ routeId }: { routeId: string }) {
       )}
 
       <div className="space-y-2">
-        <h3 className="text-sm font-medium">Encomendas — previsto vs realizado</h3>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h3 className="text-sm font-medium">Encomendas — previsto vs realizado</h3>
+          <span className="text-xs text-muted-foreground">
+            {visibleOrders.length} de {data.orders.length}
+          </span>
+        </div>
+
+        <div className="relative">
+          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9 h-9"
+            placeholder="Pesquisar por cliente, nº de encomenda ou método…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {PAY_FILTERS.map((f) => (
+            <Button
+              key={f.key}
+              size="sm"
+              variant={filter === f.key ? "secondary" : "outline"}
+              className="h-7 text-xs"
+              onClick={() => setFilter(f.key)}
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+
         {data.orders.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sem encomendas nesta rota.</p>
+        ) : visibleOrders.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nenhuma encomenda corresponde à pesquisa ou ao filtro.
+          </p>
         ) : (
+
           <div className="space-y-1.5">
             {data.orders.map((o: any) => {
               const bad = Math.abs(o.diff) > 0.01;

@@ -96,6 +96,9 @@ export function OrdemEntregasEditor({
   onOrderChange,
   changedByName,
   changedAt,
+  renderRowExtra,
+  title,
+  hint,
 }: {
   routeId: string;
   deliveries: Item[];
@@ -106,7 +109,12 @@ export function OrdemEntregasEditor({
   /** Quem alterou a ordem pela última vez. */
   changedByName?: string | null;
   changedAt?: string | null;
+  /** Conteúdo extra por linha (ex.: itens da encomenda, sugerir remoção). */
+  renderRowExtra?: (item: Item, index: number) => React.ReactNode;
+  title?: string;
+  hint?: string;
 }) {
+
   const qc = useQueryClient();
   const reorderFn = useServerFn(reorderDeliveries);
   const [items, setItems] = useState<Item[]>(deliveries);

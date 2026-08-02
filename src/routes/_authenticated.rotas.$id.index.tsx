@@ -674,12 +674,23 @@ function RouteDetail() {
         return (
           <>
             {activeDeliveries.length > 0 && (() => {
-              const rawStops: Stop[] = activeDeliveries.map((d: any) => ({
+              const baseStops: Stop[] = activeDeliveries.map((d: any) => ({
                 id: d.id,
                 label: `#${d.order_number} · ${d.customer_name}`,
                 full: buildStopAddress(d.address, d.zip_code, d.city),
               }));
-              const manualOrder = activeDeliveries.some((d: any) => d.stop_order != null);
+              // Reordena as paragens conforme a ordem em edição, sem esperar por "Guardar".
+              const rawStops: Stop[] =
+                previewOrder.length > 0
+                  ? [
+                      ...previewOrder
+                        .map((id) => baseStops.find((s) => s.id === id))
+                        .filter((s): s is Stop => !!s),
+                      ...baseStops.filter((s) => !previewOrder.includes(s.id)),
+                    ]
+                  : baseStops;
+              const savedManualOrder = activeDeliveries.some((d: any) => d.stop_order != null);
+              const manualOrder = savedManualOrder || previewOrder.length > 0;
 
               return (
                 <>
@@ -694,6 +705,7 @@ function RouteDetail() {
                     }))}
                     locked={false}
                     invalidateKeys={[["route-deliveries", r.id], ["scheduled-deliveries", r.id]]}
+                    onOrderChange={setPreviewOrder}
                   />
                   <RouteSimulationSection
                     rawStops={rawStops}

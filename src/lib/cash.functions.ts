@@ -928,3 +928,128 @@ export const getConferredHistory = createServerFn({ method: "GET" })
       }),
     };
   });
+
+/** Extrato de caixa (conta corrente): entradas de recebimentos e saídas de despesas. */
+export const getCashLedger = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({ from: z.string().optional(), to: z.string().optional() })
+      .default({})
+      .parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertManager(context);
+    const to = data.to ?? new Date().toISOString().slice(0, 10);
+    const from = data.from ?? new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+
+    const { data: routes, error } = await context.supabase
+      .from("routes")
+      .select("id, zone, route_date, driver, assistant, color")
+      .gte("route_date", from)
+      .lte("route_date", to)
+      .order("route_date", { ascending: true });
+    if (error) throw new Error(error.message);
+    const ids = (routes ?? []).map((r: any) => r.id);
+    if (ids.length === 0) {
+      return { from, to, movements: [], total_in: 0, total_out: 0, balance: 0, by_method: [] };
+    }
+
+    const [{ data: payments }, { data: expenses }, { data: settlements }, { data: deliveries }] =
+      await Promise.all([
+        context.supabase
+          .from("delivery_payments")
+          .select(
+            "id, route_id, delivery_id, method_name, amount, received_by_name, created_at, confirmed",
+          )
+          .in("route_id", ids),
+        context.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
+        context.supabase.from("route_settlements").select("route_id, envelope_code").in("route_id", ids),
+        context.supabase
+          .from("scheduled_deliveries")
+          .select("id, route_id, order_number, customer_name")
+          .in("route_id", ids),
+      ]);
+
+    const routeById = new Map((routes ?? []).map((r: any) => [r.id, r]));
+    const envelopeByRoute = new Map(
+      (settlements ?? []).map((s: any) => [s.route_id, s.envelope_code]),
+    );
+    const deliveryById = new Map((deliveries ?? []).map((d: any) => [d.id, d]));
+
+    const routeMeta = (routeId: string) => {
+      const r: any = routeById.get(routeId) ?? {};
+      return {
+        route_id: routeId,
+        zone: r.zone ?? null,
+        color: r.color ?? null,
+        route_date: r.route_date ?? null,
+        responsible: [r.driver, r.assistant].filter(Boolean).join(" · ") || null,
+        envelope_code: envelopeByRoute.get(routeId) ?? null,
+      };
+    };
+
+    const entries = (payments ?? []).map((p: any) => {
+      const d: any = deliveryById.get(p.delivery_id) ?? {};
+      return {
+        id: p.id,
+        kind: "entrada" as const,
+        date: p.created_at,
+        order_number: d.order_number ?? null,
+        customer_name: d.customer_name ?? null,
+        description: d.order_number
+          ? `Recebimento · ${d.order_number}${d.customer_name ? ` · ${d.customer_name}` : ""}`
+          : "Recebimento",
+        method_name: p.method_name,
+        received_by_name: p.received_by_name ?? null,
+        confirmed: !!p.confirmed,
+        status: null as string | null,
+        amount: round2(Number(p.amount)),
+        ...routeMeta(p.route_id),
+      };
+    });
+
+    const exits = (expenses ?? [])
+      .filter((e: any) => e.status !== "rejeitada")
+      .map((e: any) => ({
+        id: e.id,
+        kind: "saida" as const,
+        date: e.created_at,
+        order_number: null,
+        customer_name: null,
+        description: `${e.category}${e.description ? ` · ${e.description}` : ""}`,
+        method_name: CASH_METHOD,
+        received_by_name: e.created_by_name ?? null,
+        confirmed: e.status === "aprovada",
+        status: e.status as string | null,
+        amount: round2(Number(e.amount)),
+        ...routeMeta(e.route_id),
+      }));
+
+    const movements = [...entries, ...exits].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+
+    const totalIn = round2(entries.reduce((a: number, m: any) => a + m.amount, 0));
+    const totalOut = round2(exits.reduce((a: number, m: any) => a + m.amount, 0));
+
+    const byMethodMap = new Map<string, number>();
+    for (const e of entries) {
+      byMethodMap.set(e.method_name, round2((byMethodMap.get(e.method_name) ?? 0) + e.amount));
+    }
+    const by_method = Array.from(byMethodMap, ([method_name, amount]) => ({
+      method_name,
+      amount,
+      pct: totalIn > 0 ? Math.round((amount / totalIn) * 1000) / 10 : 0,
+    })).sort((a, b) => b.amount - a.amount);
+
+    return {
+      from,
+      to,
+      movements,
+      total_in: totalIn,
+      total_out: totalOut,
+      balance: round2(totalIn - totalOut),
+      by_method,
+    };
+  });

@@ -257,7 +257,7 @@ export const getRouteSimulation = createServerFn({ method: "POST" })
     const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!googleMapsApiKey) throw new Error("GOOGLE_MAPS_API_KEY em falta para calcular o trajeto");
 
-    const shouldOptimizeWaypointOrder = data.intermediates.length > 1;
+    const shouldOptimizeWaypointOrder = data.optimize !== false && data.intermediates.length > 1;
 
     const fieldMask = [
       "routes.distanceMeters",

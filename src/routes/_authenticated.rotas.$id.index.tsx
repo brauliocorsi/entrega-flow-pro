@@ -42,6 +42,7 @@ import { formatDatePT, formatEUR } from "@/lib/format";
 import { RouteCashPanel } from "@/components/rotas/RouteCashPanel";
 import { OrdemEntregasEditor } from "@/components/rotas/OrdemEntregasEditor";
 import { RouteLockPanel } from "@/components/rotas/RouteLockPanel";
+import { CourierSuggestionsPanel } from "@/components/rotas/CourierSuggestionsPanel";
 import { RouteSimulationSection, buildStopAddress, type Stop } from "@/components/rotas/RouteSimulationSection";
 
 import { toast } from "sonner";
@@ -249,6 +250,11 @@ function RouteDetail() {
               return (
                 <>
                   <RouteLockPanel route={r} />
+                  <CourierSuggestionsPanel
+                    routeId={r.id}
+                    deliveries={activeDeliveries}
+                    locked={!!r.started_at}
+                  />
                   <OrdemEntregasEditor
                     routeId={r.id}
                     deliveries={activeDeliveries.map((d: any) => ({

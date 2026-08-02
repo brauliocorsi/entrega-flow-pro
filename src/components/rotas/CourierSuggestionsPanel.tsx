@@ -44,7 +44,7 @@ export function CourierSuggestionsPanel({
   });
 
   const removeMut = useMutation({
-    mutationFn: (id: string) => releaseFn({ data: { delivery_id: id } }),
+    mutationFn: (id: string) => releaseFn({ data: { id } }),
     onSuccess: () => {
       toast.success("Entrega retirada da rota");
       invalidate();

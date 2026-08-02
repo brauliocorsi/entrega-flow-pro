@@ -240,7 +240,7 @@ export const submitSettlement = createServerFn({ method: "POST" })
     const payload = {
       route_id: data.route_id,
       envelope_code: cash.settlement?.envelope_code ?? envelopeCode(cash.route),
-      cash_expected: cash.in_hand,
+      cash_expected: cash.net_cash,
       cash_declared: data.cash_declared,
       expenses_total: cash.expenses_total,
       methods,

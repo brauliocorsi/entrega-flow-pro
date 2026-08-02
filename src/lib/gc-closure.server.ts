@@ -298,7 +298,24 @@ export async function updateGestaoClickVendaClosure(args: {
           ? [...preservedPaymentRows, ...realizedPaymentRows]
           : existingPayments,
     };
-    await sendJson("PUT", `${base}/api/vendas/${encodeURIComponent(args.vendaId)}`, headers, body);
+    const saleUpdate = await sendJson(
+      "PUT",
+      `${base}/api/vendas/${encodeURIComponent(args.vendaId)}`,
+      headers,
+      body,
+    );
+    console.info(
+      "[GC closure sale update]",
+      JSON.stringify({
+        status: saleUpdate?.status ?? null,
+        code: saleUpdate?.code ?? null,
+        message: saleUpdate?.message ?? saleUpdate?.error ?? null,
+        dataKeys:
+          saleUpdate?.data && typeof saleUpdate.data === "object"
+            ? Object.keys(saleUpdate.data)
+            : [],
+      }),
+    );
 
     // 2) Recebimentos no financeiro (um por método), sem duplicar
     let alreadyLaunched: string[] = [];

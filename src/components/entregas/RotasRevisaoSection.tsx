@@ -7,6 +7,7 @@ import {
   confirmRouteAsCourier,
   suggestDeliveryRemoval,
 } from "@/lib/courier.functions";
+import { OrdemEntregasEditor } from "@/components/rotas/OrdemEntregasEditor";
 import {
   RouteSimulationSection,
   buildStopAddress,
@@ -49,13 +50,21 @@ function ReviewRouteCard({ route }: { route: any }) {
   const confirmFn = useServerFn(confirmRouteAsCourier);
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [previewOrder, setPreviewOrder] = useState<string[]>([]);
 
   const deliveries: any[] = route.deliveries ?? [];
-  const stops: Stop[] = deliveries.map((d) => ({
+  const baseStops: Stop[] = deliveries.map((d) => ({
     id: d.id,
     label: `${d.order_number} · ${d.customer_name}`,
     full: buildStopAddress(d.address, d.zip_code, d.city),
   }));
+  // A sequência em edição manda no simulador, mesmo antes de gravar.
+  const stops: Stop[] =
+    previewOrder.length === baseStops.length
+      ? (previewOrder
+          .map((id) => baseStops.find((s) => s.id === id))
+          .filter(Boolean) as Stop[])
+      : baseStops;
 
   const confirmMut = useMutation({
     mutationFn: (confirmed: boolean) => confirmFn({ data: { route_id: route.id, confirmed } }),
@@ -89,8 +98,8 @@ function ReviewRouteCard({ route }: { route: any }) {
       </div>
 
       <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        Revê a ordem e o trajeto. Não podes alterar nem remover entregas — se alguma deve sair da
-        rota, sugere a remoção e o escritório decide.
+        Podes reordenar as paragens para propor o melhor trajeto. Não podes remover entregas — se
+        alguma deve sair da rota, sugere a remoção e o escritório decide.
       </div>
 
       {flagged > 0 && (
@@ -108,6 +117,22 @@ function ReviewRouteCard({ route }: { route: any }) {
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-3 pt-3">
+          <OrdemEntregasEditor
+            routeId={route.id}
+            deliveries={deliveries.map((d) => ({
+              id: d.id,
+              order_number: d.order_number,
+              customer_name: d.customer_name,
+              address: d.address,
+              zip_code: d.zip_code,
+            }))}
+            locked={!!route.started_at}
+            changedByName={route.order_changed_by_name}
+            changedAt={route.order_changed_at}
+            invalidateKeys={[["my-review-routes"], ["my-day"]]}
+            onOrderChange={setPreviewOrder}
+          />
+
           <ol className="divide-y rounded-md border">
             {deliveries.map((d, i) => (
               <ReviewStopRow key={d.id} delivery={d} index={i} />
@@ -117,7 +142,10 @@ function ReviewRouteCard({ route }: { route: any }) {
           {stops.length > 0 && (
             <RouteSimulationSection
               rawStops={stops}
-              manualOrder={deliveries.some((d) => d.stop_order != null)}
+              manualOrder={
+                deliveries.some((d) => d.stop_order != null) ||
+                stops.map((x) => x.id).join(",") !== baseStops.map((x) => x.id).join(",")
+              }
               selectedId={selectedId}
               setSelectedId={setSelectedId}
               selectStop={setSelectedId}

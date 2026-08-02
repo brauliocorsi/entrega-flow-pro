@@ -167,13 +167,14 @@ export function OrdemEntregasEditor({
     <Card className="p-4 space-y-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
-          <div className="text-sm font-medium">Ordem das entregas</div>
+          <div className="text-sm font-medium">{title ?? "Ordem das entregas"}</div>
           <div className="text-xs text-muted-foreground">
             {locked
               ? "Rota iniciada — a ordem já não pode ser alterada."
-              : "Arrasta ou usa as setas para definir a sequência de entrega."}
+              : (hint ?? "Arrasta ou usa as setas para definir a sequência de entrega.")}
           </div>
         </div>
+
         {locked ? (
           <Badge variant="outline" className="text-[10px]">
             <Lock className="h-3 w-3 mr-1" /> Bloqueada

@@ -192,6 +192,7 @@ export const releaseDeliveryFromRoute = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Entrega não encontrada");
+    await assertRouteUnlocked(context, row.route_id);
 
     // tenta obter gestaoclick id via fetchOrder
     let gcUpdate: { ok: boolean; error?: string } = { ok: false };

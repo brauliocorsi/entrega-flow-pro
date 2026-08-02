@@ -44,5 +44,53 @@ export const updateServiceRequest = createServerFn({ method: "POST" })
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
-    return { ok: true };
+
+    const { data: row } = await context.supabase
+      .from("service_requests")
+      .select("gc_os_id")
+      .eq("id", data.id)
+      .maybeSingle();
+
+    let gcSync: { ok: boolean; error?: string } | null = null;
+    if (row?.gc_os_id) {
+      const { pushToGestaoClick } = await import("@/lib/service-orders.server");
+      try {
+        await pushToGestaoClick(context.supabase, data.id, "update");
+        gcSync = { ok: true };
+      } catch (e) {
+        gcSync = { ok: false, error: e instanceof Error ? e.message : "Erro" };
+      }
+    }
+    return { ok: true, gcSync };
+  });
+
+export const openServiceOrderInGC = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, loadRequest, pushToGestaoClick } = await import(
+      "@/lib/service-orders.server"
+    );
+    await assertAdmin(context.supabase, context.userId);
+    const row = await loadRequest(context.supabase, data.id);
+    const already = Boolean(row.gc_os_id);
+    const result = await pushToGestaoClick(
+      context.supabase,
+      data.id,
+      already ? "update" : "create",
+    );
+    return { ...result, already };
+  });
+
+export const syncServiceOrderInGC = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { assertAdmin, loadRequest, pushToGestaoClick } = await import(
+      "@/lib/service-orders.server"
+    );
+    await assertAdmin(context.supabase, context.userId);
+    const row = await loadRequest(context.supabase, data.id);
+    if (!row.gc_os_id) throw new Error("Esta assistência ainda não tem OS no GestãoClick");
+    return await pushToGestaoClick(context.supabase, data.id, "update");
   });

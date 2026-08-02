@@ -468,6 +468,9 @@ export const mergeRoutes = createServerFn({ method: "POST" })
       throw new Error("A rota destino está fechada ou concluída");
     if (sources.some((r: any) => lockedStatuses.includes(r.status)))
       throw new Error("Uma das rotas a mesclar está fechada ou concluída");
+    if (routes.some((r: any) => r.started_at))
+      throw new Error("Uma das rotas já foi iniciada e está bloqueada a alterações");
+
 
     // Move deliveries
     const sourceIds = sources.map((r: any) => r.id);

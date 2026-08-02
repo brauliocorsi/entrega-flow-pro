@@ -16,6 +16,7 @@ import {
   ArrowUpRight,
   User,
   Search,
+  AlertTriangle,
 } from "lucide-react";
 
 const EXPENSE_TONE: Record<string, string> = {

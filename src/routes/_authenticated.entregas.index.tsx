@@ -17,6 +17,7 @@ import { computeDeliveryTotals } from "@/lib/delivery-totals";
 import { deliveryOutcomeTone, openNavigation } from "@/lib/nav-link";
 import { DELIVERY_TYPE_LABEL } from "@/lib/constants";
 import { FecharRotaDialog } from "@/components/entregas/FecharRotaDialog";
+import { RotasRevisaoSection } from "@/components/entregas/RotasRevisaoSection";
 import {
   Truck,
   MapPin,
@@ -91,6 +92,8 @@ function MyDayPage() {
 
 
 
+
+      <RotasRevisaoSection />
 
       {!data || data.routes.length === 0 ? (
         <Card className="p-8 text-center space-y-2">

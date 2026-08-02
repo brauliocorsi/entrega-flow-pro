@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { reorderDeliveries } from "@/lib/routes.functions";
+import { formatDateTimePT } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -178,6 +179,13 @@ export function OrdemEntregasEditor({
           </div>
         )}
       </div>
+
+      {changedByName && (
+        <div className="rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs">
+          Ordem alterada por <strong>{changedByName}</strong>
+          {changedAt ? ` · ${formatDateTimePT(changedAt)}` : ""}
+        </div>
+      )}
 
       <ol className="space-y-1.5">
         {items.map((d, i) => (

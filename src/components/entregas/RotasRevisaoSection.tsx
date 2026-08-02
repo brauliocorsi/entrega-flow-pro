@@ -119,25 +119,16 @@ function ReviewRouteCard({ route }: { route: any }) {
         <CollapsibleContent className="space-y-3 pt-3">
           <OrdemEntregasEditor
             routeId={route.id}
-            deliveries={deliveries.map((d) => ({
-              id: d.id,
-              order_number: d.order_number,
-              customer_name: d.customer_name,
-              address: d.address,
-              zip_code: d.zip_code,
-            }))}
+            deliveries={deliveries}
             locked={!!route.started_at}
             changedByName={route.order_changed_by_name}
             changedAt={route.order_changed_at}
             invalidateKeys={[["my-review-routes"], ["my-day"]]}
             onOrderChange={setPreviewOrder}
+            title="Ordem das entregas e sugestões"
+            hint="Arrasta para definir a sequência. Se alguma entrega deve sair da rota, sugere a remoção."
+            renderRowExtra={(d) => <ReviewStopExtra delivery={d} />}
           />
-
-          <ol className="divide-y rounded-md border">
-            {deliveries.map((d, i) => (
-              <ReviewStopRow key={d.id} delivery={d} index={i} />
-            ))}
-          </ol>
 
           {stops.length > 0 && (
             <RouteSimulationSection
@@ -152,6 +143,7 @@ function ReviewRouteCard({ route }: { route: any }) {
             />
           )}
         </CollapsibleContent>
+
       </Collapsible>
 
       {route.courier_confirmed_at ? (

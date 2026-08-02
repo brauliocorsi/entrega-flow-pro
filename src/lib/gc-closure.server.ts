@@ -314,6 +314,9 @@ export async function updateGestaoClickVendaClosure(args: {
           saleUpdate?.data && typeof saleUpdate.data === "object"
             ? Object.keys(saleUpdate.data)
             : [],
+        payments: Array.isArray(saleUpdate?.data?.pagamentos)
+          ? saleUpdate.data.pagamentos.map((row: any) => paymentNode(row))
+          : [],
       }),
     );
 

@@ -715,6 +715,7 @@ function RouteDetail() {
 
               return (
                 <>
+                  <RouteLockPanel route={r} />
                   <OrdemEntregasEditor
                     routeId={r.id}
                     deliveries={activeDeliveries.map((d: any) => ({
@@ -724,7 +725,9 @@ function RouteDetail() {
                       address: d.address,
                       zip_code: d.zip_code,
                     }))}
-                    locked={false}
+                    locked={!!r.started_at}
+                    changedByName={r.order_changed_by_name}
+                    changedAt={r.order_changed_at}
                     invalidateKeys={[["route-deliveries", r.id], ["scheduled-deliveries", r.id]]}
                     onOrderChange={setPreviewOrder}
                   />

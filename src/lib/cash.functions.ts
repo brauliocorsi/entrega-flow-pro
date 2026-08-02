@@ -22,6 +22,13 @@ function isCash(methodName: string) {
   return norm(methodName).includes(CASH_METHOD);
 }
 
+/** Após a prestação de contas (envelope entregue/conferido) o caixa do funcionário fica a zero. */
+function isSettled(settlement: any) {
+  return !!settlement && settlement.status !== "aberta";
+}
+
+
+
 function round2(n: number) {
   return Math.round(n * 100) / 100;
 }

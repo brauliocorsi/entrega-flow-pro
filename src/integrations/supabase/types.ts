@@ -835,6 +835,7 @@ export type Database = {
       }
       service_requests: {
         Row: {
+          charge_value: number
           created_at: string
           customer_name: string | null
           delivery_id: string | null
@@ -853,10 +854,14 @@ export type Database = {
           product_name: string
           resolution_notes: string | null
           route_id: string | null
+          scheduled_date: string | null
+          scheduled_delivery_id: string | null
+          scheduled_route_id: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          charge_value?: number
           created_at?: string
           customer_name?: string | null
           delivery_id?: string | null
@@ -875,10 +880,14 @@ export type Database = {
           product_name: string
           resolution_notes?: string | null
           route_id?: string | null
+          scheduled_date?: string | null
+          scheduled_delivery_id?: string | null
+          scheduled_route_id?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          charge_value?: number
           created_at?: string
           customer_name?: string | null
           delivery_id?: string | null
@@ -897,6 +906,9 @@ export type Database = {
           product_name?: string
           resolution_notes?: string | null
           route_id?: string | null
+          scheduled_date?: string | null
+          scheduled_delivery_id?: string | null
+          scheduled_route_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -911,6 +923,20 @@ export type Database = {
           {
             foreignKeyName: "service_requests_route_id_fkey"
             columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_scheduled_delivery_id_fkey"
+            columns: ["scheduled_delivery_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_scheduled_route_id_fkey"
+            columns: ["scheduled_route_id"]
             isOneToOne: false
             referencedRelation: "routes"
             referencedColumns: ["id"]

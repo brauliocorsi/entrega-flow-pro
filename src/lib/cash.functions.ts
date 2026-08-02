@@ -655,21 +655,42 @@ async function loadOperation(ctx: any, days: number) {
     .order("route_date", { ascending: false });
   if (error) throw new Error(error.message);
   const ids = (routes ?? []).map((r: any) => r.id);
-  if (ids.length === 0) return { routes: [], payments: [], expenses: [], settlements: [] };
+  if (ids.length === 0)
+    return { routes: [], payments: [], expenses: [], settlements: [], deliveries: [] };
 
-  const [{ data: payments }, { data: expenses }, { data: settlements }] = await Promise.all([
-    ctx.supabase
-      .from("delivery_payments")
-      .select("id, route_id, delivery_id, method_name, amount, received_by_name, created_at, confirmed, confirmed_at, reconciled_at")
-      .in("route_id", ids),
-    ctx.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
-    ctx.supabase.from("route_settlements").select("*").in("route_id", ids),
-  ]);
+  const [{ data: payments }, { data: expenses }, { data: settlements }, { data: deliveries }] =
+    await Promise.all([
+      ctx.supabase
+        .from("delivery_payments")
+        .select("id, route_id, delivery_id, method_name, amount, received_by_name, created_at, confirmed, confirmed_at, reconciled_at")
+        .in("route_id", ids),
+      ctx.supabase.from("route_cash_expenses").select("*").in("route_id", ids),
+      ctx.supabase.from("route_settlements").select("*").in("route_id", ids),
+      ctx.supabase
+        .from("scheduled_deliveries")
+        .select(
+          "id, route_id, order_number, customer_name, status, outcome, total_value, paid_value, remaining_value, order_payload",
+        )
+        .in("route_id", ids),
+    ]);
   return {
     routes: routes ?? [],
     payments: payments ?? [],
     expenses: expenses ?? [],
     settlements: settlements ?? [],
+    deliveries: deliveries ?? [],
+  };
+}
+
+/** Previsto vs realizado de uma rota, a partir das entregas e pagamentos já carregados. */
+function routeForecast(routeId: string, deliveries: any[], payments: any[]) {
+  const ds = deliveries.filter((d: any) => d.route_id === routeId);
+  const ps = payments.filter((p: any) => p.route_id === routeId);
+  const orders = ds.map((d: any) => buildOrderCompare(d, ps));
+  return {
+    forecast_total: round2(orders.reduce((a: number, o: any) => a + o.forecast, 0)),
+    realized_total: round2(orders.reduce((a: number, o: any) => a + o.realized, 0)),
+    orders_count: orders.length,
   };
 }
 

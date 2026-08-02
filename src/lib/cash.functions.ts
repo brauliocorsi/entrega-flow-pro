@@ -697,7 +697,9 @@ function routeCash(r: any, payments: any[], expenses: any[], settlements: any[])
     expenses: es,
     cash_in: cashIn,
     expenses_total: expTotal,
-    in_hand: round2(cashIn - expTotal),
+    is_settled: isSettled(st),
+    net_cash: round2(cashIn - expTotal),
+    in_hand: isSettled(st) ? 0 : round2(cashIn - expTotal),
     total_received: round2(ps.reduce((a: number, p: any) => a + Number(p.amount), 0)),
     other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
       .filter((m) => !isCash(m.method_name))

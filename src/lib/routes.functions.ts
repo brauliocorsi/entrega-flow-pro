@@ -6,6 +6,8 @@ const routeSimulationInput = z.object({
   origin: z.string().min(5).max(255),
   destination: z.string().min(5).max(255),
   intermediates: z.array(z.string().min(5).max(255)).max(23).default([]),
+  /** false = respeita a ordem enviada (ordem manual), sem otimizar waypoints. */
+  optimize: z.boolean().default(true),
 });
 
 export const listRoutes = createServerFn({ method: "GET" })

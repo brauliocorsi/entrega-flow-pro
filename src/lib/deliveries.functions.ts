@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { updateGestaoClickVendaSchedule, fetchOrder } from "./gestaoclick.functions";
 import { checkCorridor, type CorridorStop } from "./corridor.shared";
+import { assertRouteUnlocked } from "./route-lock.server";
 
 const ScheduleInput = z.object({
   route_id: z.string().uuid(),

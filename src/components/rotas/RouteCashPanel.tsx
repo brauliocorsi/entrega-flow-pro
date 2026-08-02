@@ -174,7 +174,10 @@ export function RouteCashPanel({ routeId }: { routeId: string }) {
           </div>
         )}
       </div>
+        </>
+      )}
     </Card>
+
   );
 }
 

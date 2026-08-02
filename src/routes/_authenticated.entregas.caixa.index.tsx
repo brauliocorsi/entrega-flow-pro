@@ -107,21 +107,23 @@ function MinhaCaixa() {
   return (
     <div className="space-y-4">
       <Card className="p-5 text-center">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">Total em mãos</div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">
+          Em mãos (caixas por entregar)
+        </div>
         <div className="text-4xl font-bold text-emerald-600">
           {formatEUR(data?.total_in_hand ?? 0)}
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
           <StatTile label="Entradas" value={formatEUR(cashIn)} />
           <StatTile label="Saídas" value={`− ${formatEUR(expenses)}`} tone="danger" />
-          <StatTile label="Por prestar" value={String(open.length)} tone="warning" />
+          <StatTile label="Caixas abertos" value={String(open.length)} tone="warning" />
         </div>
       </Card>
 
       <Tabs defaultValue="abertas">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="abertas">Por fechar ({open.length})</TabsTrigger>
-          <TabsTrigger value="fechadas">Fechadas ({settled.length})</TabsTrigger>
+          <TabsTrigger value="abertas">Caixas abertos ({open.length})</TabsTrigger>
+          <TabsTrigger value="fechadas">Fechados ({settled.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="abertas" className="mt-3 space-y-2">
@@ -145,10 +147,10 @@ function MinhaCaixa() {
                           className="h-3 w-3 shrink-0 rounded-full"
                           style={{ background: r.color ?? "#3b82f6" }}
                         />
-                        <span className="truncate">{r.zone}</span>
+                        <span className="truncate">Caixa · {r.zone}</span>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {formatDatePT(r.route_date)}
+                        {formatDatePT(r.route_date)} · envelope por entregar
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
@@ -159,6 +161,21 @@ function MinhaCaixa() {
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-lg border border-border p-2">
+                      <div className="uppercase text-muted-foreground">Previsto</div>
+                      <div className="font-semibold tabular-nums">
+                        {formatEUR(r.forecast_total ?? 0)}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border p-2">
+                      <div className="uppercase text-muted-foreground">Realizado</div>
+                      <div className="font-semibold tabular-nums text-emerald-600">
+                        {formatEUR(r.realized_total ?? 0)}
+                      </div>
                     </div>
                   </div>
 
@@ -182,6 +199,7 @@ function MinhaCaixa() {
             ))
           )}
         </TabsContent>
+
 
         <TabsContent value="fechadas" className="mt-3 space-y-2">
           {settled.length === 0 ? (

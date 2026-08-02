@@ -297,6 +297,51 @@ export const updateRouteFleet = createServerFn({ method: "POST" })
     if (data.driver !== undefined) patch.driver = data.driver?.trim() || null;
     if (data.vehicle !== undefined) patch.vehicle = data.vehicle?.trim() || null;
     if (data.assistant !== undefined) patch.assistant = data.assistant?.trim() || null;
+
+    // Impede que a mesma pessoa fique escalada em duas rotas no mesmo dia
+    // (como motorista numa e auxiliar noutra, ou repetida na mesma função).
+    const { data: current } = await context.supabase
+      .from("routes")
+      .select("id, route_date, driver, assistant")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!current) throw new Error("Rota não encontrada");
+
+    const norm = (v?: string | null) => (v ?? "").trim().toLowerCase();
+    const nextDriver = patch.driver !== undefined ? patch.driver : current.driver;
+    const nextAssistant = patch.assistant !== undefined ? patch.assistant : current.assistant;
+
+    if (nextDriver && nextAssistant && norm(nextDriver) === norm(nextAssistant)) {
+      throw new Error("A mesma pessoa não pode ser motorista e auxiliar da mesma rota");
+    }
+
+    const people = [
+      { role: "motorista", name: nextDriver },
+      { role: "auxiliar", name: nextAssistant },
+    ].filter((p) => !!p.name?.trim());
+
+    if (people.length > 0) {
+      const { data: sameDay } = await context.supabase
+        .from("routes")
+        .select("id, zone, driver, assistant, status")
+        .eq("route_date", current.route_date)
+        .neq("id", data.id);
+
+      for (const person of people) {
+        const key = norm(person.name);
+        const clash = (sameDay ?? []).find(
+          (r: any) =>
+            r.status !== "concluida" && (norm(r.driver) === key || norm(r.assistant) === key),
+        );
+        if (clash) {
+          const otherRole = norm(clash.driver) === key ? "motorista" : "auxiliar";
+          throw new Error(
+            `${person.name} já está escalado como ${otherRole} na rota "${clash.zone}" no mesmo dia. Liberta essa rota antes de o atribuir como ${person.role}.`,
+          );
+        }
+      }
+    }
+
     const { error } = await context.supabase.from("routes").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

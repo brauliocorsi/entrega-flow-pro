@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Calculator } from "lucide-react";
+import { Calculator, PackageCheck, History as HistoryIcon, Landmark } from "lucide-react";
+import { PageHeader } from "@/components/ui-kit/PageHeader";
+
 import { ConferenciaLista } from "@/components/caixa/ConferenciaLista";
 import { ConciliacaoPanel } from "@/components/caixa/ConciliacaoPanel";
 import { HistoricoEnvelopes } from "@/components/caixa/HistoricoEnvelopes";

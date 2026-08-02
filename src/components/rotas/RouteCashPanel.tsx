@@ -1,12 +1,21 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getRouteCash } from "@/lib/cash.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatEUR } from "@/lib/format";
-import { Wallet, ArrowDownCircle, ArrowUpCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  Wallet,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+} from "lucide-react";
 
-/** Previsto vs realizado + movimentos de caixa da rota. */
+/** Previsto vs realizado + movimentos de caixa da rota (recolhido por omissão). */
 export function RouteCashPanel({ routeId }: { routeId: string }) {
   const fn = useServerFn(getRouteCash);
   const { data, isLoading } = useQuery({
@@ -15,11 +24,18 @@ export function RouteCashPanel({ routeId }: { routeId: string }) {
     refetchInterval: 60_000,
   });
 
+  const [open, setOpen] = useState(false);
+  const st = (data as any)?.settlement as any;
+  // Envelope entregue/conferido: abre automaticamente para conferência.
+  const submitted = !!st && st.status !== "aberta";
+  useEffect(() => {
+    if (submitted) setOpen(true);
+  }, [submitted]);
+
   if (isLoading) return null;
   if (!data) return null;
 
   const diff = Number(data.realized_total) - Number(data.forecast_total);
-  const st = data.settlement as any;
 
   return (
     <Card className="p-5 space-y-4">
@@ -27,20 +43,30 @@ export function RouteCashPanel({ routeId }: { routeId: string }) {
         <h2 className="font-semibold flex items-center gap-2">
           <Wallet className="h-5 w-5" /> Caixa da rota
         </h2>
-        {st ? (
-          <Badge variant={st.status === "conferida" ? "default" : "secondary"}>
-            Envelope {st.envelope_code} ·{" "}
-            {st.status === "conferida"
-              ? "conferido"
-              : st.status === "entregue"
-                ? "entregue, por conferir"
-                : "aberto"}
-          </Badge>
-        ) : (
-          <Badge variant="outline">Sem envelope</Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {st ? (
+            <Badge variant={st.status === "conferida" ? "default" : "secondary"}>
+              Envelope {st.envelope_code} ·{" "}
+              {st.status === "conferida"
+                ? "conferido"
+                : st.status === "entregue"
+                  ? "entregue, por conferir"
+                  : "aberto"}
+            </Badge>
+          ) : (
+            <Badge variant="outline">Sem envelope</Badge>
+          )}
+          <Button size="sm" variant="outline" className="h-8" onClick={() => setOpen((v) => !v)}>
+            <ChevronDown
+              className={`h-4 w-4 mr-1 transition-transform ${open ? "rotate-180" : ""}`}
+            />
+            {open ? "Ocultar" : "Ver recebimentos"}
+          </Button>
+        </div>
       </div>
 
+      {!open ? null : (
+        <>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
         <Metric label="Previsto" value={data.forecast_total} />
         <Metric label="Realizado" value={data.realized_total} tone="emerald" />
@@ -51,6 +77,7 @@ export function RouteCashPanel({ routeId }: { routeId: string }) {
         />
         <Metric label="Em mãos" value={data.in_hand} />
       </div>
+
 
       {data.other_methods.length > 0 && (
         <div className="flex flex-wrap gap-1.5">

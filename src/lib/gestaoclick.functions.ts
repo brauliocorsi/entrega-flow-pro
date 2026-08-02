@@ -54,7 +54,7 @@ function detectKind(desc: string): OrderItemDTO["kind"] {
   return "produto";
 }
 
-function normalizeOrder(
+export function normalizeOrder(
   vendaPayload: any,
   clientePayload: any,
   orderNumber: string,
@@ -185,7 +185,7 @@ function normalizeOrder(
   };
 }
 
-function normalizeBaseUrl(baseUrl: string): string {
+export function normalizeBaseUrl(baseUrl: string): string {
   const trimmed = baseUrl.trim().replace(/\/$/, "");
 
   try {
@@ -208,7 +208,7 @@ function normalizeBaseUrl(baseUrl: string): string {
   }
 }
 
-async function gcFetch(url: string, headers: Record<string, string>): Promise<{ status: number; json: any }> {
+export async function gcFetch(url: string, headers: Record<string, string>): Promise<{ status: number; json: any }> {
   const res = await fetch(url, { headers });
   const text = await res.text();
   if (res.status === 401 || res.status === 403) {

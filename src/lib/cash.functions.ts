@@ -22,6 +22,13 @@ function isCash(methodName: string) {
   return norm(methodName).includes(CASH_METHOD);
 }
 
+/** Após a prestação de contas (envelope entregue/conferido) o caixa do funcionário fica a zero. */
+function isSettled(settlement: any) {
+  return !!settlement && settlement.status !== "aberta";
+}
+
+
+
 function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
@@ -114,6 +121,8 @@ async function buildCash(ctx: any, routeId: string) {
   );
 
   const orders = (deliveries ?? []).map((d: any) => buildOrderCompare(d, payments ?? []));
+  const settled = isSettled(settlement);
+  const netCash = round2(cashIn - expensesTotal);
 
   return {
     route,
@@ -122,7 +131,9 @@ async function buildCash(ctx: any, routeId: string) {
     settlement: settlement ?? null,
     cash_in: cashIn,
     expenses_total: expensesTotal,
-    in_hand: round2(cashIn - expensesTotal),
+    is_settled: settled,
+    net_cash: netCash,
+    in_hand: settled ? 0 : netCash,
     orders,
     forecast_total: round2(orders.reduce((a: number, o: any) => a + o.forecast, 0)),
     realized_total: round2(orders.reduce((a: number, o: any) => a + o.realized, 0)),
@@ -229,7 +240,7 @@ export const submitSettlement = createServerFn({ method: "POST" })
     const payload = {
       route_id: data.route_id,
       envelope_code: cash.settlement?.envelope_code ?? envelopeCode(cash.route),
-      cash_expected: cash.in_hand,
+      cash_expected: cash.net_cash,
       cash_declared: data.cash_declared,
       expenses_total: cash.expenses_total,
       methods,
@@ -489,7 +500,9 @@ export const getSettlementsByDate = createServerFn({ method: "GET" })
           expenses: es,
           cash_in: cashIn,
           expenses_total: expTotal,
-          in_hand: round2(cashIn - expTotal),
+          is_settled: isSettled(st),
+          net_cash: round2(cashIn - expTotal),
+          in_hand: isSettled(st) ? 0 : round2(cashIn - expTotal),
           orders,
           payments_total: ps.length,
           pending_confirmations: ps.filter((p: any) => !p.confirmed).length,
@@ -567,7 +580,9 @@ export const getMyCashRoutes = createServerFn({ method: "GET" })
         pending_expenses: es.filter((e: any) => e.status === "pendente").length,
         cash_in: cashIn,
         expenses_total: expTotal,
-        in_hand: round2(cashIn - expTotal),
+        is_settled: isSettled(st),
+        net_cash: round2(cashIn - expTotal),
+        in_hand: isSettled(st) ? 0 : round2(cashIn - expTotal),
         other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
           .filter((m) => !isCash(m.method_name))
           .map((m) => ({ ...m, confirmed: confirmed.get(m.method_name) ?? false })),
@@ -682,7 +697,9 @@ function routeCash(r: any, payments: any[], expenses: any[], settlements: any[])
     expenses: es,
     cash_in: cashIn,
     expenses_total: expTotal,
-    in_hand: round2(cashIn - expTotal),
+    is_settled: isSettled(st),
+    net_cash: round2(cashIn - expTotal),
+    in_hand: isSettled(st) ? 0 : round2(cashIn - expTotal),
     total_received: round2(ps.reduce((a: number, p: any) => a + Number(p.amount), 0)),
     other_methods: Array.from(byMethod, ([method_name, amount]) => ({ method_name, amount }))
       .filter((m) => !isCash(m.method_name))
@@ -742,6 +759,8 @@ export const getAllCashByStaff = createServerFn({ method: "GET" })
         cash_in: c.cash_in,
         expenses_total: c.expenses_total,
         in_hand: c.in_hand,
+        net_cash: c.net_cash,
+        is_settled: c.is_settled,
         total_received: c.total_received,
         other_methods: c.other_methods,
         is_open: isOpen,
@@ -816,6 +835,8 @@ export const getAllSettlements = createServerFn({ method: "GET" })
         cash_in: c.cash_in,
         expenses_total: c.expenses_total,
         in_hand: c.in_hand,
+        net_cash: c.net_cash,
+        is_settled: c.is_settled,
         total_received: c.total_received,
         other_methods: c.other_methods,
         orders_count: orders.length,

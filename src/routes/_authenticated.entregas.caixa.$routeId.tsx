@@ -179,13 +179,24 @@ function CaixaRotaPage() {
           )}
         </div>
 
-        <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-4 text-center">
-          <div className="text-xs uppercase text-muted-foreground">Em mãos (dinheiro)</div>
-          <div className="text-3xl font-bold text-emerald-600">{formatEUR(data.in_hand)}</div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {formatEUR(data.cash_in)} recebido − {formatEUR(data.expenses_total)} despesas
+        {data.is_settled ? (
+          <div className="rounded-lg bg-muted p-4 text-center">
+            <div className="text-xs uppercase text-muted-foreground">Em mãos (dinheiro)</div>
+            <div className="text-3xl font-bold">{formatEUR(0)}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Caixa prestado e zerado · entregue {formatEUR(data.net_cash)} ({formatEUR(data.cash_in)}{" "}
+              recebido − {formatEUR(data.expenses_total)} despesas)
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-4 text-center">
+            <div className="text-xs uppercase text-muted-foreground">Em mãos (dinheiro)</div>
+            <div className="text-3xl font-bold text-emerald-600">{formatEUR(data.in_hand)}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {formatEUR(data.cash_in)} recebido − {formatEUR(data.expenses_total)} despesas
+            </div>
+          </div>
+        )}
 
         {data.other_methods.length > 0 && (
           <div className="space-y-1.5">
@@ -364,7 +375,7 @@ function CaixaRotaPage() {
         {!closed && (
           <Dialog open={envOpen} onOpenChange={setEnvOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full" onClick={() => setDeclared(String(data.in_hand))}>
+              <Button className="w-full" onClick={() => setDeclared(String(data.net_cash))}>
                 <PackageCheck className="h-4 w-4 mr-1" /> Fechar envelope
               </Button>
             </DialogTrigger>
@@ -384,7 +395,7 @@ function CaixaRotaPage() {
                   </div>
                   <div className="flex justify-between border-t pt-1">
                     <span>A depositar</span>
-                    <span className="font-bold text-emerald-600">{formatEUR(data.in_hand)}</span>
+                    <span className="font-bold text-emerald-600">{formatEUR(data.net_cash)}</span>
                   </div>
                 </div>
                 <div>

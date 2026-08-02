@@ -148,7 +148,16 @@ function StaffCard({ staff }: { staff: any }) {
                 </div>
                 <div>
                   <div className="text-[11px] uppercase text-muted-foreground">Em mãos</div>
-                  <div className="font-semibold text-sm text-emerald-600">{formatEUR(r.in_hand)}</div>
+                  {r.is_settled ? (
+                    <div className="font-semibold text-sm">
+                      {formatEUR(0)}
+                      <span className="block text-[10px] font-normal text-muted-foreground">
+                        prestado {formatEUR(r.net_cash)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="font-semibold text-sm text-emerald-600">{formatEUR(r.in_hand)}</div>
+                  )}
                 </div>
               </div>
 

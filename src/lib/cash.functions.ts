@@ -865,3 +865,41 @@ export const getAllSettlements = createServerFn({ method: "GET" })
       pending_count: rows.filter((r: any) => r.settlement?.status === "entregue").length,
     };
   });
+
+/** Histórico de envelopes já conferidos (admin/logística), sem limite de data. */
+export const getConferredHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ limit: z.number().int().min(1).max(300).optional() }).default({}).parse(d ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertManager(context);
+    const limit = data.limit ?? 100;
+
+    const { data: settlements, error } = await context.supabase
+      .from("route_settlements")
+      .select("*")
+      .eq("status", "conferida")
+      .order("reviewed_at", { ascending: false, nullsFirst: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    const rows = settlements ?? [];
+    if (rows.length === 0) return { settlements: [] };
+
+    const ids = Array.from(new Set(rows.map((s: any) => s.route_id)));
+    const { data: routes } = await context.supabase
+      .from("routes")
+      .select("id, zone, route_date, driver, assistant, color")
+      .in("id", ids);
+
+    return {
+      settlements: rows.map((s: any) => {
+        const r = (routes ?? []).find((x: any) => x.id === s.route_id) ?? null;
+        return {
+          ...s,
+          route: r,
+          cash_diff: round2(Number(s.cash_declared) - Number(s.cash_expected)),
+        };
+      }),
+    };
+  });

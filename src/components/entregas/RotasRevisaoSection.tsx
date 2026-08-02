@@ -19,7 +19,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { formatDatePT, formatDateTimePT } from "@/lib/format";
-import { AlertTriangle, CheckCircle2, ChevronDown, ClipboardCheck, Undo2 } from "lucide-react";
+import { orderItems } from "@/lib/order-items";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardCheck,
+  Package,
+  PackageX,
+  Truck,
+  Undo2,
+  Wrench,
+} from "lucide-react";
+
 
 /** Rotas libertadas pelo escritório para o entregador rever antes de arrancar. */
 export function RotasRevisaoSection() {
@@ -119,25 +131,16 @@ function ReviewRouteCard({ route }: { route: any }) {
         <CollapsibleContent className="space-y-3 pt-3">
           <OrdemEntregasEditor
             routeId={route.id}
-            deliveries={deliveries.map((d) => ({
-              id: d.id,
-              order_number: d.order_number,
-              customer_name: d.customer_name,
-              address: d.address,
-              zip_code: d.zip_code,
-            }))}
+            deliveries={deliveries}
             locked={!!route.started_at}
             changedByName={route.order_changed_by_name}
             changedAt={route.order_changed_at}
             invalidateKeys={[["my-review-routes"], ["my-day"]]}
             onOrderChange={setPreviewOrder}
+            title="Ordem das entregas e sugestões"
+            hint="Arrasta para definir a sequência. Se alguma entrega deve sair da rota, sugere a remoção."
+            renderRowExtra={(d) => <ReviewStopExtra delivery={d} />}
           />
-
-          <ol className="divide-y rounded-md border">
-            {deliveries.map((d, i) => (
-              <ReviewStopRow key={d.id} delivery={d} index={i} />
-            ))}
-          </ol>
 
           {stops.length > 0 && (
             <RouteSimulationSection
@@ -152,6 +155,7 @@ function ReviewRouteCard({ route }: { route: any }) {
             />
           )}
         </CollapsibleContent>
+
       </Collapsible>
 
       {route.courier_confirmed_at ? (
@@ -178,11 +182,18 @@ function ReviewRouteCard({ route }: { route: any }) {
   );
 }
 
-function ReviewStopRow({ delivery, index }: { delivery: any; index: number }) {
+/** Extra por paragem: estado de montagem, itens da encomenda e sugestão de remoção. */
+function ReviewStopExtra({ delivery }: { delivery: any }) {
   const qc = useQueryClient();
   const suggestFn = useServerFn(suggestDeliveryRemoval);
   const [openReason, setOpenReason] = useState(false);
+  const [showItems, setShowItems] = useState(false);
   const [reason, setReason] = useState("");
+
+  const items = orderItems(delivery.order_payload);
+  const montagem = items.filter((i) => i.kind === "montagem");
+  const entrega = items.filter((i) => i.kind === "entrega");
+  const produtos = items.filter((i) => i.kind === "produto");
 
   const mut = useMutation({
     mutationFn: (suggest: boolean) =>
@@ -197,22 +208,62 @@ function ReviewStopRow({ delivery, index }: { delivery: any; index: number }) {
   });
 
   return (
-    <li className="p-3 text-sm space-y-2">
-      <div className="flex items-start gap-3">
-        <span className="h-6 w-6 rounded-full bg-primary/80 text-primary-foreground text-xs font-bold inline-flex items-center justify-center shrink-0">
-          {index + 1}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="font-medium truncate">
-            #{delivery.order_number} · {delivery.customer_name}
-          </div>
-          <div className="text-xs text-muted-foreground truncate">
-            {delivery.address}
-            {delivery.zip_code ? ` · ${delivery.zip_code}` : ""}
-            {delivery.city ? ` ${delivery.city}` : ""}
-          </div>
-        </div>
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {montagem.length > 0 ? (
+          <Badge className="bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30 text-[10px]">
+            <Wrench className="h-3 w-3 mr-1" /> Com montagem
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-[10px] text-muted-foreground">
+            <PackageX className="h-3 w-3 mr-1" /> Sem montagem
+          </Badge>
+        )}
+        {items.length > 0 && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-[11px]"
+            onClick={() => setShowItems((v) => !v)}
+          >
+            <ChevronDown
+              className={`h-3.5 w-3.5 mr-1 transition-transform ${showItems ? "rotate-180" : ""}`}
+            />
+            Itens e serviços ({items.length})
+          </Button>
+        )}
+        {delivery.removal_suggested_at ? null : openReason ? null : (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 text-[11px]"
+            onClick={() => setOpenReason(true)}
+          >
+            Sugerir remoção
+          </Button>
+        )}
       </div>
+
+      {showItems && items.length > 0 && (
+        <ul className="rounded-md border bg-muted/30 divide-y text-xs">
+          {[...produtos, ...montagem, ...entrega].map((it, idx) => (
+            <li key={idx} className="flex items-center gap-2 px-2 py-1.5">
+              {it.kind === "montagem" ? (
+                <Wrench className="h-3.5 w-3.5 text-violet-600 shrink-0" />
+              ) : it.kind === "entrega" ? (
+                <Truck className="h-3.5 w-3.5 text-sky-600 shrink-0" />
+              ) : (
+                <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              )}
+              <span className="min-w-0 flex-1 truncate">
+                {it.code ? <span className="font-mono mr-1">{it.code}</span> : null}
+                {it.name}
+              </span>
+              <span className="shrink-0 text-muted-foreground">x{it.quantity}</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {delivery.removal_suggested_at ? (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs flex items-center justify-between gap-2">
@@ -240,16 +291,8 @@ function ReviewStopRow({ delivery, index }: { delivery: any; index: number }) {
             </Button>
           </div>
         </div>
-      ) : (
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs"
-          onClick={() => setOpenReason(true)}
-        >
-          Sugerir remoção
-        </Button>
-      )}
-    </li>
+      ) : null}
+    </div>
   );
 }
+

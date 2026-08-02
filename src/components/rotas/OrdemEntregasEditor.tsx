@@ -15,7 +15,9 @@ type Item = {
   customer_name: string;
   address?: string | null;
   zip_code?: string | null;
+  [key: string]: any;
 };
+
 
 /** Extrai o CP como número (CP4 + CP3, ex: "4620-695" -> 4620695). */
 function zipValue(item: Item): number | null {
@@ -94,6 +96,9 @@ export function OrdemEntregasEditor({
   onOrderChange,
   changedByName,
   changedAt,
+  renderRowExtra,
+  title,
+  hint,
 }: {
   routeId: string;
   deliveries: Item[];
@@ -104,7 +109,12 @@ export function OrdemEntregasEditor({
   /** Quem alterou a ordem pela última vez. */
   changedByName?: string | null;
   changedAt?: string | null;
+  /** Conteúdo extra por linha (ex.: itens da encomenda, sugerir remoção). */
+  renderRowExtra?: (item: Item, index: number) => React.ReactNode;
+  title?: string;
+  hint?: string;
 }) {
+
   const qc = useQueryClient();
   const reorderFn = useServerFn(reorderDeliveries);
   const [items, setItems] = useState<Item[]>(deliveries);
@@ -157,13 +167,14 @@ export function OrdemEntregasEditor({
     <Card className="p-4 space-y-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
-          <div className="text-sm font-medium">Ordem das entregas</div>
+          <div className="text-sm font-medium">{title ?? "Ordem das entregas"}</div>
           <div className="text-xs text-muted-foreground">
             {locked
               ? "Rota iniciada — a ordem já não pode ser alterada."
-              : "Arrasta ou usa as setas para definir a sequência de entrega."}
+              : (hint ?? "Arrasta ou usa as setas para definir a sequência de entrega.")}
           </div>
         </div>
+
         {locked ? (
           <Badge variant="outline" className="text-[10px]">
             <Lock className="h-3 w-3 mr-1" /> Bloqueada
@@ -198,33 +209,41 @@ export function OrdemEntregasEditor({
               if (dragIdx !== null && dragIdx !== i) move(dragIdx, i);
               setDragIdx(null);
             }}
-            className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm bg-background ${
-              locked ? "" : "cursor-grab active:cursor-grabbing"
-            } ${dragIdx === i ? "opacity-50" : ""}`}
+            className={`rounded-md border px-2 py-1.5 text-sm bg-background ${
+              dragIdx === i ? "opacity-50" : ""
+            }`}
           >
-            {!locked && <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />}
-            <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center shrink-0">
-              {i + 1}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="font-medium truncate">
-                #{d.order_number} · {d.customer_name}
-              </div>
-              {d.address && <div className="text-xs text-muted-foreground truncate">{d.address}</div>}
-            </div>
-            {!locked && (
-              <span className="flex shrink-0">
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, i - 1)}>
-                  <ArrowUp className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, i + 1)}>
-                  <ArrowDown className="h-3.5 w-3.5" />
-                </Button>
+            <div
+              className={`flex items-center gap-2 ${locked ? "" : "cursor-grab active:cursor-grabbing"}`}
+            >
+              {!locked && <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />}
+              <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center shrink-0">
+                {i + 1}
               </span>
-            )}
+              <div className="min-w-0 flex-1">
+                <div className="font-medium truncate">
+                  #{d.order_number} · {d.customer_name}
+                </div>
+                {d.address && (
+                  <div className="text-xs text-muted-foreground truncate">{d.address}</div>
+                )}
+              </div>
+              {!locked && (
+                <span className="flex shrink-0">
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, i - 1)}>
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, i + 1)}>
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </Button>
+                </span>
+              )}
+            </div>
+            {renderRowExtra && <div className="mt-1.5 pl-8">{renderRowExtra(d, i)}</div>}
           </li>
         ))}
       </ol>
+
     </Card>
   );
 }

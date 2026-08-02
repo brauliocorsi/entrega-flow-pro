@@ -353,6 +353,7 @@ function CourierOrderBlock({ route, deliveries }: { route: any; deliveries: any[
           order_number: d.order_number,
           customer_name: d.customer_name,
           address: d.address,
+          zip_code: d.zip_code,
         }))}
         locked={!!route.started_at}
         invalidateKeys={[["my-day"]]}

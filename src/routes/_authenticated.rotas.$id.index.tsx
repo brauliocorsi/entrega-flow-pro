@@ -688,6 +688,7 @@ function RouteDetail() {
                       order_number: d.order_number,
                       customer_name: d.customer_name,
                       address: d.address,
+                      zip_code: d.zip_code,
                     }))}
                     locked={false}
                     invalidateKeys={[["route-deliveries", r.id], ["scheduled-deliveries", r.id]]}

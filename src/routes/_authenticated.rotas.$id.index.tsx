@@ -1497,7 +1497,9 @@ function FleetEditor({ route }: { route: any }) {
                   <SelectItem value={assistant}>{assistant} (atual)</SelectItem>
                 )}
                 {assistants.map((d) => (
-                  <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                  <SelectItem key={d.id} value={d.name}>
+                    {d.name}{d.kind === "motorista" ? " (motorista)" : ""}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

@@ -28,3 +28,16 @@ export async function assertRouteUnlocked(ctx: any, routeId: string | null | und
     );
   }
 }
+
+/** Anula a confirmação do entregador sempre que a rota é alterada depois dela. */
+export async function resetCourierConfirmation(ctx: any, routeId: string) {
+  await ctx.supabase
+    .from("routes")
+    .update({
+      courier_confirmed_at: null,
+      courier_confirmed_by: null,
+      courier_confirmed_by_name: null,
+    })
+    .eq("id", routeId)
+    .not("courier_confirmed_at", "is", null);
+}

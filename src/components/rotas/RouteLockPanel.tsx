@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { startRoute, unlockRoute } from "@/lib/routes.functions";
+import { startRoute, unlockRoute, releaseRouteToCourier } from "@/lib/routes.functions";
 import { exportRoutePicking } from "@/lib/route-picking.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDateTimePT } from "@/lib/format";
-import { CheckCircle2, FileSpreadsheet, Loader2, Lock, Play, Unlock } from "lucide-react";
+import { CheckCircle2, FileSpreadsheet, Loader2, Lock, Play, Send, Unlock, UserCheck } from "lucide-react";
 
 /** Estado de preparação/bloqueio da rota + exportação da lista de separação. */
 export function RouteLockPanel({ route }: { route: any }) {
@@ -21,6 +21,7 @@ export function RouteLockPanel({ route }: { route: any }) {
 
   const startFn = useServerFn(startRoute);
   const unlockFn = useServerFn(unlockRoute);
+  const releaseFn = useServerFn(releaseRouteToCourier);
   const exportFn = useServerFn(exportRoutePicking);
 
   const [confirmStart, setConfirmStart] = useState(false);
@@ -42,6 +43,15 @@ export function RouteLockPanel({ route }: { route: any }) {
       invalidate();
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao iniciar a rota"),
+  });
+
+  const releaseMut = useMutation({
+    mutationFn: (released: boolean) => releaseFn({ data: { id: route.id, released } }),
+    onSuccess: (_d, released) => {
+      toast.success(released ? "Rota libertada ao entregador" : "Libertação retirada");
+      invalidate();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Erro ao libertar a rota"),
   });
 
   const unlockMut = useMutation({
@@ -95,6 +105,17 @@ export function RouteLockPanel({ route }: { route: any }) {
               <Lock className="h-3 w-3 mr-1" /> Em curso desde {formatDateTimePT(route.started_at)}
               {route.started_by_name ? ` · ${route.started_by_name}` : ""}
             </Badge>
+          ) : route.courier_confirmed_at ? (
+            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+              <UserCheck className="h-3 w-3 mr-1" /> Confirmada pelo entregador
+              {route.courier_confirmed_by_name ? ` · ${route.courier_confirmed_by_name}` : ""} ·{" "}
+              {formatDateTimePT(route.courier_confirmed_at)}
+            </Badge>
+          ) : route.released_to_courier_at ? (
+            <Badge className="bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/30">
+              <Send className="h-3 w-3 mr-1" /> Em revisão pelo entregador
+              {route.released_by_name ? ` · libertada por ${route.released_by_name}` : ""}
+            </Badge>
           ) : route.order_ready_at ? (
             <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
               <CheckCircle2 className="h-3 w-3 mr-1" /> Pronta pelo entregador
@@ -126,6 +147,30 @@ export function RouteLockPanel({ route }: { route: any }) {
             Exportar separação (Excel)
           </Button>
 
+          {!route.started_at && canStart && !route.released_to_courier_at && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8"
+              disabled={releaseMut.isPending}
+              onClick={() => releaseMut.mutate(true)}
+            >
+              <Send className="h-3.5 w-3.5 mr-1" /> Liberar ao entregador
+            </Button>
+          )}
+
+          {!route.started_at && canStart && route.released_to_courier_at && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8"
+              disabled={releaseMut.isPending}
+              onClick={() => releaseMut.mutate(false)}
+            >
+              Retirar libertação
+            </Button>
+          )}
+
           {!route.started_at && canStart && (
             <Button size="sm" className="h-8" onClick={() => setConfirmStart(true)}>
               <Play className="h-3.5 w-3.5 mr-1" /> Iniciar rota
@@ -142,6 +187,11 @@ export function RouteLockPanel({ route }: { route: any }) {
 
       {confirmStart && !route.started_at && (
         <div className="rounded-md border p-3 space-y-2 text-xs">
+          {!route.courier_confirmed_at && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5">
+              O entregador ainda não confirmou a revisão desta rota.
+            </div>
+          )}
           <div className="font-medium">
             Ao iniciar, a rota fica bloqueada: ninguém pode alterar a ordem, adicionar ou remover
             entregas, mudar data, motorista ou veículo. Só um administrador pode desbloquear.

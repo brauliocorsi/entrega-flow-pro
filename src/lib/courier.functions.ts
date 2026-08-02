@@ -343,3 +343,122 @@ export const getCashSummary = createServerFn({ method: "GET" })
       }),
     };
   });
+
+/** Rotas libertadas para revisão prévia do entregador (qualquer data futura). */
+export const getMyReviewRoutes = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const names = await myStaffNames(context);
+    if (names.length === 0) return { routes: [] };
+
+    const { data: routes, error } = await context.supabase
+      .from("routes")
+      .select("*")
+      .not("released_to_courier_at", "is", null)
+      .is("started_at", null)
+      .gte("route_date", todayISO())
+      .order("route_date", { ascending: true });
+    if (error) throw new Error(error.message);
+
+    const mine = (routes ?? []).filter(
+      (r: any) => names.includes(norm(r.driver)) || names.includes(norm(r.assistant)),
+    );
+    if (mine.length === 0) return { routes: [] };
+
+    const ids = mine.map((r: any) => r.id);
+    const { data: deliveries } = await context.supabase
+      .from("scheduled_deliveries")
+      .select("*")
+      .in("route_id", ids)
+      .order("stop_order", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true });
+
+    return {
+      routes: mine.map((r: any) => ({
+        ...r,
+        deliveries: (deliveries ?? []).filter(
+          (d: any) => d.route_id === r.id && d.status !== "cancelado",
+        ),
+      })),
+    };
+  });
+
+/** Entregador dá o OK final à rota revista (ou reabre a revisão). */
+export const confirmRouteAsCourier = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ route_id: z.string().uuid(), confirmed: z.boolean().default(true) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertCanTouchRoute(context, data.route_id);
+
+    const { data: route } = await context.supabase
+      .from("routes")
+      .select("id, started_at, released_to_courier_at")
+      .eq("id", data.route_id)
+      .maybeSingle();
+    if (!route) throw new Error("Rota não encontrada");
+    if (route.started_at) throw new Error("Rota já iniciada — a revisão está encerrada");
+    if (!route.released_to_courier_at) throw new Error("Esta rota ainda não foi libertada para revisão");
+
+    const { error } = await context.supabase
+      .from("routes")
+      .update(
+        data.confirmed
+          ? {
+              courier_confirmed_at: new Date().toISOString(),
+              courier_confirmed_by: context.userId,
+              courier_confirmed_by_name: await displayName(context),
+            }
+          : {
+              courier_confirmed_at: null,
+              courier_confirmed_by: null,
+              courier_confirmed_by_name: null,
+            },
+      )
+      .eq("id", data.route_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Entregador sugere retirar uma entrega da rota — não altera a rota, só sinaliza. */
+export const suggestDeliveryRemoval = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        delivery_id: z.string().uuid(),
+        suggest: z.boolean().default(true),
+        reason: z.string().max(300).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: delivery } = await context.supabase
+      .from("scheduled_deliveries")
+      .select("id, route_id")
+      .eq("id", data.delivery_id)
+      .maybeSingle();
+    if (!delivery) throw new Error("Entrega não encontrada");
+    await assertCanTouchRoute(context, delivery.route_id);
+    await assertRouteOpen(context, delivery.route_id);
+
+    const { error } = await context.supabase
+      .from("scheduled_deliveries")
+      .update(
+        data.suggest
+          ? {
+              removal_suggested_at: new Date().toISOString(),
+              removal_suggested_by_name: await displayName(context),
+              removal_reason: data.reason?.trim() || null,
+            }
+          : {
+              removal_suggested_at: null,
+              removal_suggested_by_name: null,
+              removal_reason: null,
+            },
+      )
+      .eq("id", data.delivery_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

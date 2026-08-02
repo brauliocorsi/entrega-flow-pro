@@ -46,6 +46,7 @@ export const scheduleDelivery = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!route) throw new Error("Rota não encontrada");
     if (["fechada", "concluida"].includes(route.status)) throw new Error("Esta rota já está fechada");
+    await assertRouteUnlocked(context, data.route_id);
 
     // ===== Validação de corredor (antes da capacidade) =====
     const corridor = (route.corridor as unknown as CorridorStop[] | null) ?? [];

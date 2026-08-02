@@ -183,58 +183,9 @@ function receiptDescription(codigo: string, method: string, amount: number, date
   return `Venda nº ${codigo} · ${method} · ${money(amount).toFixed(2)} € · entrega ${date}`;
 }
 
-function paymentNode(row: any) {
-  return row?.pagamento ?? row ?? {};
-}
-
-function isDeliveryPayment(row: any) {
-  const p = paymentNode(row);
-  const searchable = [
-    p?.observacao,
-    p?.observacoes,
-    p?.forma_pagamento,
-    p?.nome_forma_pagamento,
-    p?.descricao,
-  ]
-    .filter(Boolean)
-    .map((value) => norm(String(value)))
-    .join(" ");
-  return /(pagar na entrega|pagamento na entrega|na entrega|contra reembolso)/.test(searchable);
-}
-
-async function buildSalePaymentRows(
-  payments: Array<{ method_name: string; amount: number; created_at?: string | null }>,
-  planoContasId: string | number | null,
-) {
-  const rows: any[] = [];
-  for (const p of payments) {
-    const amount = money(Number(p.amount));
-    if (amount <= 0) continue;
-    const formaId = await resolveFormaPagamentoId(p.method_name);
-    if (!formaId) {
-      throw new Error(`Forma de pagamento "${p.method_name}" não encontrada no GestãoClick`);
-    }
-    const date = (p.created_at ?? new Date().toISOString()).slice(0, 10);
-    rows.push({
-      pagamento: {
-        data_vencimento: date,
-        data_pagamento: date,
-        valor: amount.toFixed(2),
-        forma_pagamento_id: Number(formaId) || formaId,
-        ...(planoContasId
-          ? { plano_contas_id: Number(planoContasId) || planoContasId }
-          : {}),
-        observacao: `Recebido na entrega · ${p.method_name}`,
-        liquidado: "pg",
-      },
-    });
-  }
-  return rows;
-}
-
 /**
- * Atualiza situação, observações e linhas de pagamento da venda, além de
- * registar os recebimentos no financeiro.
+ * Atualiza situação/observações da venda e regista os recebimentos no financeiro.
+ * O GestãoClick não permite editar as linhas de `pagamentos` de uma venda existente.
  */
 export async function updateGestaoClickVendaClosure(args: {
   vendaId: string;
@@ -262,63 +213,18 @@ export async function updateGestaoClickVendaClosure(args: {
     const clienteId = String(venda.cliente_id ?? "");
     const codigo = String(venda.codigo ?? args.vendaId);
     const existingPayments: any[] = Array.isArray(venda.pagamentos) ? venda.pagamentos : [];
-    console.info(
-      "[GC closure payment shape]",
-      JSON.stringify(
-        existingPayments.map((row) => {
-          const p = paymentNode(row);
-          return {
-            wrapperKeys: Object.keys(row ?? {}),
-            keys: Object.keys(p ?? {}),
-            id: p?.id ?? null,
-            recebimento_id: p?.recebimento_id ?? null,
-            forma_pagamento_id: p?.forma_pagamento_id ?? null,
-            valor: p?.valor ?? null,
-            liquidado: p?.liquidado ?? null,
-          };
-        }),
-      ),
-    );
     const planoContasId =
       (existingPayments[0]?.pagamento ?? existingPayments[0] ?? {})?.plano_contas_id ?? null;
 
-    const realizedPaymentRows = await buildSalePaymentRows(args.payments, planoContasId);
-    const preservedPaymentRows = existingPayments.filter((row) => !isDeliveryPayment(row));
-
-    // 1) A API de vendas trata PUT como substituição do recurso. Enviar a venda
-    // completa preserva produtos/cliente e permite atualizar as linhas exibidas
-    // em "Dados de pagamento" dentro da própria venda.
+    // 1) Situação + observações na venda. O PUT substitui o recurso, portanto
+    // enviamos a venda completa para preservar cliente, produtos e serviços.
     const prevObs = String(venda.observacoes ?? "").trim();
     const body: Record<string, unknown> = {
       ...venda,
       situacao_id: Number(situacaoId) || situacaoId,
       observacoes: prevObs ? `${prevObs}\n\n${args.observacoes}` : args.observacoes,
-      pagamentos:
-        realizedPaymentRows.length > 0
-          ? [...preservedPaymentRows, ...realizedPaymentRows]
-          : existingPayments,
     };
-    const saleUpdate = await sendJson(
-      "PUT",
-      `${base}/api/vendas/${encodeURIComponent(args.vendaId)}`,
-      headers,
-      body,
-    );
-    console.info(
-      "[GC closure sale update]",
-      JSON.stringify({
-        status: saleUpdate?.status ?? null,
-        code: saleUpdate?.code ?? null,
-        message: saleUpdate?.message ?? saleUpdate?.error ?? null,
-        dataKeys:
-          saleUpdate?.data && typeof saleUpdate.data === "object"
-            ? Object.keys(saleUpdate.data)
-            : [],
-        payments: Array.isArray(saleUpdate?.data?.pagamentos)
-          ? saleUpdate.data.pagamentos.map((row: any) => paymentNode(row))
-          : [],
-      }),
-    );
+    await sendJson("PUT", `${base}/api/vendas/${encodeURIComponent(args.vendaId)}`, headers, body);
 
     // 2) Recebimentos no financeiro (um por método), sem duplicar
     let alreadyLaunched: string[] = [];
@@ -328,25 +234,6 @@ export async function updateGestaoClickVendaClosure(args: {
         headers,
       );
       const rows: any[] = Array.isArray(list?.data) ? list.data : [];
-      console.info(
-        "[GC closure linked receipts]",
-        JSON.stringify(
-          rows
-            .filter((r) => String(r?.venda_id ?? r?.recebimento?.venda_id ?? "") === String(args.vendaId))
-            .map((r) => {
-              const item = r?.recebimento ?? r;
-              return {
-                keys: Object.keys(item ?? {}),
-                id: item?.id ?? null,
-                venda_id: item?.venda_id ?? null,
-                valor: item?.valor ?? null,
-                forma_pagamento_id: item?.forma_pagamento_id ?? null,
-                liquidado: item?.liquidado ?? null,
-                descricao: item?.descricao ?? null,
-              };
-            }),
-        ),
-      );
       alreadyLaunched = rows.map((r) => norm(String(r?.descricao ?? "")));
     }
 
@@ -391,24 +278,6 @@ export async function updateGestaoClickVendaClosure(args: {
     const saved: any = verified?.data ?? verified ?? null;
     if (String(saved?.situacao_id ?? "") !== String(situacaoId)) {
       return { ok: false, error: `GestãoClick não aplicou a situação "${args.situacaoLabel}"` };
-    }
-
-    if (realizedPaymentRows.length > 0) {
-      const savedPayments: any[] = Array.isArray(saved?.pagamentos) ? saved.pagamentos : [];
-      const savedRealized = savedPayments.filter((row) => {
-        const p = paymentNode(row);
-        return norm(String(p?.observacao ?? "")).includes("recebido na entrega");
-      });
-      const savedTotal = money(
-        savedRealized.reduce((sum, row) => sum + Number(paymentNode(row)?.valor ?? 0), 0),
-      );
-      const expectedSaleTotal = money(args.payments.reduce((sum, p) => sum + Number(p.amount), 0));
-      if (savedRealized.length !== realizedPaymentRows.length || savedTotal !== expectedSaleTotal) {
-        return {
-          ok: false,
-          error: "GestãoClick não atualizou as linhas de Dados de pagamento da venda",
-        };
-      }
     }
 
     const expectedTotal = money(args.payments.reduce((sum, p) => sum + Number(p.amount), 0));

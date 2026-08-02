@@ -21,6 +21,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { ImportarMarcacoesDialog } from "@/components/ImportarMarcacoesDialog";
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE, WEEKDAYS_PT } from "@/lib/constants";
 import { formatDatePT } from "@/lib/format";
 import {
@@ -39,6 +40,7 @@ import {
   Sun,
   Merge,
   Trash2,
+  CalendarClock,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -125,6 +127,7 @@ function RoutesIndex() {
   const [mergeSelected, setMergeSelected] = useState<Set<string>>(new Set());
   const [mergeTargetId, setMergeTargetId] = useState<string>("");
   const [merging, setMerging] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data: rows = [], isLoading } = useQuery(
     queryOptions({
@@ -260,6 +263,11 @@ function RoutesIndex() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {(isAdmin || role === "logistico") && (
+            <Button variant="default" size="sm" onClick={() => setImportOpen(true)}>
+              <CalendarClock className="h-4 w-4 mr-1" /> Importar marcações
+            </Button>
+          )}
           {isAdmin && (
             <Button
               variant="outline"
@@ -279,6 +287,8 @@ function RoutesIndex() {
           </Button>
         </div>
       </div>
+
+      <ImportarMarcacoesDialog open={importOpen} onOpenChange={setImportOpen} />
 
       <Dialog open={mergeOpen} onOpenChange={setMergeOpen}>
         <DialogContent className="max-w-lg">

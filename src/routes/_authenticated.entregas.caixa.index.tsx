@@ -222,14 +222,18 @@ function MinhaCaixa() {
                           className="h-2.5 w-2.5 shrink-0 rounded-full"
                           style={{ background: r.color ?? "#3b82f6" }}
                         />
-                        <span className="truncate">{r.zone}</span>
+                        <span className="truncate">Caixa · {r.zone}</span>
                         <Badge variant="outline" className="text-[10px]">
-                          {r.settlement?.status === "conferida" ? "Conferida" : "Entregue"}
+                          {r.settlement?.status === "conferida"
+                            ? "Conferido"
+                            : "Envelope entregue"}
                         </Badge>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {formatDatePT(r.route_date)} · entregue {formatEUR(r.net_cash)}
+                        {r.envelope_code ? ` · ${r.envelope_code}` : ""}
                       </div>
+
                     </div>
                     <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </div>

@@ -19,7 +19,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { formatDatePT, formatDateTimePT } from "@/lib/format";
-import { AlertTriangle, CheckCircle2, ChevronDown, ClipboardCheck, Undo2 } from "lucide-react";
+import { orderItems } from "@/lib/order-items";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardCheck,
+  Package,
+  PackageX,
+  Truck,
+  Undo2,
+  Wrench,
+} from "lucide-react";
+
 
 /** Rotas libertadas pelo escritório para o entregador rever antes de arrancar. */
 export function RotasRevisaoSection() {

@@ -12,6 +12,7 @@ import {
   Wrench,
   Wallet,
   PackageCheck,
+  ReceiptText,
 
   type LucideIcon,
 } from "lucide-react";
@@ -37,6 +38,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/rotas", label: "Rotas", icon: Calendar, group: "rotas" },
   { to: "/agendar", label: "Agendar", icon: Plus, group: "agendamentos" },
   { to: "/conferencia", label: "Conferência", short: "Conf.", icon: Calculator, group: "financeiro" },
+  { to: "/admin/relatorios/caixa", label: "Relatório de caixa", short: "Relat.", icon: ReceiptText, group: "financeiro", roles: ["admin", "logistico"] },
   { to: "/admin/otimizacao", label: "Otimização", short: "Otim.", icon: Sparkles, group: "rotas", roles: ["admin", "logistico"] },
 
   { to: "/admin/assistencias", label: "Assistências", short: "Assist.", icon: Wrench, group: "agendamentos", roles: ["admin", "logistico"] },

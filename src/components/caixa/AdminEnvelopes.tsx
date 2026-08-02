@@ -19,6 +19,7 @@ import { formatEUR, formatDatePT, formatDateTimePT } from "@/lib/format";
 import {
   PackageCheck,
   ArrowUpRight,
+  ArrowDownLeft,
   User,
   Search,
   X,
@@ -408,31 +409,30 @@ function EnvelopeCard({ row }: { row: any }) {
         </div>
       )}
 
-      {row.exits.length > 0 && (
-        <div className="space-y-1">
-          <div className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">
-            <ArrowUpRight className="h-3 w-3 text-rose-600" /> Saídas da rota
+      <RecebimentosSection orders={row.orders ?? []} />
+
+      <SaidasSection exits={row.exits ?? []} />
+
+      <div className="grid grid-cols-3 gap-2 rounded-lg border border-dashed py-2 text-center">
+        <div>
+          <div className="text-[11px] uppercase text-muted-foreground">Entradas</div>
+          <div className="text-sm font-semibold text-emerald-600">
+            {formatEUR(row.total_received)}
           </div>
-          {row.exits.map((e: any) => (
-            <div key={e.id} className="rounded-md border px-2 py-1.5 text-xs space-y-0.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">{e.category}</span>
-                <span className="flex items-center gap-1.5">
-                  <Badge className={`text-[10px] ${EXPENSE_TONE[e.status] ?? ""}`}>{e.status}</Badge>
-                  <span className="font-semibold text-rose-600 tabular-nums">
-                    − {formatEUR(e.amount)}
-                  </span>
-                </span>
-              </div>
-              <div className="text-muted-foreground">
-                {e.description}
-                {e.created_by_name ? ` · por ${e.created_by_name}` : ""} ·{" "}
-                {formatDateTimePT(e.created_at)}
-              </div>
-            </div>
-          ))}
         </div>
-      )}
+        <div>
+          <div className="text-[11px] uppercase text-muted-foreground">Saídas</div>
+          <div className="text-sm font-semibold text-rose-600">
+            − {formatEUR(row.expenses_total)}
+          </div>
+        </div>
+        <div>
+          <div className="text-[11px] uppercase text-muted-foreground">Líquido</div>
+          <div className="text-sm font-semibold tabular-nums">
+            {formatEUR(Number(row.total_received) - Number(row.expenses_total))}
+          </div>
+        </div>
+      </div>
 
       <div className="flex items-center justify-between">
         <span className="text-[11px] text-muted-foreground flex items-center gap-1">
@@ -445,5 +445,131 @@ function EnvelopeCard({ row }: { row: any }) {
         </Link>
       </div>
     </Card>
+  );
+}
+
+function Cell({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase text-muted-foreground sm:hidden">{label}</div>
+      <div className={`tabular-nums text-xs font-medium ${tone ?? ""}`}>{value}</div>
+    </div>
+  );
+}
+
+function RecebimentosSection({ orders }: { orders: any[] }) {
+  if (orders.length === 0) return null;
+  const sum = (k: string) => orders.reduce((a, o) => a + Number(o[k] ?? 0), 0);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1 text-[11px] uppercase text-muted-foreground">
+        <ArrowDownLeft className="h-3 w-3 text-emerald-600" /> Recebimentos por nota de encomenda
+      </div>
+
+      <div className="hidden grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))] gap-2 px-2 text-[10px] uppercase text-muted-foreground sm:grid">
+        <span>Encomenda</span>
+        <span>Total</span>
+        <span>Produtos</span>
+        <span>Entrega</span>
+        <span>Montagem</span>
+        <span>Recebido</span>
+      </div>
+
+      {orders.map((o: any) => (
+        <div key={o.id} className="rounded-md border px-2 py-1.5">
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 sm:grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))] sm:items-center">
+            <div className="col-span-2 min-w-0 sm:col-span-1">
+              <div className="truncate text-xs font-semibold">{o.order_number}</div>
+              <div className="truncate text-[11px] text-muted-foreground">{o.customer_name}</div>
+            </div>
+            <Cell label="Total" value={formatEUR(o.total_value)} />
+            <Cell label="Produtos" value={formatEUR(o.products_total)} />
+            <Cell label="Entrega" value={formatEUR(o.delivery_total)} />
+            <Cell label="Montagem" value={formatEUR(o.assembly_total)} />
+            <Cell
+              label="Recebido"
+              value={formatEUR(o.realized)}
+              tone={o.realized > 0 ? "text-emerald-600 font-semibold" : "text-muted-foreground"}
+            />
+          </div>
+
+          {Math.abs(Number(o.diff ?? 0)) >= 0.01 && (
+            <div className="mt-1 text-[11px] text-amber-600">
+              Previsto {formatEUR(o.forecast)} · diferença {formatEUR(o.diff)}
+            </div>
+          )}
+
+          {(o.payments ?? []).length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {o.payments.map((p: any) => (
+                <Badge
+                  key={p.id}
+                  variant="outline"
+                  className={
+                    p.confirmed
+                      ? "text-[10px] bg-emerald-100 text-emerald-800 border-emerald-200"
+                      : "text-[10px]"
+                  }
+                >
+                  {p.method_name}: {formatEUR(p.amount)}
+                  {p.received_by_name ? ` · ${p.received_by_name}` : ""}
+                  {p.confirmed ? " ✓" : " · por confirmar"}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+
+      <div className="grid grid-cols-2 gap-x-2 gap-y-1 rounded-md bg-muted/40 px-2 py-1.5 sm:grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))] sm:items-center">
+        <div className="col-span-2 text-[11px] font-semibold uppercase text-muted-foreground sm:col-span-1">
+          Totais
+        </div>
+        <Cell label="Total" value={formatEUR(sum("total_value"))} />
+        <Cell label="Produtos" value={formatEUR(sum("products_total"))} />
+        <Cell label="Entrega" value={formatEUR(sum("delivery_total"))} />
+        <Cell label="Montagem" value={formatEUR(sum("assembly_total"))} />
+        <Cell label="Recebido" value={formatEUR(sum("realized"))} tone="text-emerald-600 font-semibold" />
+      </div>
+    </div>
+  );
+}
+
+function SaidasSection({ exits }: { exits: any[] }) {
+  if (exits.length === 0) return null;
+  const total = exits
+    .filter((e: any) => e.status !== "rejeitada")
+    .reduce((a: number, e: any) => a + Number(e.amount), 0);
+
+  return (
+    <div className="space-y-1 rounded-lg border border-rose-200/70 bg-rose-50/40 p-2 dark:bg-rose-950/10">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1 text-[11px] uppercase text-muted-foreground">
+          <ArrowUpRight className="h-3 w-3 text-rose-600" /> Saídas de caixa
+        </span>
+        <span className="text-xs font-semibold tabular-nums text-rose-600">
+          − {formatEUR(total)}
+        </span>
+      </div>
+      {exits.map((e: any) => (
+        <div key={e.id} className="space-y-0.5 rounded-md border bg-card px-2 py-1.5 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium">{e.category}</span>
+            <span className="flex items-center gap-1.5">
+              <Badge className={`text-[10px] ${EXPENSE_TONE[e.status] ?? ""}`}>{e.status}</Badge>
+              <span className="font-semibold tabular-nums text-rose-600">
+                − {formatEUR(e.amount)}
+              </span>
+            </span>
+          </div>
+          <div className="text-muted-foreground">
+            {e.description}
+            {e.created_by_name ? ` · por ${e.created_by_name}` : ""} ·{" "}
+            {formatDateTimePT(e.created_at)}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

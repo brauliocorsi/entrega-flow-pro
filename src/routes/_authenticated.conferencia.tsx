@@ -44,7 +44,7 @@ function ConferenciaPage() {
             <PackageCheck className="h-4 w-4" /> Envelopes
           </TabsTrigger>
           <TabsTrigger value="historico" className="gap-1.5">
-            <History className="h-4 w-4" /> Histórico
+            <HistoryIcon className="h-4 w-4" /> Histórico
           </TabsTrigger>
           <TabsTrigger value="conciliacao" className="gap-1.5">
             <Landmark className="h-4 w-4" /> Conciliação

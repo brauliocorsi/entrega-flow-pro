@@ -179,13 +179,24 @@ function CaixaRotaPage() {
           )}
         </div>
 
-        <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-4 text-center">
-          <div className="text-xs uppercase text-muted-foreground">Em mãos (dinheiro)</div>
-          <div className="text-3xl font-bold text-emerald-600">{formatEUR(data.in_hand)}</div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {formatEUR(data.cash_in)} recebido − {formatEUR(data.expenses_total)} despesas
+        {data.is_settled ? (
+          <div className="rounded-lg bg-muted p-4 text-center">
+            <div className="text-xs uppercase text-muted-foreground">Em mãos (dinheiro)</div>
+            <div className="text-3xl font-bold">{formatEUR(0)}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Caixa prestado e zerado · entregue {formatEUR(data.net_cash)} ({formatEUR(data.cash_in)}{" "}
+              recebido − {formatEUR(data.expenses_total)} despesas)
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-4 text-center">
+            <div className="text-xs uppercase text-muted-foreground">Em mãos (dinheiro)</div>
+            <div className="text-3xl font-bold text-emerald-600">{formatEUR(data.in_hand)}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {formatEUR(data.cash_in)} recebido − {formatEUR(data.expenses_total)} despesas
+            </div>
+          </div>
+        )}
 
         {data.other_methods.length > 0 && (
           <div className="space-y-1.5">

@@ -260,7 +260,13 @@ function CaixaRotaPage() {
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Saídas de caixa</h2>
+          {closed && (
+            <span className="text-xs text-muted-foreground">
+              Caixa finalizado — sem novas saídas
+            </span>
+          )}
           {!closed && (
+
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
                 <Button size="sm">

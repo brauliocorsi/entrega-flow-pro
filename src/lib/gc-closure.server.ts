@@ -328,6 +328,25 @@ export async function updateGestaoClickVendaClosure(args: {
         headers,
       );
       const rows: any[] = Array.isArray(list?.data) ? list.data : [];
+      console.info(
+        "[GC closure linked receipts]",
+        JSON.stringify(
+          rows
+            .filter((r) => String(r?.venda_id ?? r?.recebimento?.venda_id ?? "") === String(args.vendaId))
+            .map((r) => {
+              const item = r?.recebimento ?? r;
+              return {
+                keys: Object.keys(item ?? {}),
+                id: item?.id ?? null,
+                venda_id: item?.venda_id ?? null,
+                valor: item?.valor ?? null,
+                forma_pagamento_id: item?.forma_pagamento_id ?? null,
+                liquidado: item?.liquidado ?? null,
+                descricao: item?.descricao ?? null,
+              };
+            }),
+        ),
+      );
       alreadyLaunched = rows.map((r) => norm(String(r?.descricao ?? "")));
     }
 

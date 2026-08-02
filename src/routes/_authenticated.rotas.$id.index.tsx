@@ -531,6 +531,8 @@ function RouteDetail() {
   const { role } = useAuth();
   const canForecast = role === "admin" || role === "logistico";
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Ordem que o utilizador está a editar (ainda não guardada) — alimenta a simulação em tempo real.
+  const [previewOrder, setPreviewOrder] = useState<string[]>([]);
   const selectStop = (next: string | null) => {
     setSelectedId(next);
     if (next && typeof document !== "undefined") {

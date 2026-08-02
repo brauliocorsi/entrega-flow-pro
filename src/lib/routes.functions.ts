@@ -548,6 +548,7 @@ export const deleteRoute = createServerFn({ method: "POST" })
     if (!route) throw new Error("Rota não encontrada");
     if (route.status === "concluida")
       throw new Error("Rotas concluídas não podem ser eliminadas");
+    await assertRouteUnlocked(context, data.id);
 
     const { count, error: cErr } = await context.supabase
       .from("scheduled_deliveries")

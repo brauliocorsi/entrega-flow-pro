@@ -839,6 +839,12 @@ export type Database = {
           customer_name: string | null
           delivery_id: string | null
           description: string
+          gc_client_id: string | null
+          gc_os_id: string | null
+          gc_os_number: string | null
+          gc_sync_error: string | null
+          gc_sync_status: string | null
+          gc_synced_at: string | null
           id: string
           opened_by: string
           opened_by_name: string | null
@@ -855,6 +861,12 @@ export type Database = {
           customer_name?: string | null
           delivery_id?: string | null
           description: string
+          gc_client_id?: string | null
+          gc_os_id?: string | null
+          gc_os_number?: string | null
+          gc_sync_error?: string | null
+          gc_sync_status?: string | null
+          gc_synced_at?: string | null
           id?: string
           opened_by: string
           opened_by_name?: string | null
@@ -871,6 +883,12 @@ export type Database = {
           customer_name?: string | null
           delivery_id?: string | null
           description?: string
+          gc_client_id?: string | null
+          gc_os_id?: string | null
+          gc_os_number?: string | null
+          gc_sync_error?: string | null
+          gc_sync_status?: string | null
+          gc_synced_at?: string | null
           id?: string
           opened_by?: string
           opened_by_name?: string | null

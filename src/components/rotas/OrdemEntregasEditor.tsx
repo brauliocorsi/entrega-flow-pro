@@ -15,7 +15,9 @@ type Item = {
   customer_name: string;
   address?: string | null;
   zip_code?: string | null;
+  [key: string]: any;
 };
+
 
 /** Extrai o CP como número (CP4 + CP3, ex: "4620-695" -> 4620695). */
 function zipValue(item: Item): number | null {

@@ -250,6 +250,8 @@ export const updateRouteDate = createServerFn({ method: "POST" })
     if (!roleData || roleData.length === 0) {
       throw new Error("Apenas administradores ou logística podem alterar a data da rota");
     }
+    await assertRouteUnlocked(context, data.id);
+
     const { data: route, error: readErr } = await context.supabase
       .from("routes")
       .select("id, status")

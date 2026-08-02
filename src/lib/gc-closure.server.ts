@@ -262,6 +262,23 @@ export async function updateGestaoClickVendaClosure(args: {
     const clienteId = String(venda.cliente_id ?? "");
     const codigo = String(venda.codigo ?? args.vendaId);
     const existingPayments: any[] = Array.isArray(venda.pagamentos) ? venda.pagamentos : [];
+    console.info(
+      "[GC closure payment shape]",
+      JSON.stringify(
+        existingPayments.map((row) => {
+          const p = paymentNode(row);
+          return {
+            wrapperKeys: Object.keys(row ?? {}),
+            keys: Object.keys(p ?? {}),
+            id: p?.id ?? null,
+            recebimento_id: p?.recebimento_id ?? null,
+            forma_pagamento_id: p?.forma_pagamento_id ?? null,
+            valor: p?.valor ?? null,
+            liquidado: p?.liquidado ?? null,
+          };
+        }),
+      ),
+    );
     const planoContasId =
       (existingPayments[0]?.pagamento ?? existingPayments[0] ?? {})?.plano_contas_id ?? null;
 

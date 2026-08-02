@@ -162,6 +162,45 @@ function MinhaCaixa() {
           </Link>
         ))
       )}
+
+      {settled.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <div className="text-xs uppercase text-muted-foreground">
+            Histórico — caixas prestados ({settled.length})
+          </div>
+          {settled.map((r: any) => (
+            <Link
+              key={r.id}
+              to="/entregas/caixa/$routeId"
+              params={{ routeId: r.id }}
+              className="block"
+            >
+              <Card className="p-3 opacity-80 hover:opacity-100 transition-opacity">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium text-sm flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ background: r.color ?? "#3b82f6" }}
+                      />
+                      {r.zone}
+                      <Badge variant="outline" className="text-[10px]">
+                        {r.settlement?.status === "conferida" ? "Conferida" : "Envelope entregue"}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatDatePT(r.route_date)} · entregue {formatEUR(r.net_cash)} · em mãos{" "}
+                      {formatEUR(0)}
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
+
   );
 }

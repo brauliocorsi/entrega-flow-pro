@@ -104,14 +104,17 @@ export function OrdemEntregasEditor({
   const [items, setItems] = useState<Item[]>(deliveries);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
+  const deliveriesKey = deliveries.map((d) => d.id).join(",");
   useEffect(() => {
     setItems(deliveries);
-  }, [deliveries]);
-
-  useEffect(() => {
-    onOrderChange?.(items.map((i) => i.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+  }, [deliveriesKey]);
+
+  const itemsKey = items.map((i) => i.id).join(",");
+  useEffect(() => {
+    onOrderChange?.(itemsKey ? itemsKey.split(",") : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemsKey]);
 
 
   const dirty = items.map((i) => i.id).join(",") !== deliveries.map((i) => i.id).join(",");

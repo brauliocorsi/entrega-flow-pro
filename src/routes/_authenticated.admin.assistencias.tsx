@@ -3,15 +3,28 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { listServiceRequests, updateServiceRequest } from "@/lib/service-requests.functions";
+import {
+  listServiceRequests,
+  updateServiceRequest,
+  openServiceOrderInGC,
+} from "@/lib/service-requests.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatDateTimePT, formatDatePT } from "@/lib/format";
-import { Wrench } from "lucide-react";
+import { Wrench, ExternalLink, AlertTriangle, Loader2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/admin/assistencias")({
   head: () => ({

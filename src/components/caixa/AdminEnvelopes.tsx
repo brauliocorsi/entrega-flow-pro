@@ -19,6 +19,7 @@ import { formatEUR, formatDatePT, formatDateTimePT } from "@/lib/format";
 import {
   PackageCheck,
   ArrowUpRight,
+  ArrowDownLeft,
   User,
   Search,
   X,

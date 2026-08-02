@@ -142,7 +142,11 @@ function RouteSimulationSection({
   // Paragens sem morada utilizável rebentavam a validação e deixavam o mapa vazio.
   const validStops = useMemo(() => rawStops.filter((s) => (s.full ?? "").trim().length >= 5), [rawStops]);
   const { data: optData, isFetching: simFetching } = useQuery<RouteSimulation>({
-    queryKey: ["route-simulation", validStops.map((s) => s.id).join(",")],
+    queryKey: [
+      "route-simulation",
+      validStops.map((s) => s.id).join(","),
+      manualOrder ? "manual" : "auto",
+    ],
     enabled: validStops.length > 0,
     queryFn: () =>
       simulationFn({
@@ -150,6 +154,8 @@ function RouteSimulationSection({
           origin: WAREHOUSE_ADDRESS,
           destination: WAREHOUSE_ADDRESS,
           intermediates: validStops.map((s) => s.full.trim().slice(0, 255)),
+          // Com ordem manual, o Google não pode reordenar as paragens.
+          optimize: !manualOrder,
         },
       }),
   });
@@ -212,7 +218,7 @@ function RouteSimulationSection({
         </div>
       </div>
 
-      <RouteSimulationMap stops={stops} selectedId={selectedId} />
+      <RouteSimulationMap stops={stops} selectedId={selectedId} manualOrder={manualOrder} />
 
       <ol className="divide-y">
         <li className="flex items-center gap-3 px-4 py-2 text-sm bg-emerald-50/50">
@@ -287,9 +293,11 @@ function RouteSimulationSection({
 function RouteSimulationMap({
   stops,
   selectedId,
+  manualOrder = false,
 }: {
   stops: Stop[];
   selectedId: string | null;
+  manualOrder?: boolean;
 }) {
   const mapsKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY;
   const trackingId = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID;
@@ -309,11 +317,16 @@ function RouteSimulationMap({
       origin: WAREHOUSE_ADDRESS,
       destination: WAREHOUSE_ADDRESS,
       intermediates: mapStops.map((stop) => stop.full.trim().slice(0, 255)),
+      optimize: !manualOrder,
     };
-  }, [mapStops]);
+  }, [mapStops, manualOrder]);
 
   const { data, isLoading, error } = useQuery<RouteSimulation>({
-    queryKey: ["route-simulation", mapStops.map((s) => s.id).join(",")],
+    queryKey: [
+      "route-simulation",
+      mapStops.map((s) => s.id).join(","),
+      manualOrder ? "manual" : "auto",
+    ],
     enabled: Boolean(simulationInput),
     queryFn: () => simulationFn({ data: simulationInput! }),
   });

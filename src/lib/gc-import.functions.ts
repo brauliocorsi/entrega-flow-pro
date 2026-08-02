@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { updateGestaoClickVendaSchedule } from "./gestaoclick.functions";
+
 
 export interface GcImportOrder {
   internal_id: string;
@@ -247,15 +247,7 @@ export const createRouteFromGcOrders = createServerFn({ method: "POST" })
           continue;
         }
         imported += 1;
-
-        if (o.internal_id && route.route_date) {
-          const upd = await updateGestaoClickVendaSchedule({
-            vendaId: o.internal_id,
-            routeDate: route.route_date,
-            statusLabel: "Agendado Entrega",
-          });
-          if (!upd.ok) console.warn("[createRouteFromGcOrders] GC update falhou:", upd.error);
-        }
+        // Estas marcações já estão agendadas no GestãoClick — não alteramos a situação/data lá.
       } catch (e) {
         skipped.push({
           order_number: item.order_number,

@@ -87,3 +87,13 @@ export function pageTitle(path: string): string {
   if (path.startsWith("/compras")) return "Compras";
   return "UP Agenda";
 }
+
+/** Itens principais da barra inferior no mobile (o "+" de agendar é fixo). */
+const MOBILE_TAB_ORDER = ["/entregas", "/rotas", "/conferencia", "/entregas/caixa"];
+
+export function mobileTabs(role: Role) {
+  const items = visibleItems(role);
+  return MOBILE_TAB_ORDER.map((to) => items.find((i) => i.to === to))
+    .filter((i): i is NavItem => !!i)
+    .slice(0, 3);
+}

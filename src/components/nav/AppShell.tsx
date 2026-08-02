@@ -24,9 +24,7 @@ export function AppShell({
   const [collapsed, setCollapsed] = useState(bp === "tablet");
 
   const isActive = (p: string) => path === p || path.startsWith(p + "/");
-  const primary = visibleItems(role)
-    .filter((i) => i.group === "principal")
-    .slice(0, 3);
+  const primary = mobileTabs(role);
   const moreActive = !primary.some((i) => isActive(i.to)) && path !== "/agendar";
   const canGoBack = path.split("/").filter(Boolean).length > 1;
 

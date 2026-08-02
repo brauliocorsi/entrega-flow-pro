@@ -79,6 +79,14 @@ function CaixaIndexPage() {
   );
 }
 
+function cashDiff(r: any) {
+  return Number(r.realized_total ?? 0) - Number(r.forecast_total ?? 0);
+}
+
+function hasDiscrepancy(r: any) {
+  return Math.abs(cashDiff(r)) >= 0.01;
+}
+
 function MinhaCaixa() {
   const fn = useServerFn(getMyCashRoutes);
   const { data, isLoading } = useQuery({
@@ -132,71 +140,87 @@ function MinhaCaixa() {
               Não tens caixa em aberto. Bom trabalho!
             </Card>
           ) : (
-            open.map((r) => (
-              <Link
-                key={r.id}
-                to="/entregas/caixa/$routeId"
-                params={{ routeId: r.id }}
-                className="block"
-              >
-                <Card className="p-4 transition-colors hover:bg-muted/50">
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 font-semibold">
-                        <span
-                          className="h-3 w-3 shrink-0 rounded-full"
-                          style={{ background: r.color ?? "#3b82f6" }}
-                        />
-                        <span className="truncate">Caixa · {r.zone}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatDatePT(r.route_date)} · envelope por entregar
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <div className="text-right">
-                        <div className="text-[11px] uppercase text-muted-foreground">Em mãos</div>
-                        <div className="text-lg font-bold text-emerald-600">
-                          {formatEUR(r.in_hand)}
+            open.map((r) => {
+              const diff = cashDiff(r);
+              const discrepancy = hasDiscrepancy(r);
+              return (
+                <Link
+                  key={r.id}
+                  to="/entregas/caixa/$routeId"
+                  params={{ routeId: r.id }}
+                  className="block"
+                >
+                  <Card className={`p-4 transition-colors hover:bg-muted/50 ${discrepancy ? "border-amber-300 ring-1 ring-amber-100" : ""}`}>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 font-semibold">
+                          <span
+                            className="h-3 w-3 shrink-0 rounded-full"
+                            style={{ background: r.color ?? "#3b82f6" }}
+                          />
+                          <span className="truncate">Caixa · {r.zone}</span>
+                          {discrepancy && (
+                            <Badge className="border-amber-200 bg-amber-100 text-[10px] text-amber-800">
+                              <AlertTriangle className="mr-1 h-3 w-3" />
+                              Divergência
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatDatePT(r.route_date)} · envelope por entregar
                         </div>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  </div>
-
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-lg border border-border p-2">
-                      <div className="uppercase text-muted-foreground">Previsto</div>
-                      <div className="font-semibold tabular-nums">
-                        {formatEUR(r.forecast_total ?? 0)}
+                      <div className="flex shrink-0 items-center gap-2">
+                        <div className="text-right">
+                          <div className="text-[11px] uppercase text-muted-foreground">Em mãos</div>
+                          <div className="text-lg font-bold text-emerald-600">
+                            {formatEUR(r.in_hand)}
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </div>
-                    <div className="rounded-lg border border-border p-2">
-                      <div className="uppercase text-muted-foreground">Realizado</div>
-                      <div className="font-semibold tabular-nums text-emerald-600">
-                        {formatEUR(r.realized_total ?? 0)}
+
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-lg border border-border p-2">
+                        <div className="uppercase text-muted-foreground">Previsto</div>
+                        <div className="font-semibold tabular-nums">
+                          {formatEUR(r.forecast_total ?? 0)}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-border p-2">
+                        <div className="uppercase text-muted-foreground">Realizado</div>
+                        <div className="font-semibold tabular-nums text-emerald-600">
+                          {formatEUR(r.realized_total ?? 0)}
+                        </div>
+                      </div>
+                      <div className={`rounded-lg border p-2 ${discrepancy ? "border-amber-300 bg-amber-50/50" : "border-border"}`}>
+                        <div className="uppercase text-muted-foreground">Diferença</div>
+                        <div className={`font-semibold tabular-nums ${discrepancy ? "text-amber-700" : ""}`}>
+                          {formatEUR(diff)}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                    <span>Dinheiro {formatEUR(r.cash_in)}</span>
-                    <span>·</span>
-                    <span className="text-rose-600">Despesas − {formatEUR(r.expenses_total)}</span>
-                    {r.other_methods?.map((m: any) => (
-                      <Badge key={m.method_name} variant="outline" className="text-[10px]">
-                        {m.method_name}: {formatEUR(m.amount)}
-                      </Badge>
-                    ))}
-                    {r.pending_expenses > 0 && (
-                      <Badge className="border-amber-200 bg-amber-100 text-[10px] text-amber-800">
-                        <AlertTriangle className="mr-1 h-3 w-3" /> {r.pending_expenses} por aprovar
-                      </Badge>
-                    )}
-                  </div>
-                </Card>
-              </Link>
-            ))
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                      <span>Dinheiro {formatEUR(r.cash_in)}</span>
+                      <span>·</span>
+                      <span className="text-rose-600">Despesas − {formatEUR(r.expenses_total)}</span>
+                      {r.other_methods?.map((m: any) => (
+                        <Badge key={m.method_name} variant="outline" className="text-[10px]">
+                          {m.method_name}: {formatEUR(m.amount)}
+                        </Badge>
+                      ))}
+                      {r.pending_expenses > 0 && (
+                        <Badge className="border-amber-200 bg-amber-100 text-[10px] text-amber-800">
+                          <AlertTriangle className="mr-1 h-3 w-3" /> {r.pending_expenses} por aprovar
+                        </Badge>
+                      )}
+                    </div>
+                  </Card>
+                </Link>
+              );
+            })
           )}
         </TabsContent>
 
@@ -207,39 +231,49 @@ function MinhaCaixa() {
               Ainda não há caixas prestados.
             </Card>
           ) : (
-            settled.map((r) => (
-              <Link
-                key={r.id}
-                to="/entregas/caixa/$routeId"
-                params={{ routeId: r.id }}
-                className="block"
-              >
-                <Card className="p-3 opacity-80 transition-opacity hover:opacity-100">
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ background: r.color ?? "#3b82f6" }}
-                        />
-                        <span className="truncate">Caixa · {r.zone}</span>
-                        <Badge variant="outline" className="text-[10px]">
-                          {r.settlement?.status === "conferida"
-                            ? "Conferido"
-                            : "Envelope entregue"}
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatDatePT(r.route_date)} · entregue {formatEUR(r.net_cash)}
-                        {r.envelope_code ? ` · ${r.envelope_code}` : ""}
-                      </div>
+            settled.map((r) => {
+              const diff = cashDiff(r);
+              const discrepancy = hasDiscrepancy(r);
+              return (
+                <Link
+                  key={r.id}
+                  to="/entregas/caixa/$routeId"
+                  params={{ routeId: r.id }}
+                  className="block"
+                >
+                  <Card className={`p-3 opacity-80 transition-opacity hover:opacity-100 ${discrepancy ? "border-amber-300" : ""}`}>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ background: r.color ?? "#3b82f6" }}
+                          />
+                          <span className="truncate">Caixa · {r.zone}</span>
+                          <Badge variant="outline" className="text-[10px]">
+                            {r.settlement?.status === "conferida"
+                              ? "Conferido"
+                              : "Envelope entregue"}
+                          </Badge>
+                          {discrepancy && (
+                            <Badge className="border-amber-200 bg-amber-100 text-[10px] text-amber-800">
+                              <AlertTriangle className="mr-1 h-3 w-3" />
+                              {formatEUR(diff)}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatDatePT(r.route_date)} · entregue {formatEUR(r.net_cash)}
+                          {r.envelope_code ? ` · ${r.envelope_code}` : ""}
+                        </div>
 
+                      </div>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                     </div>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </div>
-                </Card>
-              </Link>
-            ))
+                  </Card>
+                </Link>
+              );
+            })
           )}
         </TabsContent>
       </Tabs>

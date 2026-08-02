@@ -67,10 +67,13 @@ function ServiceRequestsPage() {
   const listFn = useServerFn(listServiceRequests);
   const updateFn = useServerFn(updateServiceRequest);
   const openOsFn = useServerFn(openServiceOrderInGC);
+  const unscheduleFn = useServerFn(unscheduleServiceRequest);
   const [tab, setTab] = useState<"aberta" | "em_curso" | "resolvida" | "todas">("aberta");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<any | null>(null);
+  const [scheduling, setScheduling] = useState<any | null>(null);
   const [sending, setSending] = useState(false);
+
 
   const allowed = role === "admin" || role === "logistico";
   const { data = [], isLoading } = useQuery({

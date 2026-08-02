@@ -26,38 +26,46 @@ export type NavItem = {
   short?: string;
   icon: LucideIcon;
   roles?: AllowedRole[];
-  group: "principal" | "operacao" | "comercial" | "acessos" | "dados";
+  group: "dia" | "rotas" | "agendamentos" | "financeiro" | "config";
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: "/entregas", label: "O meu dia", short: "Hoje", icon: Truck, group: "principal", roles: ["entregador", "admin", "logistico"] },
-  { to: "/entregas/caixa", label: "Caixa", short: "Caixa", icon: Wallet, group: "principal", roles: ["entregador", "admin", "logistico"] },
-  { to: "/entregas/envelopes", label: "Envelopes", short: "Envel.", icon: PackageCheck, group: "principal", roles: ["entregador", "admin", "logistico"] },
+  { to: "/entregas", label: "O meu dia", short: "Hoje", icon: Truck, group: "dia", roles: ["entregador", "admin", "logistico"] },
+  { to: "/entregas/caixa", label: "Caixa", short: "Caixa", icon: Wallet, group: "dia", roles: ["entregador", "admin", "logistico"] },
+  { to: "/entregas/envelopes", label: "Envelopes", short: "Envel.", icon: PackageCheck, group: "dia", roles: ["entregador", "admin", "logistico"] },
 
-  { to: "/rotas", label: "Rotas", icon: Calendar, group: "principal" },
-  { to: "/agendar", label: "Agendar", icon: Plus, group: "principal" },
-  { to: "/conferencia", label: "Conferência", short: "Conf.", icon: Calculator, group: "principal" },
-  { to: "/admin/otimizacao", label: "Otimização", short: "Otim.", icon: Sparkles, group: "principal", roles: ["admin", "logistico"] },
+  { to: "/rotas", label: "Rotas", icon: Calendar, group: "rotas" },
+  { to: "/agendar", label: "Agendar", icon: Plus, group: "agendamentos" },
+  { to: "/conferencia", label: "Conferência", short: "Conf.", icon: Calculator, group: "financeiro" },
+  { to: "/admin/otimizacao", label: "Otimização", short: "Otim.", icon: Sparkles, group: "rotas", roles: ["admin", "logistico"] },
 
-  { to: "/admin/assistencias", label: "Assistências", short: "Assist.", icon: Wrench, group: "operacao", roles: ["admin", "logistico"] },
-  { to: "/admin/templates", label: "Templates de rota", icon: LayoutTemplate, group: "operacao", roles: ["admin"] },
-  { to: "/admin/veiculos", label: "Veículos", icon: Car, group: "operacao", roles: ["admin"] },
-  { to: "/admin/equipa", label: "Equipa (motoristas)", icon: Users, group: "operacao", roles: ["admin"] },
+  { to: "/admin/assistencias", label: "Assistências", short: "Assist.", icon: Wrench, group: "agendamentos", roles: ["admin", "logistico"] },
+  { to: "/admin/templates", label: "Templates de rota", icon: LayoutTemplate, group: "rotas", roles: ["admin"] },
+  { to: "/admin/veiculos", label: "Veículos", icon: Car, group: "config", roles: ["admin"] },
+  { to: "/admin/equipa", label: "Equipa (motoristas)", icon: Users, group: "config", roles: ["admin"] },
 
-  { to: "/admin/taxas", label: "Taxas de entrega", icon: Calculator, group: "comercial", roles: ["admin"] },
-  { to: "/admin/pagamentos", label: "Formas de pagamento", short: "Pagam.", icon: Wallet, group: "comercial", roles: ["admin"] },
+  { to: "/admin/taxas", label: "Taxas de entrega", icon: Calculator, group: "financeiro", roles: ["admin"] },
+  { to: "/admin/pagamentos", label: "Formas de pagamento", short: "Pagam.", icon: Wallet, group: "financeiro", roles: ["admin"] },
 
-  { to: "/admin/utilizadores", label: "Utilizadores", icon: UserCog, group: "acessos", roles: ["admin"] },
+  { to: "/admin/utilizadores", label: "Utilizadores", icon: UserCog, group: "config", roles: ["admin"] },
 
-  { to: "/admin/exportar", label: "Exportar dados", icon: FileSpreadsheet, group: "dados", roles: ["admin"] },
+  { to: "/admin/exportar", label: "Exportar dados", icon: FileSpreadsheet, group: "config", roles: ["admin"] },
+];
+
+export const GROUP_ORDER: NavItem["group"][] = [
+  "dia",
+  "rotas",
+  "agendamentos",
+  "financeiro",
+  "config",
 ];
 
 export const GROUP_LABEL: Record<NavItem["group"], string> = {
-  principal: "Principal",
-  operacao: "Operação",
-  comercial: "Comercial",
-  acessos: "Acessos",
-  dados: "Dados",
+  dia: "Dia a dia",
+  rotas: "Rotas",
+  agendamentos: "Agendamentos",
+  financeiro: "Financeiro",
+  config: "Configurações",
 };
 
 export function canSee(item: NavItem, role: Role) {
@@ -78,4 +86,14 @@ export function pageTitle(path: string): string {
   if (match) return match.label;
   if (path.startsWith("/compras")) return "Compras";
   return "UP Agenda";
+}
+
+/** Itens principais da barra inferior no mobile (o "+" de agendar é fixo). */
+const MOBILE_TAB_ORDER = ["/entregas", "/rotas", "/conferencia", "/entregas/caixa"];
+
+export function mobileTabs(role: Role) {
+  const items = visibleItems(role);
+  return MOBILE_TAB_ORDER.map((to) => items.find((i) => i.to === to))
+    .filter((i): i is NavItem => !!i)
+    .slice(0, 3);
 }

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { visibleItems, GROUP_LABEL, type Role, type NavItem } from "@/lib/nav-items";
+import { visibleItems, GROUP_LABEL, GROUP_ORDER, type Role } from "@/lib/nav-items";
 
 export function MoreSheet({
   open,
@@ -17,9 +17,9 @@ export function MoreSheet({
   onSignOut: () => void;
 }) {
   const items = visibleItems(role);
-  const groups = (["principal", "operacao", "comercial", "acessos", "dados"] as NavItem["group"][])
-    .map((g) => ({ g, list: items.filter((i) => i.group === g) }))
-    .filter((x) => x.list.length > 0);
+  const groups = GROUP_ORDER.map((g) => ({ g, list: items.filter((i) => i.group === g) })).filter(
+    (x) => x.list.length > 0,
+  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

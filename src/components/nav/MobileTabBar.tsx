@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Plus, MoreHorizontal } from "lucide-react";
-import { visibleItems, type Role } from "@/lib/nav-items";
+import { mobileTabs, type Role } from "@/lib/nav-items";
 
 export function MobileTabBar({
   role,
@@ -13,8 +13,7 @@ export function MobileTabBar({
   onMore: () => void;
   moreActive: boolean;
 }) {
-  const items = visibleItems(role).filter((i) => i.group === "principal" && i.to !== "/agendar");
-  const tabs = items.slice(0, 3);
+  const tabs = mobileTabs(role);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:hidden">

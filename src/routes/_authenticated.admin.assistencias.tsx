@@ -123,6 +123,16 @@ function ServiceRequestsPage() {
     }
   }
 
+  async function handleUnschedule(id: string) {
+    try {
+      await unscheduleFn({ data: { id } });
+      toast.success("Agendamento removido da rota");
+      qc.invalidateQueries({ queryKey: ["service-requests"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro");
+    }
+  }
+
 
   return (
     <div className="space-y-4">

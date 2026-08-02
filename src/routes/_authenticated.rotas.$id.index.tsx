@@ -1413,7 +1413,12 @@ function FleetEditor({ route }: { route: any }) {
   });
 
   const drivers = (staff as any[]).filter((s) => s.kind === "motorista" && s.active);
-  const assistants = (staff as any[]).filter((s) => s.kind === "auxiliar" && s.active);
+  // Motoristas também podem ser escalados como auxiliares de rota.
+  const assistants = (staff as any[])
+    .filter((s) => s.active && s.name !== driver)
+    .sort((a, b) =>
+      a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "auxiliar" ? -1 : 1,
+    );
   const activeVehicles = (vehicles as any[]).filter((v) => v.active);
 
   useEffect(() => {

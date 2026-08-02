@@ -5,7 +5,7 @@ import { DesktopSidebar } from "@/components/nav/DesktopSidebar";
 import { MobileTabBar } from "@/components/nav/MobileTabBar";
 import { MoreSheet } from "@/components/nav/MoreSheet";
 import { TopBar } from "@/components/nav/TopBar";
-import { pageTitle, visibleItems, type Role } from "@/lib/nav-items";
+import { pageTitle, mobileTabs, type Role } from "@/lib/nav-items";
 
 export function AppShell({
   role,

@@ -166,9 +166,9 @@ export function RouteCashPanel({ routeId }: { routeId: string }) {
             Nenhuma encomenda corresponde à pesquisa ou ao filtro.
           </p>
         ) : (
-
           <div className="space-y-1.5">
-            {data.orders.map((o: any) => {
+            {visibleOrders.map((o: any) => {
+
               const bad = Math.abs(o.diff) > 0.01;
               return (
                 <div

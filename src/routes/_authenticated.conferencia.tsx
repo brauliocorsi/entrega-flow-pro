@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Calculator } from "lucide-react";
 import { ConferenciaLista } from "@/components/caixa/ConferenciaLista";
 import { ConciliacaoPanel } from "@/components/caixa/ConciliacaoPanel";
+import { HistoricoEnvelopes } from "@/components/caixa/HistoricoEnvelopes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 

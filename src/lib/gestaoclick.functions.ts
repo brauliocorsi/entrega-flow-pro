@@ -8,6 +8,9 @@ export interface OrderItemDTO {
   price: number;
   total: number;
   kind: "produto" | "montagem" | "entrega" | "servico";
+  /** Código do produto no GestãoClick (para separação/stock). */
+  code?: string | null;
+  product_id?: string | null;
 }
 
 export interface OrderDTO {

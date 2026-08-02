@@ -184,9 +184,8 @@ function receiptDescription(codigo: string, method: string, amount: number, date
 }
 
 /**
- * Atualiza situação e observações da venda e regista os recebimentos no financeiro.
- * Nota: a API de vendas do GestãoClick ignora o bloco `pagamentos` em updates,
- * por isso os valores recebidos são lançados via /api/recebimentos.
+ * Atualiza situação/observações da venda e regista os recebimentos no financeiro.
+ * O GestãoClick não permite editar as linhas de `pagamentos` de uma venda existente.
  */
 export async function updateGestaoClickVendaClosure(args: {
   vendaId: string;
@@ -217,10 +216,11 @@ export async function updateGestaoClickVendaClosure(args: {
     const planoContasId =
       (existingPayments[0]?.pagamento ?? existingPayments[0] ?? {})?.plano_contas_id ?? null;
 
-    // 1) Situação + observações na venda
+    // 1) Situação + observações na venda. O PUT substitui o recurso, portanto
+    // enviamos a venda completa para preservar cliente, produtos e serviços.
     const prevObs = String(venda.observacoes ?? "").trim();
     const body: Record<string, unknown> = {
-      cliente_id: venda.cliente_id,
+      ...venda,
       situacao_id: Number(situacaoId) || situacaoId,
       observacoes: prevObs ? `${prevObs}\n\n${args.observacoes}` : args.observacoes,
     };

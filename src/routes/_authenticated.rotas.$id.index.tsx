@@ -707,7 +707,11 @@ function RouteDetail() {
                     ]
                   : baseStops;
               const savedManualOrder = activeDeliveries.some((d: any) => d.stop_order != null);
-              const manualOrder = savedManualOrder || previewOrder.length > 0;
+              // Só conta como ordem manual se a sequência em edição diferir da base.
+              const previewDiffers =
+                previewOrder.length > 0 &&
+                previewOrder.join(",") !== baseStops.map((s) => s.id).join(",");
+              const manualOrder = savedManualOrder || previewDiffers;
 
               return (
                 <>

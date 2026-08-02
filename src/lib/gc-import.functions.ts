@@ -230,7 +230,7 @@ export const createRouteFromGcOrders = createServerFn({ method: "POST" })
           estimated_minutes: minutes,
           notes: null,
           order_payload: {
-            items: (o.items ?? []) as unknown,
+            items: o.items ?? [],
             pagamentos: o.pagamentos ?? [],
             has_assembly: o.has_assembly ?? false,
             has_delivery_service: o.has_delivery_service ?? false,

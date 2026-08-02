@@ -210,136 +210,123 @@ function RouteDetail() {
         <FleetEditor route={r} />
       </Card>
 
-      <RouteCashPanel routeId={r.id} />
+      <Tabs defaultValue="entregas">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="entregas">Entregas</TabsTrigger>
+          <TabsTrigger value="trajeto">Trajeto</TabsTrigger>
+          <TabsTrigger value="caixa">Caixa</TabsTrigger>
+          <TabsTrigger value="equipa">Equipa</TabsTrigger>
+        </TabsList>
 
-      
+        <TabsContent value="entregas" className="mt-3 space-y-3">
+          {activeDeliveries.length > 0 && (
+            <>
+              <RouteLockPanel route={r} />
+              <CourierSuggestionsPanel
+                routeId={r.id}
+                deliveries={activeDeliveries}
+                locked={!!r.started_at}
+              />
+              <OrdemEntregasEditor
+                routeId={r.id}
+                deliveries={activeDeliveries.map((dd: any) => ({
+                  id: dd.id,
+                  order_number: dd.order_number,
+                  customer_name: dd.customer_name,
+                  address: dd.address,
+                  zip_code: dd.zip_code,
+                }))}
+                locked={!!r.started_at}
+                changedByName={r.order_changed_by_name}
+                changedAt={r.order_changed_at}
+                invalidateKeys={[["route-deliveries", r.id], ["scheduled-deliveries", r.id]]}
+                onOrderChange={setPreviewOrder}
+              />
+            </>
+          )}
 
-      {(() => {
-        const activeDeliveries = deliveries.filter(
-          (dd: any) => !["cancelado", "reagendado"].includes(dd.status),
-        );
-        const historyDeliveries = deliveries.filter((dd: any) =>
-          ["cancelado", "reagendado"].includes(dd.status),
-        );
+          <div className="space-y-2">
+            {activeDeliveries.length === 0 ? (
+              <Card className="p-8 text-center text-muted-foreground">Sem entregas ativas.</Card>
+            ) : (
+              activeDeliveries.map((dd: any) => (
+                <DeliveryCard
+                  key={dd.id}
+                  d={dd}
+                  routeId={id}
+                  isSelected={dd.id === selectedId}
+                  onSelect={() => setSelectedId(dd.id === selectedId ? null : dd.id)}
+                  isClosed={isClosed}
+                />
+              ))
+            )}
+          </div>
 
-        return (
-          <>
-            {activeDeliveries.length > 0 && (() => {
-              const baseStops: Stop[] = activeDeliveries.map((d: any) => ({
-                id: d.id,
-                label: `#${d.order_number} · ${d.customer_name}`,
-                full: buildStopAddress(d.address, d.zip_code, d.city),
-              }));
-              // Reordena as paragens conforme a ordem em edição, sem esperar por "Guardar".
-              const rawStops: Stop[] =
-                previewOrder.length > 0
-                  ? [
-                      ...previewOrder
-                        .map((id) => baseStops.find((s) => s.id === id))
-                        .filter((s): s is Stop => !!s),
-                      ...baseStops.filter((s) => !previewOrder.includes(s.id)),
-                    ]
-                  : baseStops;
-              const savedManualOrder = activeDeliveries.some((d: any) => d.stop_order != null);
-              // Só conta como ordem manual se a sequência em edição diferir da base.
-              const previewDiffers =
-                previewOrder.length > 0 &&
-                previewOrder.join(",") !== baseStops.map((s) => s.id).join(",");
-              const manualOrder = savedManualOrder || previewDiffers;
-
-              return (
-                <>
-                  <RouteLockPanel route={r} />
-                  <CourierSuggestionsPanel
-                    routeId={r.id}
-                    deliveries={activeDeliveries}
-                    locked={!!r.started_at}
-                  />
-                  <OrdemEntregasEditor
-                    routeId={r.id}
-                    deliveries={activeDeliveries.map((d: any) => ({
-                      id: d.id,
-                      order_number: d.order_number,
-                      customer_name: d.customer_name,
-                      address: d.address,
-                      zip_code: d.zip_code,
-                    }))}
-                    locked={!!r.started_at}
-                    changedByName={r.order_changed_by_name}
-                    changedAt={r.order_changed_at}
-                    invalidateKeys={[["route-deliveries", r.id], ["scheduled-deliveries", r.id]]}
-                    onOrderChange={setPreviewOrder}
-                  />
-                  <RouteSimulationSection
-                    rawStops={rawStops}
-                    manualOrder={manualOrder}
-                    selectedId={selectedId}
-                    setSelectedId={setSelectedId}
-                    selectStop={selectStop}
-                  />
-                </>
-              );
-            })()}
-
-
-            <Tabs defaultValue="ativas" className="mt-6">
-              <TabsList>
-                <TabsTrigger value="ativas">Ativas ({activeDeliveries.length})</TabsTrigger>
-                <TabsTrigger value="historico">Histórico ({historyDeliveries.length})</TabsTrigger>
-              </TabsList>
-              <TabsContent value="ativas" className="space-y-2 mt-3">
-                {activeDeliveries.length === 0 ? (
-                  <Card className="p-8 text-center text-muted-foreground">Sem entregas ativas.</Card>
-                ) : (
-                  activeDeliveries.map((d: any) => (
-                    <DeliveryCard
-                      key={d.id}
-                      d={d}
-                      routeId={id}
-                      isSelected={d.id === selectedId}
-                      onSelect={() => setSelectedId(d.id === selectedId ? null : d.id)}
-                      isClosed={isClosed}
-                    />
-                  ))
-                )}
-              </TabsContent>
-              <TabsContent value="historico" className="space-y-2 mt-3">
-                {historyDeliveries.length === 0 ? (
-                  <Card className="p-8 text-center text-muted-foreground">Sem marcações no histórico.</Card>
-                ) : (
-                  historyDeliveries.map((d: any) => (
-                    <Card key={d.id} className="p-4 border-l-4 border-l-muted-foreground/30 bg-muted/20 opacity-80">
-                      <div className="flex items-start justify-between flex-wrap gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold">#{d.order_number}</span>
-                            <span className="text-sm">{d.customer_name}</span>
-                            <Badge variant="outline">{DELIVERY_TYPE_LABEL[d.delivery_type]}</Badge>
-                            <Badge variant="secondary">
-                              {d.status === "cancelado" ? "Removida" : "Reagendada"}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                            <MapPin className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{d.address}</span>
-                          </div>
-                          {d.outcome_notes && (
-                            <div className="text-xs text-muted-foreground mt-1">Notas: {d.outcome_notes}</div>
-                          )}
+          {historyDeliveries.length > 0 && (
+            <details className="rounded-xl border border-border bg-muted/20 p-3">
+              <summary className="cursor-pointer text-sm font-medium">
+                Histórico ({historyDeliveries.length}) — removidas e reagendadas
+              </summary>
+              <div className="mt-3 space-y-2">
+                {historyDeliveries.map((dd: any) => (
+                  <Card key={dd.id} className="p-4 border-l-4 border-l-muted-foreground/30 bg-muted/20 opacity-80">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold">#{dd.order_number}</span>
+                          <span className="text-sm">{dd.customer_name}</span>
+                          <Badge variant="outline">{DELIVERY_TYPE_LABEL[dd.delivery_type]}</Badge>
+                          <Badge variant="secondary">
+                            {dd.status === "cancelado" ? "Removida" : "Reagendada"}
+                          </Badge>
                         </div>
-                        <div className="text-right shrink-0 text-xs text-muted-foreground">
-                          {d.seller_name && <div>{d.seller_name}</div>}
-                          <div>{Number(d.volume_m3).toFixed(1)} m³ · {d.estimated_minutes} min</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{dd.address}</span>
                         </div>
+                        {dd.outcome_notes && (
+                          <div className="text-xs text-muted-foreground mt-1">Notas: {dd.outcome_notes}</div>
+                        )}
                       </div>
-                    </Card>
-                  ))
-                )}
-              </TabsContent>
-            </Tabs>
-          </>
-        );
-      })()}
+                      <div className="text-right shrink-0 text-xs text-muted-foreground">
+                        {dd.seller_name && <div>{dd.seller_name}</div>}
+                        <div>{Number(dd.volume_m3).toFixed(1)} m³ · {dd.estimated_minutes} min</div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </details>
+          )}
+        </TabsContent>
+
+        <TabsContent value="trajeto" className="mt-3">
+          {activeDeliveries.length === 0 ? (
+            <Card className="p-8 text-center text-muted-foreground">
+              Sem entregas ativas para simular o trajeto.
+            </Card>
+          ) : (
+            <RouteSimulationSection
+              rawStops={rawStops}
+              manualOrder={manualOrder}
+              selectedId={selectedId}
+              setSelectedId={setSelectedId}
+              selectStop={selectStop}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="caixa" className="mt-3">
+          <RouteCashPanel routeId={r.id} />
+        </TabsContent>
+
+        <TabsContent value="equipa" className="mt-3">
+          <Card className="p-4">
+            <FleetEditor route={r} />
+          </Card>
+        </TabsContent>
+      </Tabs>
+
     </div>
   );
 }
